@@ -3,7 +3,8 @@
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>محاكي إنتاج حقل نفطي</title>
 <style>
 :root{--bg:#07110f;--panel:#0c1c18;--line:#24483e;--text:#e8fff7;--muted:#8da69d;--oil:#efb347;--water:#39b9e6;--gas:#7ee7ba;--green:#55e5a4;--red:#ef7171}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Tahoma,Arial,sans-serif}button,input{font:inherit}#app{min-height:100vh;padding:18px;display:grid;grid-template-columns:1fr 330px;gap:16px}header{grid-column:1/-1;display:flex;direction:ltr;justify-content:space-between;align-items:start;border-bottom:1px solid var(--line);padding-bottom:13px}h1{font:600 23px Consolas,monospace;margin:0;color:var(--green);letter-spacing:1px}.sub{margin-top:6px;color:var(--muted);font-size:12px}.tag{font:12px Consolas,monospace;color:var(--muted);text-align:right;line-height:1.7}.tag b{color:var(--oil)}.scene{min-width:0;background:linear-gradient(180deg,#0d2420 0 29%,#543d29 29.5%,#28231d 100%);border:1px solid var(--line);position:relative;overflow:hidden;min-height:570px}.legend{position:absolute;top:12px;right:12px;display:flex;gap:12px;color:#d9eee7;font:11px Consolas,monospace}.legend span:before{content:'';display:inline-block;width:10px;height:10px;border-radius:50%;margin-left:4px}.oil:before{background:var(--oil)}.water:before{background:var(--water)}.gas:before{background:var(--gas)}svg{display:block;width:100%;height:100%}.side{display:flex;flex-direction:column;gap:12px}.card{background:var(--panel);border:1px solid var(--line);padding:14px}.card h2{font-size:15px;margin:0 0 12px;color:var(--green)}.metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px}.metric{background:#091512;padding:9px}.metric label{display:block;color:var(--muted);font-size:11px}.metric b{display:block;font:600 18px Consolas,monospace;margin-top:5px}.metric small{color:var(--muted)}.buttons{display:grid;grid-template-columns:1fr 1fr;gap:8px}.buttons button{padding:10px;border:1px solid var(--line);background:#112722;color:var(--text);cursor:pointer}.buttons button.primary{background:#155b42;border-color:var(--green)}.buttons button.stop{border-color:#9c5151;color:#ffc6c6}.buttons button.active{outline:1px solid var(--green)}.control{margin-top:11px}.control label{display:flex;justify-content:space-between;color:var(--muted);font-size:12px}.control output{color:var(--text);font-family:Consolas,monospace}input[type=range]{width:100%;accent-color:var(--green)}.trend{height:125px}.equipment{display:grid;gap:6px}.equip{display:flex;justify-content:space-between;align-items:center;padding:8px;background:#091512;border-right:3px solid var(--line);font-size:12px}.equip b{font:11px Consolas,monospace}.ok{color:var(--green)}.warn{color:var(--oil)}.alarm{color:var(--red)}#status{font:12px Consolas,monospace;color:var(--green);min-height:16px}.tip{font-size:11px;color:var(--muted);line-height:1.7}@media(max-width:900px){#app{grid-template-columns:1fr}.scene{min-height:480px}.side{display:grid;grid-template-columns:1fr 1fr}.side .card:last-child{grid-column:1/-1}}@media(max-width:560px){#app{padding:10px}.side{display:block}.side .card{margin-bottom:10px}h1{font-size:17px}.scene{min-height:390px}.metrics{grid-template-columns:1fr 1fr}}
-.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.formgrid label{font-size:11px;color:var(--muted)}.formgrid input{width:100%;margin-top:4px;background:#091512;border:1px solid var(--line);color:var(--text);padding:6px}</style></head><body><main id="app">
+.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.formgrid label{font-size:11px;color:var(--muted)}.formgrid input{width:100%;margin-top:4px;background:#091512;border:1px solid var(--line);color:var(--text);padding:6px}
+.alarmItem{background:#091512;padding:8px;border-right:3px solid var(--red);margin-bottom:6px;font-size:12px}.alarmItem b{color:var(--red);display:block;margin-bottom:3px}.equip b.alarm{color:var(--red)}</style></head><body><main id="app">
 <header><div><h1>OILFIELD CONTROL // حقل السهول</h1><div class="sub">نموذج تشغيلي افتراضي — من المكمن إلى خزان التصدير</div></div><div class="tag">WELL: <b>SAH-17</b><br>MODE: <span id="mode">STANDBY</span></div></header>
 <section class="scene" aria-label="رسم تشغيلي للمكمن والبئر ومرافق الإنتاج"><div class="legend"><span class="oil">نفط</span><span class="water">ماء</span><span class="gas">غاز</span></div>
 <svg viewBox="0 0 1000 620" preserveAspectRatio="xMidYMid meet">
@@ -25,21 +26,30 @@
 </svg></section>
 <aside class="side"><section class="card"><h2>// التحكم بالإنتاج</h2><div class="buttons"><button id="start" class="primary">بدء الإنتاج</button><button id="stop" class="stop">إيقاف آمن</button><button id="inject">تشغيل حقن الماء</button><button id="reset">إعادة ضبط</button></div><div class="control"><label>فتحة الخانق <output id="chokeOut">62 %</output></label><input id="choke" type="range" min="10" max="100" value="62"></div><div class="control"><label>معدل الحقن <output id="injectOut">0 م³/يوم</output></label><input id="injection" type="range" min="0" max="1200" value="0"></div><p id="status" aria-live="polite">النظام جاهز للتشغيل</p></section>
 <section class="card"><h2>// خواص المكمن والسائل</h2><div class="control"><label>كثافة النفط API <output id="apiOut">32°</output></label><input id="api" type="range" min="10" max="45" value="32"></div><div class="control"><label>اللزوجة عند السطح <output id="viscOut">8 cP</output></label><input id="viscosity" type="range" min="1" max="100" value="8"></div><div class="control"><label>نسبة الغاز إلى النفط GOR <output id="gorOut">420 scf/bbl</output></label><input id="gor" type="range" min="100" max="1800" step="20" value="420"></div><div class="formgrid"><label>حرارة المكمن °C<input id="temperature" type="number" min="30" max="180" value="85"></label><label>ضغط الفقاعة بار<input id="bubble" type="number" min="40" max="350" value="115"></label><label>النفاذية mD<input id="permeability" type="number" min="1" max="2000" value="180"></label><label>المسامية %<input id="porosity" type="number" min="5" max="40" value="22"></label><label>تشبع الماء %<input id="saturation" type="number" min="5" max="90" value="28"></label><label>عمق البئر م<input id="depth" type="number" min="500" max="6000" value="2600"></label><label>سرعة المضخة %<input id="pump" type="number" min="0" max="100" value="65"></label><label>ملوحة الماء ppm<input id="salinity" type="number" min="0" max="250000" value="65000"></label></div><p class="tip">تنعكس هذه القيم مباشرةً على إنتاج المحاكاة.</p></section>
-<section class="card"><h2>// بيانات لحظية</h2><div class="metrics"><div class="metric"><label>النفط</label><b id="oilRate">0</b><small>برميل/يوم</small></div><div class="metric"><label>الماء</label><b id="waterRate">0</b><small>م³/يوم</small></div><div class="metric"><label>ضغط قاع البئر</label><b id="pressure">0</b><small>بار</small></div><div class="metric"><label>نسبة الماء</label><b id="waterCut">0</b><small>%</small></div></div></section>
+<section class="card"><h2>// بيانات لحظية</h2><div class="metrics"><div class="metric"><label>النفط</label><b id="oilRate">0</b><small>برميل/يوم</small></div><div class="metric"><label>الماء</label><b id="waterRate">0</b><small>م³/يوم</small></div><div class="metric"><label>ضغط قاع البئر</label><b id="pressure">0</b><small>بار</small></div><div class="metric"><label>نسبة الماء</label><b id="waterCut">0</b><small>%</small></div><div class="metric"><label>استنزاف المكمن</label><b id="depletion">0%</b><small>تراكمي</small></div><div class="metric"><label>الإنتاج التراكمي</label><b id="cumulative">0</b><small>برميل</small></div></div></section>
 <section class="card"><h2>// اتجاه الإنتاج — آخر 12 ساعة</h2><svg id="trend" class="trend" viewBox="0 0 300 120" aria-label="رسم اتجاه إنتاج النفط"></svg></section>
-<section class="card"><h2>// تحكم كل جهاز</h2><div class="buttons"><button id="runAll" class="primary">RUN ALL / تشغيل الكل</button><button id="stopAll" class="stop">STOP ALL / إيقاف الكل</button></div><div id="unitControls" class="equipment" style="margin-top:9px"></div><p class="tip">القيم افتراضية للتدريب. يمكن تشغيل وإيقاف كل معدة بصورة مستقلة، مع ضبط خانق البئر وحقن الماء ومراقبة الأثر المباشر.</p></section></aside>
+<section class="card"><h2>// تحكم كل جهاز</h2><div class="buttons"><button id="runAll" class="primary">RUN ALL / تشغيل الكل</button><button id="stopAll" class="stop">STOP ALL / إيقاف الكل</button></div><div id="unitControls" class="equipment" style="margin-top:9px"></div><p class="tip">القيم افتراضية للتدريب. يمكن تشغيل وإيقاف كل معدة بصورة مستقلة، مع ضبط خانق البئر وحقن الماء ومراقبة الأثر المباشر.</p></section>
+<section class="card"><h2>// سجل الإنذارات</h2><div id="alarmLog"><p class="tip">لا توجد إنذارات مسجّلة.</p></div></section></aside>
 </main><script>
 const $=s=>document.querySelector(s);
 
 class Well{
   constructor({api,viscosity,gor,temperature,bubble,permeability,porosity,saturation,depth,pump,salinity}){
     Object.assign(this,{api,viscosity,gor,temperature,bubble,permeability,porosity,saturation,depth,pump,salinity});
+    this.cumulativeOil=0;
+  }
+  depletionFactor(){
+    return 1/(1+this.cumulativeOil/200000);
   }
   fluidFactor(){
-    return (.72+(this.api-10)*.014)*(1-Math.min(this.viscosity,100)*.004)*(0.7+this.permeability/600)*(0.65+this.porosity/55)*(0.72+this.pump/360)*(1-Math.max(0,this.saturation-25)/250);
+    return (.72+(this.api-10)*.014)*(1-Math.min(this.viscosity,100)*.004)*(0.7+this.permeability/600)*(0.65+this.porosity/55)*(0.72+this.pump/360)*(1-Math.max(0,this.saturation-25)/250)*this.depletionFactor();
   }
   bottomholePressure(chokePct,injectionRate,tick){
     return 142+injectionRate*.035-chokePct*.13+(this.depth-2600)/1500+(this.bubble-115)/25+Math.sin(tick*.4)*3;
+  }
+  advanceDepletion(oilProducedRate){
+    this.cumulativeOil+=oilProducedRate/24;
+    this.saturation=Math.min(92,this.saturation+.01);
   }
 }
 
@@ -64,6 +74,8 @@ class StorageTank{
   }
 }
 
+const FAULT_REASONS={well:'ارتفاع ضغط مفاجئ في رأس البئر',choke:'انسداد جزئي في خانق الإنتاج',separator:'خلل في مستوى الفاصل الثلاثي',water:'توقف مفاجئ في مضخة حقن المياه',tank:'تنبيه مستشعر مستوى خزان التصدير'};
+
 class ProductionUnit{
   constructor(){
     this.well=new Well({api:32,viscosity:8,gor:420,temperature:85,bubble:115,permeability:180,porosity:22,saturation:28,depth:2600,pump:65,salinity:65000});
@@ -73,8 +85,22 @@ class ProductionUnit{
     this.run=false;this.inject=false;this.injection=0;this.tick=0;
     this.oil=0;this.water=0;this.pressure=0;this.history=Array(12).fill(0);
     this.units={well:false,choke:false,separator:false,water:false,tank:false};
+    this.faults={};this.alarmLog=[];
   }
   canProduce(){return this.units.well&&this.units.choke&&this.units.separator&&this.units.tank}
+  hasFault(){return Object.keys(this.faults).length>0}
+  maybeTriggerFault(){
+    if(!this.run)return;
+    const running=Object.keys(this.units).filter(k=>this.units[k]);
+    if(!running.length||Math.random()>0.018)return;
+    const k=running[Math.floor(Math.random()*running.length)];
+    this.units[k]=false;
+    this.faults[k]=FAULT_REASONS[k];
+    if(k==='water')this.inject=false;
+    this.alarmLog.unshift({unit:k,reason:FAULT_REASONS[k],hour:this.tick});
+    this.alarmLog=this.alarmLog.slice(0,6);
+  }
+  clearFaults(){this.faults={}}
   runDailyCycle(){
     const active=this.run&&this.canProduce()?1:0;
     const injectionRate=this.inject&&this.units.water?this.injection:0;
@@ -84,6 +110,7 @@ class ProductionUnit{
     this.pressure=Math.round(active*this.well.bottomholePressure(this.wellhead.choke,injectionRate,this.tick));
     this.tank.fill(this.oil,!!active);
     this.history.push(this.oil);this.history.shift();
+    if(active)this.well.advanceDepletion(this.oil);
     return active;
   }
 }
@@ -92,12 +119,13 @@ const unit=new ProductionUnit();
 const unitNames={well:'رأس البئر والصمامات',choke:'خانق الإنتاج',separator:'فاصل ثلاثي الطور',water:'معالجة المياه',tank:'خزان التصدير'};
 const particles=$('#particles');
 
-function renderUnits(){const root=$('#unitControls');root.innerHTML=Object.entries(unitNames).map(([k,n])=>`<div class="equip"><span>${n}</span><span><b class="${unit.units[k]?'ok':'warn'}">${unit.units[k]?'RUN':'STOP'}</b> <button data-unit="${k}" class="unitBtn">${unit.units[k]?'إيقاف':'تشغيل'}</button></span></div>`).join('');document.querySelectorAll('.unitBtn').forEach(b=>b.onclick=()=>{let k=b.dataset.unit;unit.units[k]=!unit.units[k];if(k==='water'&&!unit.units[k])unit.inject=false;if(!unit.canProduce())unit.run=false;sync()})}
-function sync(){const active=unit.runDailyCycle();$('#tankLiquid').setAttribute('height',unit.tank.level*.68);$('#tankLiquid').setAttribute('y',169-unit.tank.level*.68);$('#tankSurface').setAttribute('d',`M826 ${169-unit.tank.level*.68}H942`);$('#tankSurface').setAttribute('opacity',unit.tank.level?'1':'0');$('#oilRate').textContent=unit.oil.toLocaleString();$('#waterRate').textContent=unit.water.toLocaleString();$('#pressure').textContent=unit.pressure;$('#waterCut').textContent=unit.oil?Math.round(unit.water/(unit.water+unit.oil)*100):0;$('#mode').textContent=active?'PRODUCING':'STANDBY';$('#status').textContent=active?(unit.inject?'إنتاج مستقر مع حقن ماء نشط':'إنتاج مستقر — الحقن متوقف'):'شغّل معدات المسار الأساسية أولاً';$('#wellFlow').style.opacity=active?'1':'0';$('#gasPipe').style.opacity=active?'.85':'.18';$('#waterPipe').style.opacity=unit.inject&&unit.units.water?'.95':'.15';$('#alarmMark').setAttribute('visibility',unit.wellhead.choke>92&&active?'visible':'hidden');drawTrend();drawParticles();renderUnits()}
+function renderUnits(){const root=$('#unitControls');root.innerHTML=Object.entries(unitNames).map(([k,n])=>{const faulted=!unit.units[k]&&unit.faults[k];return `<div class="equip"><span>${n}</span><span><b class="${unit.units[k]?'ok':faulted?'alarm':'warn'}">${unit.units[k]?'RUN':faulted?'FAULT':'STOP'}</b> <button data-unit="${k}" class="unitBtn">${unit.units[k]?'إيقاف':'تشغيل'}</button></span></div>`}).join('');document.querySelectorAll('.unitBtn').forEach(b=>b.onclick=()=>{let k=b.dataset.unit;unit.units[k]=!unit.units[k];if(unit.units[k])delete unit.faults[k];if(k==='water'&&!unit.units[k])unit.inject=false;if(!unit.canProduce())unit.run=false;sync()})}
+function renderAlarms(){const root=$('#alarmLog');if(!unit.alarmLog.length){root.innerHTML='<p class="tip">لا توجد إنذارات مسجّلة.</p>';return}root.innerHTML=unit.alarmLog.map(a=>`<div class="alarmItem"><b>⚠ ${unitNames[a.unit]}</b>الساعة ${a.hour} — ${a.reason}</div>`).join('')}
+function sync(){const active=unit.runDailyCycle();$('#tankLiquid').setAttribute('height',unit.tank.level*.68);$('#tankLiquid').setAttribute('y',169-unit.tank.level*.68);$('#tankSurface').setAttribute('d',`M826 ${169-unit.tank.level*.68}H942`);$('#tankSurface').setAttribute('opacity',unit.tank.level?'1':'0');$('#oilRate').textContent=unit.oil.toLocaleString();$('#waterRate').textContent=unit.water.toLocaleString();$('#pressure').textContent=unit.pressure;$('#waterCut').textContent=unit.oil?Math.round(unit.water/(unit.water+unit.oil)*100):0;$('#depletion').textContent=Math.round((1-unit.well.depletionFactor())*100)+'%';$('#cumulative').textContent=Math.round(unit.well.cumulativeOil).toLocaleString();const alarm=unit.hasFault();$('#mode').textContent=active?'PRODUCING':alarm?'ALARM':'STANDBY';$('#status').textContent=active?(unit.inject?'إنتاج مستقر مع حقن ماء نشط':'إنتاج مستقر — الحقن متوقف'):alarm?`⚠ ${unit.alarmLog[0].reason} — أعد تشغيل الجهاز المتعطل`:'شغّل معدات المسار الأساسية أولاً';$('#wellFlow').style.opacity=active?'1':'0';$('#gasPipe').style.opacity=active?'.85':'.18';$('#waterPipe').style.opacity=unit.inject&&unit.units.water?'.95':'.15';$('#alarmMark').setAttribute('visibility',(unit.wellhead.choke>92&&active)||alarm?'visible':'hidden');drawTrend();drawParticles();renderUnits();renderAlarms()}
 function drawParticles(){particles.innerHTML='';if(!unit.run)return;for(let i=0;i<7;i++){let t=(unit.tick*.12+i/7)%1;let x=216-(18*t)+174*Math.max(0,t-.5),y=505-326*Math.min(t*2,1);let c=document.createElementNS('http://www.w3.org/2000/svg','circle');c.setAttribute('cx',x);c.setAttribute('cy',y);c.setAttribute('r',4);c.setAttribute('fill','#ffd16f');particles.append(c)}}
 function drawTrend(){let d=unit.history,max=Math.max(1,...d)*1.15,pts=d.map((v,i)=>`${10+i*25},${105-v/max*88}`).join(' ');$('#trend').innerHTML=`<path d="M10 105H290M10 60H290M10 16H290" stroke="#24483e"/><polyline points="${pts}" fill="none" stroke="#efb347" stroke-width="3"/><text x="10" y="118" fill="#8da69d" font-size="10">قبل 12 ساعة</text><text x="238" y="118" fill="#8da69d" font-size="10">الآن</text><text x="212" y="13" fill="#e8fff7" font-size="10">${unit.oil.toLocaleString()} bbl/d</text>`}
-function frame(){unit.tick++;sync();setTimeout(frame,1000)}
-$('#start').onclick=()=>{if(unit.canProduce())unit.run=true;sync()};$('#stop').onclick=()=>{unit.run=false;unit.inject=false;sync()};$('#inject').onclick=()=>{if(!unit.units.water)unit.units.water=true;unit.inject=!unit.inject;if(unit.inject&&!unit.canProduce())Object.assign(unit.units,{well:true,choke:true,separator:true,tank:true});if(unit.inject)unit.run=true;sync()};$('#runAll').onclick=()=>{Object.keys(unit.units).forEach(k=>unit.units[k]=true);unit.run=true;sync()};$('#stopAll').onclick=()=>{Object.keys(unit.units).forEach(k=>unit.units[k]=false);unit.run=false;unit.inject=false;sync()};$('#reset').onclick=()=>{location.reload()};$('#choke').oninput=e=>{unit.wellhead.choke=+e.target.value;$('#chokeOut').textContent=unit.wellhead.choke+' %';sync()};$('#injection').oninput=e=>{unit.injection=+e.target.value;$('#injectOut').textContent=unit.injection+' م³/يوم';sync()};$('#api').oninput=e=>{unit.well.api=+e.target.value;$('#apiOut').textContent=unit.well.api+'°';sync()};$('#viscosity').oninput=e=>{unit.well.viscosity=+e.target.value;$('#viscOut').textContent=unit.well.viscosity+' cP';sync()};$('#gor').oninput=e=>{unit.well.gor=+e.target.value;$('#gorOut').textContent=unit.well.gor+' scf/bbl';sync()};['temperature','bubble','permeability','porosity','saturation','depth','pump','salinity'].forEach(id=>$('#'+id).onchange=e=>{unit.well[id]=+e.target.value;sync()});sync();frame();
+function frame(){unit.tick++;unit.maybeTriggerFault();sync();setTimeout(frame,1000)}
+$('#start').onclick=()=>{if(unit.canProduce())unit.run=true;sync()};$('#stop').onclick=()=>{unit.run=false;unit.inject=false;sync()};$('#inject').onclick=()=>{if(!unit.units.water)unit.units.water=true;unit.inject=!unit.inject;if(unit.inject&&!unit.canProduce())Object.assign(unit.units,{well:true,choke:true,separator:true,tank:true});if(unit.inject)unit.run=true;sync()};$('#runAll').onclick=()=>{Object.keys(unit.units).forEach(k=>unit.units[k]=true);unit.clearFaults();unit.run=true;sync()};$('#stopAll').onclick=()=>{Object.keys(unit.units).forEach(k=>unit.units[k]=false);unit.clearFaults();unit.run=false;unit.inject=false;sync()};$('#reset').onclick=()=>{location.reload()};$('#choke').oninput=e=>{unit.wellhead.choke=+e.target.value;$('#chokeOut').textContent=unit.wellhead.choke+' %';sync()};$('#injection').oninput=e=>{unit.injection=+e.target.value;$('#injectOut').textContent=unit.injection+' م³/يوم';sync()};$('#api').oninput=e=>{unit.well.api=+e.target.value;$('#apiOut').textContent=unit.well.api+'°';sync()};$('#viscosity').oninput=e=>{unit.well.viscosity=+e.target.value;$('#viscOut').textContent=unit.well.viscosity+' cP';sync()};$('#gor').oninput=e=>{unit.well.gor=+e.target.value;$('#gorOut').textContent=unit.well.gor+' scf/bbl';sync()};['temperature','bubble','permeability','porosity','saturation','depth','pump','salinity'].forEach(id=>$('#'+id).onchange=e=>{unit.well[id]=+e.target.value;sync()});sync();frame();
 setInterval(()=>{const active=unit.run&&unit.canProduce(),oil=Math.max(8,Math.min(42,8+unit.tank.level*.42)),water=Math.max(8,Math.min(29,8+unit.water/180));$('#oilTankLiquid').setAttribute('d',`M681 166V${166-oil}Q724 ${150-oil} 767 ${166-oil}V166Z`);$('#waterLiquid').setAttribute('y',171-water);$('#waterLiquid').setAttribute('height',water);$('#flare').style.opacity=active?1:.16;$('#separatorFluids').style.opacity=active?1:.35},350);
 </script></body></html>
 
