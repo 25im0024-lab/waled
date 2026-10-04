@@ -193,6 +193,30 @@ dl.cond dt{color:var(--muted)} dl.cond dd{margin:0}
 .bar{height:8px;border-radius:4px;background:var(--surface2);overflow:hidden;min-width:90px}
 .bar i{display:block;height:100%;background:var(--accent)}
 .foot{margin-top:40px;padding-top:14px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}
+
+/* hydraulic fracturing tab */
+.simbar{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:10px}
+.simbar input[type=range],.f input[type=range]{accent-color:var(--accent)}
+.simopts{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px 12px;margin:10px 0}
+.canvaswrap{border:1px solid var(--line);border-radius:6px;background:var(--bg);overflow:hidden}
+.canvaswrap canvas{display:block;width:100%;height:auto;aspect-ratio:1000/440}
+.phchips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}
+#spreadsvg,#ppsvg{min-width:760px;width:100%;height:auto;display:block;direction:ltr}
+#spreadsvg .sprbg,#ppsvg .sprbg{fill:var(--surface)}
+.eqb{fill:var(--surface2);stroke:var(--ink);stroke-width:1.6}
+.eqb.big{fill:var(--accent-soft)} .eqb.pump{fill:var(--surface)}
+.eqt{font-family:var(--font);font-size:14px;fill:var(--ink)}
+.eqt.dim{fill:var(--muted);font-size:12.5px}
+.eqhl{fill:var(--accent);opacity:0}
+.eqn{cursor:pointer}
+.eqn:hover .eqhl{opacity:.1}
+.eqn.sel .eqhl{opacity:.2}
+.sl{fill:none;stroke-width:3}
+.sl.lw{stroke:var(--water)} .sl.lc{stroke:var(--muted)} .sl.lp{stroke:var(--oil)} .sl.lh{stroke:var(--ink);stroke-width:4}
+.sl.flow{stroke-dasharray:9 7;animation:flow 1.1s linear infinite}
+@media (prefers-reduced-motion:reduce){.sl.flow{animation:none}}
+.ppfr{stroke-linecap:round}
+#ppsvg .ppplug{fill:var(--ink)}
 </style>
 
 <div id="app"></div>
@@ -448,6 +472,66 @@ function stageBalance(c) {
   for (let i = 1; i < pts.length; i++) frac.push((standingRs(pts[i - 1], T, c.api, c.gg) - standingRs(pts[i], T, c.api, c.gg)) / denom);
   const Bo = standingBo(c.gor, T, c.api, c.gg);
   return { qo, qw, Pb, Bo, shrink: 1 - 1 / Bo, frac, gas: frac.map(f => f * qo * c.gor / 1e6), gasTot: qo * c.gor / 1e6 };
+}
+
+/* ===== Hydraulic fracturing ===== */
+/* Eaton (uniaxial strain) closure stress + Hubbert-Willis breakdown (non-penetrating fluid) */
+function stressCalc(p) {
+  const sv = p.Gob * p.TVD, pp = p.Gp * p.TVD;
+  const sh = p.nu / (1 - p.nu) * (sv - p.alpha * pp) + p.alpha * pp + p.tect;
+  const sH = sh + p.dSH;
+  const pbd = 3 * sh - sH - pp + p.T0;
+  return { sv, pp, sh, sH, pbd, fg: sh / p.TVD, pbdG: pbd / p.TVD, vertical: sh < sv };
+}
+const slurryDensity = (ppg, spg) => { const rp = spg * 8.345; return (8.345 + ppg) / (1 + ppg / rp); }; /* lb/gal */
+const perfFriction = (q, rho, n, d, cd) => 0.2369 * q * q * rho / (cd * cd * n * n * Math.pow(d, 4));
+function hfPressure(p) {
+  const rho = slurryDensity(p.ppg, p.spg);
+  const dpPerf = perfFriction(p.q, rho, p.nperf, p.dperf, p.cd);
+  const bhtp = p.Gf * p.TVD + p.pnet + dpPerf + p.tort;
+  const hyd = 0.052 * rho * p.TVD;
+  const D = p.id / 12, A = Math.PI / 4 * D * D, v = p.q * C.ft3Bbl / 60 / A, rhoft = rho * 7.4805;
+  const Re = 1488 * rhoft * v * D / (p.mu || 1);
+  const t = Math.log10(0.00015 / 12 / (3.7 * D) + 5.74 / Math.pow(Re, 0.9));
+  const f = 0.25 / (t * t);
+  const dpFraw = f * (p.TVD / D) * rhoft * v * v / (2 * C.g) / 144;
+  const dpF = dpFraw * (1 - p.fr / 100);
+  const ps = bhtp - hyd + dpF;
+  const hhp = ps * p.q / 40.8;
+  const units = Math.ceil(hhp / (p.unit * p.util / 100) * (1 + p.standby / 100));
+  const gpmClean = p.q * 42 / (1 + p.ppg / (p.spg * 8.345));
+  const propLbMin = p.ppg * gpmClean;
+  return { rho, dpPerf, bhtp, hyd, v, dpFraw, dpF, ps, hhp, units, propLbMin, gpmClean };
+}
+function fracBalance(p) {
+  const A = p.Mp / p.Cp, xf = A / (2 * p.hf);
+  const Vf = p.eta / 100 * p.Vi * C.ft3Bbl;
+  const wbar = Vf / A;
+  const wp = p.Cp / (p.spg * 62.4 * (1 - p.phi));
+  const kfEff = p.kf * 1000 * p.ret / 100; /* md */
+  const FCD = kfEff * wp / (p.k * xf);
+  return { A, xf, Vf, wbar, wp, kfEff, FCD, ratio: wbar / wp };
+}
+/* terminal settling: Schiller-Naumann drag, Richardson-Zaki hindering */
+function settleV(d, rp, rf, mu, c) {
+  let v = 0.01;
+  for (let i = 0; i < 200; i++) {
+    const Re = Math.max(rf * v * d / mu, 1e-9);
+    const Cd = 24 / Re * (1 + 0.15 * Math.pow(Re, 0.687));
+    const vn = Math.sqrt(4 * 9.80665 * d * (rp - rf) / (3 * Cd * rf));
+    if (Math.abs(vn - v) < 1e-9) { v = vn; break; }
+    v = 0.5 * (v + vn);
+  }
+  const Re = rf * v * d / mu;
+  const n = Re < 0.2 ? 4.65 : Re < 1 ? 4.35 * Math.pow(Re, -0.03) : Re < 500 ? 4.45 * Math.pow(Re, -0.1) : 2.39;
+  return { v0: v, Re, n, vh: v * Math.pow(Math.max(1 - c, 0), n) };
+}
+/* Arps decline */
+function arpsQ(qi, Di, b, t) { return b < 0.005 ? qi * Math.exp(-Di * t) : qi / Math.pow(1 + b * Di * t, 1 / b); }
+function arpsNp(qi, Di, b, t) { /* bbl, t in years, q in bbl/d */
+  if (b < 0.005) return qi * 365.25 / Di * (1 - Math.exp(-Di * t));
+  if (Math.abs(b - 1) < 0.005) return qi * 365.25 / Di * Math.log(1 + Di * t);
+  return qi * 365.25 / (Di * (1 - b)) * (1 - Math.pow(1 + b * Di * t, (b - 1) / b));
 }
 /*CORE-END*/
 
@@ -957,13 +1041,14 @@ function selectStage(i) {
 }
 
 /* ---------- Tabs ---------- */
-const TABS = [['map', 'خريطة الحقل'], ['well', 'البئر والـ choke'], ['sep', 'الفصل والمعالجة'], ['gas', 'الغاز والماء'], ['store', 'التخزين والتصدير'], ['trouble', 'أعطال حقلية'], ['frac', 'من الـ frac إلى السطح'], ['ref', 'مرجع']];
+const TABS = [['map', 'خريطة الحقل'], ['well', 'البئر والـ choke'], ['sep', 'الفصل والمعالجة'], ['gas', 'الغاز والماء'], ['store', 'التخزين والتصدير'], ['trouble', 'أعطال حقلية'], ['hf', 'التكسير الهيدروليكي'], ['frac', 'من الـ frac إلى السطح'], ['ref', 'مرجع']];
 function showTab(id) {
   if (!TABS.some(t => t[0] === id)) id = 'map';
   $$('.pane').forEach(p => p.hidden = p.id !== 'pane-' + id);
   $$('.tab').forEach(t => t.setAttribute('aria-selected', t.dataset.tab === id));
   try { history.replaceState(null, '', '#' + id); } catch (e) { }
   window.scrollTo(0, 0);
+  if (id === 'hf' && typeof hfUpdateUI === 'function') requestAnimationFrame(() => { hfRefresh(); });
 }
 
 /* ---------- Build panes ---------- */
@@ -1382,6 +1467,503 @@ RUN.frac = () => {
    ${MSG(`في الماء النظيف تحتاج القطرة ${fmt(t0 / 60, 1)} دقيقة لتصعد ${num('x_h')} بوصة. مع لزوجة 10× يصبح الزمن ${fmt(t0 * 10 / 60, 0)} دقيقة: الـ retention time المصمّم لن يكفي.`, 'warn')}`);
 };
 
+/* ===== Hydraulic fracturing tab ===== */
+const HF_PH = [
+  ['setup', 'تجهيز واختبار الضغط', 0, 0.04],
+  ['break', 'Breakdown', 0.04, 0.12],
+  ['dfit', 'Minifrac / DFIT', 0.12, 0.20],
+  ['pad', 'Pad', 0.20, 0.36],
+  ['prop', 'Proppant stages', 0.36, 0.74],
+  ['flush', 'Flush', 0.74, 0.80],
+  ['shut', 'Shut-in وإغلاق الشق', 0.80, 0.88],
+  ['flow', 'Flowback', 0.88, 0.94],
+  ['prod', 'إنتاج', 0.94, 1.0]
+];
+const HF_TXT = {
+  setup: { t: 'تجهيز الموقع واختبار الضغط', p: 'الـ spread كله يُرصّ ويُربط بالـ wellhead (الـ frac tree). تُختبر الخطوط السطحية بالضغط قبل أي ضخ، وتُضبط صمامات الأمان (pop-off) وحدود ضغط الإيقاف.', n: 'قبل الضخ بساعات (الزمن حسب عدد المراحل)', w: 'اختبار ضغط ناجح بدون هبوط، وحدود الإيقاف مضبوطة تحت تصنيف الـ wellhead.' },
+  break: { t: 'Breakdown وinjectivity', p: 'بعد الـ perforation يُضخ ماء (وأحياناً حمض خفيف spearhead مثل HCl) لتنظيف الـ perforations وكسر الصخر. يرتفع الضغط حتى ضغط الانهيار (breakdown pressure)، ثم يهبط فجأة حين يبدأ الشق، ويزداد الاستقبال (injectivity).', n: 'دقائق؛ معدل منخفض ≈ عدة bpm', w: 'ضغط الانهيار والهبوط المفاجئ، ثم ISIP عند إيقاف الضخ.' },
+  dfit: { t: 'Minifrac / DFIT (معايرة)', p: 'ضخ حجم صغير ثم إيقاف الضخ ومراقبة هبوط الضغط. منه يُستخرج closure stress ومعامل التسرب (leak-off) وكفاءة الشق: مدخلات لتصميم المعالجة الرئيسية. تُجرى غالباً على بئر/مرحلة منتقاة وليس كل مرحلة.', n: 'من عشرات الدقائق إلى ساعات لتفسير الإغلاق', w: 'منحنى Pressure falloff: نقطة الإغلاق (closure).' },
+  pad: { t: 'Pad', p: 'سائل بلا proppant (أو قليل جداً) يفتح الشق ويؤسس العرض والطول ويبني طبقة ترشيح على الجدران (filter cake) تقلل التسرب. جزء من الـ pad يتسرب إلى الصخر، لذا يُصمَّم حجمه بحيث لا ينفد قبل وصول الـ proppant إلى الطرف.', n: 'غالباً ≈ ربع إلى نصف الحجم الكلي (يتفاوت بين التصميمات)', w: 'الضغط الصافي (net pressure) وارتفاع ISIP وسلوك الشق (نمو الارتفاع).' },
+  prop: { t: 'مراحل الـ proppant', p: 'يُرفع تركيز الـ proppant (بوحدة ppg = lb لكل gallon) على خطوات. الـ gel أو سرعة الـ slickwater يحمل الحبيبات إلى عمق الشق. الخطر الأكبر screenout: تجمع proppant يسد الشق عند الجدار أو الطرف فيقفز الضغط وتُوقف المعالجة.', n: 'تركيز يصل إلى عدة ppg في الـ gel؛ أقل في slickwater', w: 'الضغط السطحي، تركيز الـ proppant عند الـ blender وعند الـ wellhead، ومعدل الضخ.' },
+  flush: { t: 'Flush', p: 'ماء خفيف يدفع الـ slurry المتبقي في البئر نحو الـ perforations. الحجم يساوي حجم البئر تقريباً: الزيادة (overflush) تبعد الـ proppant عن البئر فتخلق منطقة ضيقة قرب البئر (pinch)، والنقص (underflush) يترك proppant في البئر.', n: '≈ حجم البئر من السطح إلى الـ perforations', w: 'حجم الـ flush المحسوب مقابل المضخوخ.' },
+  shut: { t: 'Shut-in وإغلاق الشق وكسر الـ gel', p: 'عند إيقاف الضخ يُقرأ ISIP. يتسرب السائل إلى الصخر فينخفض ضغطه تحت closure stress، فيُغلق الشق على الـ proppant. الـ breaker يخفض لزوجة الـ gel ليتحرك للخارج، وتبقى حزمة الـ proppant مفتوحة. عرض الشق النهائي هو عرض حزمة الدعم (propped width).', n: 'دقائق إلى ساعات حتى يُغلق الشق', w: 'ISIP، زمن الإغلاق، وفعالية الـ breaker.' },
+  flow: { t: 'Flowback وتنظيف', p: 'في الـ plug-and-perf تُحفر الـ plugs أولاً ثم يُفتح البئر عبر choke صغير ويُوسَّع تدريجياً. يعود سائل الـ frac ومعه gel مكسور وبعض residue وربما proppant. إدارة الـ choke تحمي حزمة الدعم. تفاصيل ما يحدث بالسطح في تبويب "من الـ frac إلى السطح".', n: 'من ساعات إلى أسابيع', w: 'معدل العودة، محتوى الرمل، لزوجة السائل العائد، وضغط الـ wellhead.' },
+  prod: { t: 'الإنتاج', p: 'الهيدروكربونات تتحرك من matrix الصخر نحو الشق (تدفق خطي)، ثم عبر حزمة الـ proppant إلى البئر. قدرة الشق على التوصيل (fracture conductivity) مقابل نفاذية المكمن هي ما يحدد النتيجة. في المكامن المحكمة يهبط الإنتاج بسرعة في الأشهر الأولى.', n: 'سنوات', w: 'منحنى الـ decline، GOR وwater cut، ومقارنة الأداء بالتصميم.' }
+};
+
+/* ---- fluids / proppants data ---- */
+const HF_FLUIDS = [
+  ['Slickwater', 'ماء + friction reducer (polyacrylamide) بكميات صغيرة', 'لزوجة منخفضة جداً (قريبة من الماء)', 'معدلات ضخ عالية؛ الـ proppant يُحمل بالسرعة ويهبط أسرع', 'شقوق معقدة، حجم ماء كبير؛ شائع في الـ shale'],
+  ['Linear gel', 'ماء + guar أو مشتقاته (بدون crosslinker)', 'لزوجة متوسطة', 'يحمل proppant أفضل من slickwater', 'حجم أقل للمياه؛ بعض residue'],
+  ['Crosslinked gel', 'guar + crosslinker (borate أو zirconate) + breaker', 'لزوجة عالية جداً عند الحرارة المصمَّمة', 'تعليق ممتاز للـ proppant وشق أعرض', 'مكامن أعمق/أدفأ؛ خطر residue وتلف التوصيل إذا لم يُكسر جيداً'],
+  ['Foam / Energized', 'سائل + N₂ أو CO₂', 'لزوجة ظاهرية مرتفعة وحجم سائل أقل', 'تنظيف سريع بعد الشغل', 'مكامن حساسة للماء أو ضغط منخفض'],
+  ['VES (viscoelastic surfactant)', 'surfactant يكوّن micelles خيطية', 'لزوجة مرنة بلا بوليمر', 'لا residue بوليمري؛ يتكسر بالهيدروكربونات أو التخفيف', 'حساسية للحرارة وتكلفة أعلى']
+];
+const HF_PROP = [
+  ['Sand (رمل)', '≈ 2.65', 'الأرخص والأكثر استعمالاً؛ يتحمل إجهادات إغلاق منخفضة إلى متوسطة'],
+  ['Resin-coated sand', '≈ 2.5–2.6', 'يتماسك فيقلل رجوع الـ proppant (flowback)'],
+  ['Ceramic (سيراميك)', '≈ 2.7–3.3', 'يتحمل إجهادات عالية ويعطي توصيلاً أعلى؛ أغلى'],
+  ['Lightweight ceramic', '≈ 2.7', 'أخف فيُنقل أسهل في سوائل أقل لزوجة']
+];
+const HF_EQ = [
+  ['tanks', 'خزانات المياه', 'Frac tanks', 'مئات إلى آلاف البراميل. الماء يمر عبر manifold إلى الـ blender. يُدار الماء (تسخين شتاءً، biocide، تحليل ملوحة) لأن جودة الماء تحدد أداء الـ gel.'],
+  ['chem', 'وحدة الكيماويات', 'Chemical unit', 'تحقن friction reducer، polymer/gel، crosslinker، breaker، biocide، surfactant. يُضبط معدل كل مادة آلياً من غرفة التحكم.'],
+  ['sand', 'الـ proppant', 'Sand / proppant storage', 'صوامع أو sand kings مع حزام ناقل (conveyor) يغذي الـ blender. المعدل بآلاف lb/min عند الذروة.'],
+  ['blender', 'الـ Blender', 'Blender', 'يخلط الماء والكيماويات والـ proppant في slurry متجانس بتركيز مضبوط، ثم يغذي المضخات بضغط منخفض.'],
+  ['pumps', 'مضخات الضغط العالي', 'Frac pumps (HHP)', 'مجموعة شاحنات مضخات (قدرة كل منها آلاف hp). تعمل بالتوازي لتعطي المعدل المطلوب والضغط الكلي، مع مضخات احتياطية.'],
+  ['manifold', 'الـ Manifold عالي الضغط', 'Missile / zipper manifold', 'يجمع تدفق المضخات في خط عالي الضغط واحد إلى الـ wellhead، ويتيح التبديل بين الآبار (zipper frac).'],
+  ['well', 'الـ Wellhead', 'Frac tree', 'شجرة خاصة بالـ frac بتصنيف ضغط أعلى من شجرة الإنتاج، مع صمامات عزل. تُحمل عليها وحدة الـ wireline أثناء setting الـ plug والـ perforation.'],
+  ['van', 'غرفة البيانات', 'Data van', 'تراقب الضغط والمعدل وتركيز الـ proppant لحظياً. منها يُقرر تعديل الجدول الزمني أو إيقافه عند screenout أو ضغط خطر.']
+];
+
+/* ---- timeline functions (illustrative, parametrised by the calcs) ---- */
+const sm = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+const clamp01 = x => Math.max(0, Math.min(1, x));
+function hfParams() {
+  const g = (id, d) => { const e = document.getElementById(id); const v = e ? parseFloat(e.value) : NaN; return isFinite(v) ? v : d; };
+  return { q: g('hp_q', 60), cmax: g('hf_cmax', 4), pnet: g('hp_pnet', 800), TVD: g('hp_tvd', 8000), Gf: g('hp_gf', 0.73), fric: HFCACHE.fric || 2500, spg: g('hp_spg', 2.65) };
+}
+const HFCACHE = {};
+function hfRate(t, qm) { if (t < 0.04) return 0; if (t < 0.12) return 10 * sm(0.04, 0.05, t); if (t < 0.14) return 12; if (t < 0.20) return 0; if (t < 0.22) return qm * sm(0.20, 0.22, t); if (t < 0.80) return qm; return 0; }
+function hfProp(t, cm) { if (t < 0.36 || t >= 0.74) return 0; const lv = [0.125, 0.25, 0.5, 0.75, 1]; return cm * lv[Math.min(4, Math.floor((t - 0.36) / 0.076))]; }
+function hfPn(t) {
+  if (t < 0.04) return 0;
+  if (t < 0.075) return 1.35 * sm(0.04, 0.075, t);
+  if (t < 0.085) return 1.35 - 0.6 * sm(0.075, 0.085, t);
+  if (t < 0.12) return 0.75 + 0.05 * sm(0.085, 0.12, t);
+  if (t < 0.14) return 0.85;
+  if (t < 0.20) return 0.85 * Math.exp(-(t - 0.14) / 0.022) + 0.02;
+  if (t < 0.22) return 0.05 + 0.85 * sm(0.20, 0.22, t);
+  if (t < 0.80) { let p = 0.9 + 0.22 * Math.sqrt((t - 0.22) / 0.58); if (t >= 0.36 && t < 0.74) p += 0.015 * Math.floor((t - 0.36) / 0.076); return p; }
+  if (t < 0.88) return 1.05 * (1 - sm(0.80, 0.88, t));
+  return 0;
+}
+function hfLen(t) {
+  if (t < 0.04) return 0;
+  if (t < 0.12) return 0.05 * sm(0.04, 0.085, t);
+  if (t < 0.20) return 0.05 + 0.05 * sm(0.12, 0.14, t);
+  if (t < 0.80) return 0.10 + 0.90 * Math.pow((Math.min(t, 0.80) - 0.20) / 0.60, 0.8);
+  return 1;
+}
+function hfState(t) {
+  const P = hfParams(), pn = hfPn(t), q = hfRate(t, P.q), c = hfProp(t, P.cmax);
+  const sig = HFCACHE.sigC || P.Gf * P.TVD;
+  const pp = HFCACHE.pp || 0.44 * P.TVD;
+  const bhp = pn > 0.001 ? sig + pn * P.pnet : pp;
+  const rho = slurryDensity(c, P.spg);
+  const ps = bhp - 0.052 * rho * P.TVD + P.fric * Math.pow(q / Math.max(P.q, 1), 1.8);
+  return { pn, q, c, bhp, ps: Math.max(ps, 0), L: hfLen(t), sig };
+}
+function hfPhaseOf(t) { for (const p of HF_PH) if (t >= p[2] && t < p[3]) return p; return HF_PH[HF_PH.length - 1]; }
+
+/* ---- state ---- */
+const HFS = { t: 0, playing: false, last: 0, dur: 70, speed: 1, fluid: 'xl', barrier: 'strong', breaker: 'good', cv: null, ctx: null };
+const HF_VISC = { sw: 2, lg: 25, xl: 300 };
+function hfVisc() { return HFS.fluid === 'cu' ? (parseFloat((document.getElementById('hf_mu') || {}).value) || 50) : HF_VISC[HFS.fluid]; }
+function hfSettleNorm() { /* fraction of fracture height a 600 um grain falls over the pumping window (120 min) */
+  const mu = hfVisc() * 1e-3; const s = settleV(600e-6, 2650, 1000, mu, 0.1);
+  const H = 30; /* m, fracture height */
+  return Math.min(1, s.vh * 7200 / H);
+}
+const hash = (i, j) => { const s = Math.sin(i * 127.1 + j * 311.7) * 43758.5453; return s - Math.floor(s); };
+function tok() { const cs = getComputedStyle(document.documentElement); const g = n => cs.getPropertyValue(n).trim(); return { earth: g('--earth'), earth2: g('--earth2'), surface: g('--surface'), ink: g('--ink'), muted: g('--muted'), oil: g('--oil'), oilbg: g('--oil-bg'), water: g('--water'), waterbg: g('--water-bg'), gas: g('--gas'), accent: g('--accent'), soft: g('--accent-soft'), bg: g('--bg'), line: g('--line') }; }
+
+function hfDraw() {
+  const cv = HFS.cv; if (!cv) return;
+  const dpr = window.devicePixelRatio || 1, W = 1000, H = 440;
+  const wpx = cv.clientWidth; if (!wpx) return;
+  if (cv.width !== Math.round(wpx * dpr)) { cv.width = Math.round(wpx * dpr); cv.height = Math.round(wpx * dpr * H / W); }
+  const ctx = cv.getContext('2d'); const k = cv.width / W; ctx.setTransform(k, 0, 0, k, 0, 0);
+  ctx.direction = 'ltr';
+  const T = tok(), t = HFS.t, S = hfState(t), ph = hfPhaseOf(t)[0], now = performance.now() / 1000;
+  ctx.clearRect(0, 0, W, H); ctx.fillStyle = T.bg; ctx.fillRect(0, 0, W, H);
+  const yc = 220, strong = HFS.barrier === 'strong';
+  const hmax = strong ? 150 : 310, X0 = 46, LP = 560;
+  const pnF = clamp01(S.pn / 1.2);
+  /* layers */
+  const drawLayers = (x0, x1) => {
+    ctx.fillStyle = T.earth2; ctx.fillRect(x0, 20, x1 - x0, 120); ctx.fillRect(x0, 300, x1 - x0, 120);
+    ctx.fillStyle = T.earth; ctx.fillRect(x0, 140, x1 - x0, 160);
+    ctx.strokeStyle = T.line; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x0, 140); ctx.lineTo(x1, 140); ctx.moveTo(x0, 300); ctx.lineTo(x1, 300); ctx.stroke();
+  };
+  drawLayers(0, 620);
+  ctx.fillStyle = T.muted; ctx.font = '12px "IBM Plex Mono",monospace'; ctx.textAlign = 'right';
+  ctx.fillText('barrier  (σ high)', 612, 40); ctx.fillText('pay zone', 612, 160); ctx.fillText('barrier  (σ high)', 612, 410);
+  /* fracture geometry */
+  const L = S.L * LP; const closed = t >= 0.88; const hh = x => { const u = L > 1 ? x / L : 1; return (hmax / 2) * Math.pow(Math.max(0, 1 - u * u), 0.28) * (0.35 + 0.65 * Math.min(1, S.L * 3)); };
+  const sh = clamp01((t - 0.80) / 0.08);
+  /* closing: fracture visual thickness in side view not shown; show fill */
+  if (L > 2) {
+    ctx.beginPath(); ctx.moveTo(X0, yc - hh(0));
+    for (let x = 0; x <= L; x += 4) ctx.lineTo(X0 + x, yc - hh(x));
+    for (let x = L; x >= 0; x -= 4) ctx.lineTo(X0 + x, yc + hh(x));
+    ctx.closePath();
+    const fillCol = t < 0.2 ? T.waterbg : t < 0.80 ? T.soft : (HFS.breaker === 'good' ? T.waterbg : T.soft);
+    ctx.globalAlpha = closed ? 0.55 : 0.95; ctx.fillStyle = fillCol; ctx.fill(); ctx.globalAlpha = 1;
+    ctx.strokeStyle = T.accent; ctx.lineWidth = 1.5; ctx.stroke();
+    /* pad / slurry boundary label tip */
+    const settle = hfSettleNorm();
+    const e = Math.max(0, Math.min(t, 0.80) - 0.20);
+    const ncol = Math.max(8, Math.floor(L / 5));
+    for (let i = 0; i < ncol; i++) {
+      const xi = (i + 0.5) / ncol, x = xi * L;
+      const tau = 0.20 + (1 - xi) * e;
+      const c = hfProp(tau, hfParams().cmax);
+      if (c <= 0) continue;
+      const cnt = Math.max(2, Math.round(c * 3.2));
+      const hl = hh(x);
+      const age = (Math.min(t, 0.80) - tau) * 200 / 120; /* in 120-min units */
+      const D = clamp01(settle * age);
+      for (let j = 0; j < cnt; j++) {
+        const r1 = hash(i, j), r2 = hash(j, i + 7);
+        const y0 = (r1 - 0.5) * 2 * (hl - 3);
+        const yb = hl - 3 - r2 * Math.min(hl * 0.55, 6 + 8 * c) * D;
+        let y = y0 + D * (yb - y0);
+        if (y > hl - 3) y = hl - 3; if (y < -hl + 3) y = -hl + 3;
+        ctx.fillStyle = T.ink; ctx.globalAlpha = 0.85; ctx.fillRect(X0 + x + (r2 - 0.5) * 4, yc + y, 2, 2);
+      }
+    }
+    ctx.globalAlpha = 1;
+    /* residue */
+    if (t >= 0.80 && HFS.breaker === 'poor') {
+      for (let i = 0; i < 90; i++) { const x = hash(i, 3) * L, y = (hash(i, 9) - 0.5) * 2 * hh(x) * 0.8; ctx.fillStyle = T.oil; ctx.globalAlpha = 0.45; ctx.fillRect(X0 + x, yc + y, 5, 3); }
+      ctx.globalAlpha = 1;
+    }
+    /* leak-off arrows */
+    if (t >= 0.04 && t < 0.80 && S.q > 0) {
+      ctx.strokeStyle = T.water; ctx.lineWidth = 1.2;
+      for (let i = 0; i < 12; i++) { const x = (i + 0.5) / 12 * L; const hl = hh(x); const ph2 = (now * 0.6 + i * 0.23) % 1; for (const sgn of [-1, 1]) { const y1 = yc + sgn * (hl + 3 + ph2 * 12); ctx.beginPath(); ctx.moveTo(X0 + x, yc + sgn * (hl + 3)); ctx.lineTo(X0 + x, y1); ctx.stroke(); } }
+    }
+    ctx.fillStyle = T.muted; ctx.font = '12px "IBM Plex Sans Arabic",sans-serif'; ctx.textAlign = 'left';
+    if (t >= 0.2 && t < 0.80) { ctx.fillText('tip: pad (no proppant)', X0 + Math.max(0, L - 120), yc - hh(L * 0.8) - 8); }
+    if (t >= 0.36 && t < 0.80) ctx.fillText('slurry + proppant', X0 + 30, yc - hh(30) - 8);
+  }
+  /* wellbore */
+  ctx.fillStyle = T.surface; ctx.strokeStyle = T.ink; ctx.lineWidth = 2; ctx.fillRect(28, 20, 16, 400); ctx.strokeRect(28, 20, 16, 400);
+  ctx.fillStyle = T.ink; for (let i = 0; i < 5; i++) { ctx.fillRect(44, yc - 16 + i * 8, 7, 2); }
+  ctx.fillStyle = T.muted; ctx.font = '12px "IBM Plex Sans Arabic",sans-serif'; ctx.textAlign = 'left'; ctx.fillText('wellbore', 4, 14); ctx.fillText('perforations', 54, yc + 40);
+  if (S.q > 0 && t >= 0.04) { ctx.strokeStyle = T.water; ctx.lineWidth = 2; ctx.setLineDash([6, 5]); ctx.lineDashOffset = -now * 30; ctx.beginPath(); ctx.moveTo(36, 28); ctx.lineTo(36, yc); ctx.stroke(); ctx.setLineDash([]); }
+  /* flowback / production flows */
+  if (t >= 0.88 && L > 2) {
+    const prodN = t >= 0.94, col = prodN ? T.oil : T.water;
+    ctx.fillStyle = col;
+    for (let i = 0; i < 46; i++) { const s = (i / 46 + now * 0.12) % 1; const x = L * (1 - s), y = (hash(i, 5) - 0.5) * hh(x) * 1.4; ctx.beginPath(); ctx.arc(X0 + x, yc + y, 2.6, 0, 6.3); ctx.fill(); }
+    ctx.strokeStyle = col; ctx.lineWidth = 1.4;
+    for (let i = 0; i < 30; i++) { const x = hash(i, 11) * L, sgn = i % 2 ? 1 : -1, dd = ((now * 0.5 + hash(i, 2)) % 1); const hl = hh(x); const y0 = yc + sgn * (hl + 40), y1 = yc + sgn * (hl + 4); const y = y0 + (y1 - y0) * dd; ctx.beginPath(); ctx.moveTo(X0 + x, y - sgn * 6); ctx.lineTo(X0 + x, y); ctx.stroke(); }
+    ctx.fillStyle = T.muted; ctx.font = '12px "IBM Plex Sans Arabic",sans-serif'; ctx.textAlign = 'right';
+    ctx.fillText(prodN ? 'hydrocarbons: matrix ← fracture ← wellbore' : 'flowback: fluid + gel + proppant', 612, 232 + hmax / 2 + 28);
+  }
+  /* ---- right panel: cross section ---- */
+  const ox = 650, pw = 340; drawLayers(ox, ox + pw);
+  const cx = ox + pw / 2;
+  const hasProp = t >= 0.36; const wPack = hasProp ? 7 : 0;
+  let wpxF = 0;
+  if (t < 0.04) wpxF = 1; else if (t < 0.80) wpxF = 3 + 27 * clamp01(S.pn / 1.2); else wpxF = (3 + 27 * clamp01(1.05 / 1.2)) * (1 - sh) + Math.max(wPack, 0.8) * sh;
+  if (t >= 0.14 && t < 0.20) wpxF = 3 + 27 * clamp01(S.pn / 1.2);
+  if (t >= 0.20 || t < 0.14 || t >= 0.80) { }
+  if (t >= 0.80 && !hasProp) wpxF = 0.8;
+  if (t >= 0.88) wpxF = Math.max(wPack, 0.8);
+  const hFr = Math.min(hmax * 0.5, 95 + (strong ? 0 : 90)) * (t < 0.04 ? 0.15 : 1) * (0.4 + 0.6 * Math.min(1, S.L * 3));
+  ctx.fillStyle = t < 0.2 ? T.waterbg : T.soft; ctx.strokeStyle = T.accent; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.rect(cx - wpxF / 2, yc - hFr, wpxF, hFr * 2); ctx.fill(); ctx.stroke();
+  /* proppant in cross-section */
+  const cNow = t >= 0.80 ? (hasProp ? 3 : 0) : S.c;
+  if (cNow > 0 || (t >= 0.80 && hasProp)) {
+    const n = Math.round((t >= 0.80 ? 3 : cNow) * 14);
+    const settle = hfSettleNorm();
+    for (let j = 0; j < n; j++) { const r1 = hash(j, 21), r2 = hash(j, 22); const D = t >= 0.80 ? 0.5 * settle : 0; const y = yc + (r1 - 0.5) * 2 * (hFr - 3) * (1 - D) + D * (hFr - 6 - r2 * 20); ctx.fillStyle = T.ink; ctx.globalAlpha = 0.85; ctx.fillRect(cx - wpxF / 2 + 1 + r2 * Math.max(wpxF - 3, 0), Math.min(Math.max(y, yc - hFr + 2), yc + hFr - 3), 2, 2); }
+    ctx.globalAlpha = 1;
+  }
+  if (t >= 0.80 && HFS.breaker === 'poor' && hasProp) { for (let j = 0; j < 20; j++) { ctx.fillStyle = T.oil; ctx.globalAlpha = 0.5; ctx.fillRect(cx - wpxF / 2 + hash(j, 30) * Math.max(wpxF - 2, 0), yc - hFr + hash(j, 31) * hFr * 2, 2, 4); } ctx.globalAlpha = 1; }
+  /* stress arrows */
+  const arrow = (x1, y1, x2, y2, col) => { ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); const a = Math.atan2(y2 - y1, x2 - x1); ctx.beginPath(); ctx.moveTo(x2, y2); ctx.lineTo(x2 - 8 * Math.cos(a - 0.45), y2 - 8 * Math.sin(a - 0.45)); ctx.lineTo(x2 - 8 * Math.cos(a + 0.45), y2 - 8 * Math.sin(a + 0.45)); ctx.closePath(); ctx.fill(); };
+  for (const yy of [yc - 60, yc, yc + 60]) { arrow(ox + 12, yy, cx - Math.max(wpxF, 2) / 2 - 8, yy, T.ink); arrow(ox + pw - 12, yy, cx + Math.max(wpxF, 2) / 2 + 8, yy, T.ink); }
+  if (t >= 0.04 && t < 0.80 || (t >= 0.14 && t < 0.20)) { const pl = 8 + 22 * clamp01(S.pn / 1.2); for (const yy of [yc - 40, yc + 40]) { if (S.pn > 0.05) { arrow(cx - 1, yy, cx - pl, yy, T.water); arrow(cx + 1, yy, cx + pl, yy, T.water); } } }
+  /* production inflow section */
+  if (t >= 0.88) { ctx.fillStyle = t >= 0.94 ? T.oil : T.water; for (let i = 0; i < 18; i++) { const sgn = i % 2 ? 1 : -1, d = ((now * 0.4 + hash(i, 4)) % 1); const x = cx + sgn * (120 - 110 * d), y = yc + (hash(i, 8) - 0.5) * 2 * hFr * 0.8; ctx.beginPath(); ctx.arc(x, y, 2.4, 0, 6.3); ctx.fill(); } }
+  ctx.fillStyle = T.muted; ctx.font = '12px "IBM Plex Mono",monospace'; ctx.textAlign = 'center';
+  ctx.fillText('σ_hmin →  ←  σ_hmin', cx, 36); ctx.fillText('cross-section (width exaggerated ×~1000)', cx, 412);
+  ctx.textAlign = 'center'; ctx.font = '600 13px "IBM Plex Sans Arabic",sans-serif'; ctx.fillStyle = T.ink;
+  const opens = S.bhp > S.sig + 1 && t < 0.80 && S.q > 0;
+  ctx.direction = 'rtl';
+  ctx.fillText(t < 0.04 ? 'الشق مغلق' : t >= 0.88 ? 'مغلق على حزمة الدعم' : t >= 0.80 ? 'توقف الضخ: السائل يتسرب والشق يُغلق' : (S.pn > 0.02 ? 'ضغط السائل أعلى من الإجهاد: الشق مفتوح' : 'ضغط السائل أقل من الإجهاد: يُغلق'), cx, 62);
+  ctx.direction = 'ltr';
+  if (opens) { /* nothing extra */ }
+  /* header labels */
+  ctx.textAlign = 'left'; ctx.fillStyle = T.muted; ctx.font = '12px "IBM Plex Mono",monospace'; ctx.fillText('side view: length × height', 60, 410);
+  ctx.strokeStyle = T.line; ctx.beginPath(); ctx.moveTo(628, 20); ctx.lineTo(628, 420); ctx.stroke();
+}
+
+function hfChartSVG() {
+  const P = hfParams();
+  const W = 1000, H = 250, L = 52, R = 14, N = 220;
+  const x = t => L + t * (W - L - R);
+  const panels = [
+    { y0: 8, h: 70, key: 'ps', col: 'var(--accent)', lab: 'surface pressure (psi)', f: t => hfState(t).ps },
+    { y0: 94, h: 70, key: 'q', col: 'var(--water)', lab: 'rate (bpm)', f: t => hfState(t).q },
+    { y0: 180, h: 60, key: 'c', col: 'var(--oil)', lab: 'proppant (ppg)', f: t => hfState(t).c }
+  ];
+  let s = `<svg class="chart" id="hfchart" viewBox="0 0 ${W} ${H}" role="img" aria-label="مخطط المعالجة: الضغط السطحي والمعدل وتركيز الـ proppant مقابل الزمن">`;
+  HF_PH.forEach(ph => { const a = x(ph[2]), b = x(ph[3]); s += `<rect x="${a}" y="4" width="${b - a}" height="${H - 8}" style="fill:${ph[0] === 'pad' || ph[0] === 'flush' || ph[0] === 'flow' ? 'var(--surface2)' : 'transparent'};opacity:.6"/>`; });
+  panels.forEach(p => {
+    const vals = []; for (let i = 0; i <= N; i++) { const t = i / N; vals.push(p.f(t)); }
+    const mx = Math.max(...vals, 1) * 1.08;
+    const Y = v => p.y0 + p.h - (v / mx) * p.h;
+    s += `<line class="axis" x1="${L}" x2="${W - R}" y1="${p.y0 + p.h}" y2="${p.y0 + p.h}"/><text x="${L - 6}" y="${p.y0 + 10}" text-anchor="end">${fmt(mx / 1.08, 0)}</text><text x="${L - 6}" y="${p.y0 + p.h}" text-anchor="end">0</text><text class="tt" x="${L + 6}" y="${p.y0 + 11}" style="fill:${p.col}">${p.lab}</text>`;
+    s += `<polyline points="${vals.map((v, i) => `${x(i / N).toFixed(1)},${Y(v).toFixed(1)}`).join(' ')}" style="fill:none;stroke:${p.col};stroke-width:2"/>`;
+  });
+  HF_PH.forEach(ph => { const a = x(ph[2]), b = x(ph[3]); if (b - a > 38) s += `<text x="${(a + b) / 2}" y="${H - 1}" text-anchor="middle" style="font-size:10px">${ph[0]}</text>`; });
+  s += `<line id="hfmark" x1="${x(0)}" x2="${x(0)}" y1="4" y2="${H - 12}" style="stroke:var(--ink);stroke-width:1.5"/></svg>`;
+  return s;
+}
+function hfSyncChartMark() { const m = document.getElementById('hfmark'); if (!m) return; const x = 52 + HFS.t * (1000 - 52 - 14); m.setAttribute('x1', x); m.setAttribute('x2', x); }
+
+function hfUpdateUI() {
+  const t = HFS.t, S = hfState(t), ph = hfPhaseOf(t), tx = HF_TXT[ph[0]];
+  const sl = document.getElementById('hf_t'); if (sl && +sl.value !== Math.round(t * 1000)) sl.value = Math.round(t * 1000);
+  $$('.phchip').forEach(b => b.setAttribute('aria-pressed', b.dataset.ph === ph[0]));
+  const d = document.getElementById('hf_ph'); if (d && d.dataset.k !== ph[0]) { d.dataset.k = ph[0]; d.innerHTML = `<h3>${tx.t}</h3><p>${tx.p}</p><div class="msg" style="margin-top:10px"><b>الزمن الفعلي النموذجي:</b> ${tx.n}</div><p style="margin-top:8px;color:var(--muted);font-size:13.5px"><b>ما يراقبه المهندس:</b> ${tx.w}</p>`; }
+  const ro = document.getElementById('hf_ro'); if (ro) ro.innerHTML = `${KV('الضغط السطحي', fmt(S.ps, 0), 'psi')}${KV('BHP', fmt(S.bhp, 0), 'psi')}${KV('closure σ_min', fmt(S.sig, 0), 'psi')}${KV('المعدل', fmt(S.q, 0), 'bpm')}${KV('Proppant', fmt(S.c, 1), 'ppg')}${KV('طول الشق (نسبي)', fmt(S.L * 100, 0), '%')}`;
+  hfSyncChartMark(); hfDraw();
+}
+function hfLoop(ts) {
+  if (!HFS.playing) return;
+  if (!HFS.last) HFS.last = ts;
+  const dt = (ts - HFS.last) / 1000; HFS.last = ts;
+  HFS.t += dt / HFS.dur * HFS.speed;
+  if (HFS.t >= 1) { HFS.t = 1; HFS.playing = false; const b = document.getElementById('hf_play'); if (b) b.textContent = 'تشغيل'; }
+  hfUpdateUI();
+  if (HFS.playing) requestAnimationFrame(hfLoop);
+}
+function hfPlay(on) {
+  HFS.playing = on; HFS.last = 0;
+  const b = document.getElementById('hf_play'); if (b) b.textContent = on ? 'إيقاف مؤقت' : 'تشغيل';
+  if (on) { if (HFS.t >= 1) HFS.t = 0; requestAnimationFrame(hfLoop); }
+}
+function hfSetT(t) { HFS.t = clamp01(t); hfUpdateUI(); }
+
+/* ---- surface spread SVG ---- */
+function spreadSVG() {
+  const box = (id, x, y, w, h, label, cls) => `<g class="eqn" data-eq="${id}" tabindex="0" role="button" aria-label="${label}"><rect class="eqhl" x="${x - 6}" y="${y - 6}" width="${w + 12}" height="${h + 12}" rx="8"/><rect class="eqb ${cls || ''}" x="${x}" y="${y}" width="${w}" height="${h}" rx="5"/><text class="eqt" x="${x + w / 2}" y="${y + h / 2 + 4}" text-anchor="middle">${label}</text></g>`;
+  let s = `<svg id="spreadsvg" viewBox="0 0 1000 380" role="img" aria-label="مخطط موقع التكسير: الماء والكيماويات والـ proppant إلى الـ blender، ثم المضخات، ثم الـ manifold، ثم رأس البئر">
+  <defs><marker id="sa" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4" markerHeight="4" orient="auto"><path d="M0 1L10 5L0 9z" style="fill:var(--ink)"/></marker></defs>
+  <rect x="0" y="0" width="1000" height="380" class="sprbg"/>
+  <g class="spln"><path class="sl lw flow" d="M150 70H250V170H300" marker-end="url(#sa)"/><path class="sl lc flow" d="M150 185H300" marker-end="url(#sa)"/><path class="sl lp flow" d="M150 300H250V200H300" marker-end="url(#sa)"/>
+  ${[0, 1, 2, 3, 4, 5].map(i => `<path class="sl lw" d="M390 185H420V${55 + i * 55}H455"/>`).join('')}
+  ${[0, 1, 2, 3, 4, 5].map(i => `<path class="sl lh flow" d="M565 ${55 + i * 55}H640"/>`).join('')}
+  <path class="sl lh flow" d="M690 190H790" marker-end="url(#sa)"/></g>
+  ${box('tanks', 30, 40, 120, 60, 'Water tanks')}${box('chem', 30, 150, 120, 70, 'Chemical unit')}${box('sand', 30, 260, 120, 80, 'Proppant')}
+  ${box('blender', 300, 150, 90, 70, 'Blender', 'big')}
+  ${[0, 1, 2, 3, 4, 5].map(i => `<rect class="eqb pump" x="455" y="${40 + i * 55}" width="110" height="30" rx="4"/><text class="eqt" x="510" y="${60 + i * 55}" text-anchor="middle">Pump ${i + 1}</text>`).join('')}
+  <g class="eqn" data-eq="pumps" tabindex="0" role="button" aria-label="Frac pumps"><rect class="eqhl" x="448" y="30" width="124" height="320" rx="8"/></g>
+  <g class="eqn" data-eq="manifold" tabindex="0" role="button" aria-label="Manifold"><rect class="eqhl" x="634" y="24" width="62" height="332" rx="8"/><rect class="eqb" x="640" y="30" width="50" height="320" rx="5"/><text class="eqt" transform="translate(670,190) rotate(-90)" text-anchor="middle">High-pressure manifold</text></g>
+  ${box('well', 790, 160, 100, 60, 'Frac tree', 'big')}${box('van', 790, 40, 100, 60, 'Data van')}
+  <text class="eqt dim" x="840" y="250" text-anchor="middle">wireline + guns</text>
+  <text class="eqt dim" x="840" y="270" text-anchor="middle">(plug & perf)</text>
+  <text class="eqt dim" x="290" y="372">منخفض الضغط</text><text class="eqt dim" x="590" y="372">عالي الضغط</text>
+  </svg>`;
+  return s;
+}
+
+/* ---- plug & perf plan view ---- */
+const PP = { v: 0, playing: false, last: 0 };
+function ppSVG() {
+  const N = 8; let s = `<svg id="ppsvg" viewBox="0 0 1000 240" role="img" aria-label="مخطط علوي لبئر أفقي بثماني مراحل plug-and-perf: كل مرحلة تُفصل بـ plug ثم تُثقب ثم تُكسّر، من الـ toe نحو الـ heel">
+  <rect x="0" y="0" width="1000" height="240" class="sprbg"/>
+  <text class="eqt dim" x="26" y="26">HEEL</text><text class="eqt dim" x="974" y="26" text-anchor="end">TOE</text>
+  <path d="M40 120H960" style="stroke:var(--ink);stroke-width:5;fill:none"/>
+  <text class="eqt dim" x="500" y="224" text-anchor="middle" style="direction:rtl;unicode-bidi:plaintext">البئر محفور باتجاه أصغر إجهاد أفقي، فالشقوق عرضية (transverse)</text>`;
+  for (let i = 1; i <= N; i++) { const cx = 940 - (i - 0.5) * 108; s += `<text class="eqt" x="${cx}" y="204" text-anchor="middle">Stage ${i}</text><g id="ppf${i}">`; for (const o of [-30, 0, 30]) s += `<line class="ppfr" x1="${cx + o}" x2="${cx + o}" y1="120" y2="120" id="ppl${i}_${o + 30}"/>`; s += `</g><rect class="ppplug" id="ppp${i}" x="${cx + 50}" y="110" width="8" height="20" rx="2" style="opacity:0"/>`; }
+  s += `<g id="ppgun" style="opacity:0"><rect x="0" y="108" width="44" height="24" rx="4" style="fill:var(--gas)"/><text class="eqt" x="22" y="124" text-anchor="middle" style="fill:var(--accent-ink);font-size:11px">gun</text></g></svg>`;
+  return s;
+}
+function ppRender() {
+  const N = 8, v = PP.v, s = Math.min(N, Math.floor(v / 100) + 1), p = (v % 100) / 100, done = v >= 800;
+  const msgEl = document.getElementById('pp_msg');
+  for (let i = 1; i <= N; i++) {
+    const cx = 940 - (i - 0.5) * 108; let prog = 0;
+    if (done || i < s) prog = 1; else if (i === s) prog = clamp01((p - 0.28) / 0.72);
+    for (const o of [-30, 0, 30]) { const l = document.getElementById(`ppl${i}_${o + 30}`); if (l) { const h = 70 * prog * (o === 0 ? 1 : 0.92); l.setAttribute('y1', 120 - h); l.setAttribute('y2', 120 + h); l.style.stroke = (i === s && !done) ? 'var(--accent)' : 'var(--water)'; l.style.strokeWidth = 3; } }
+    const pl = document.getElementById('ppp' + i); if (pl) pl.style.opacity = ((done || i < s || (i === s && p > 0.08)) && i > 1) ? 1 : 0;
+  }
+  const g = document.getElementById('ppgun'); if (g) { const cx = 940 - (s - 0.5) * 108; g.setAttribute('transform', `translate(${cx - 22},0)`); g.style.opacity = (!done && p < 0.28) ? 1 : 0; }
+  if (msgEl) { const st = done ? 'اكتملت المراحل الثماني: تُحفر الـ plugs ويبدأ الـ flowback.' : p < 0.28 ? `المرحلة ${s}: وصل الـ wireline: يُثبَّت plug فوق المرحلة ثم تُطلق الـ guns فتُثقب العناقيد (clusters).` : `المرحلة ${s}: ضخ الـ pad ثم الـ proppant: الشقوق تنمو من كل عنقود وتتنافس على السائل.`; msgEl.textContent = st; }
+  const sl = document.getElementById('pp_v'); if (sl && +sl.value !== Math.round(v)) sl.value = Math.round(v);
+}
+function ppLoop(ts) { if (!PP.playing) return; if (!PP.last) PP.last = ts; const dt = (ts - PP.last) / 1000; PP.last = ts; PP.v += dt * 40; if (PP.v >= 800) { PP.v = 800; PP.playing = false; const b = document.getElementById('pp_play'); if (b) b.textContent = 'تشغيل'; } ppRender(); if (PP.playing) requestAnimationFrame(ppLoop); }
+
+/* ---- stress picture ---- */
+function stressSVG() {
+  return `<svg class="chart" viewBox="0 0 520 300" role="img" aria-label="ثلاثة إجهادات رئيسية: العمودي، الأفقي الأكبر، الأفقي الأصغر؛ الشق العمودي يتشكل عمودياً على الإجهاد الأصغر">
+  <g style="fill:none;stroke:var(--ink);stroke-width:1.6"><path d="M150 90h150v110H150z"/><path d="M150 90l50-40h150l-50 40"/><path d="M300 90l50-40v110l-50 40"/></g>
+  <path d="M215 60 L215 195 L285 160 L285 55z" style="fill:var(--water-bg);stroke:var(--accent);stroke-width:2;opacity:.95"/>
+  <text x="250" y="130" text-anchor="middle" class="tt" style="fill:var(--accent);font-weight:600">fracture</text>
+  <defs><marker id="sk" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 1L10 5L0 9z" style="fill:var(--ink)"/></marker></defs>
+  <g style="stroke:var(--ink);stroke-width:2.2;fill:none" marker-end="url(#sk)"><path d="M225 6V44" marker-end="url(#sk)"/><path d="M225 250V212" marker-end="url(#sk)"/><path d="M60 140H140" marker-end="url(#sk)"/><path d="M440 140H360" marker-end="url(#sk)"/><path d="M60 230L130 195" marker-end="url(#sk)"/></g>
+  <text x="262" y="20" class="tt">σ_v (overburden)</text><text x="262" y="262" class="tt">σ_v</text>
+  <text x="30" y="132" class="tt">σ_hmin</text><text x="448" y="132" class="tt">σ_hmin</text><text x="18" y="256" class="tt">σ_Hmax</text>
+  <text x="260" y="290" text-anchor="middle" class="tt" style="fill:var(--muted)">الشق يفتح عمودياً على أصغر إجهاد (هنا σ_hmin) ويمتد في اتجاه σ_Hmax</text></svg>`;
+}
+
+/* ---- build ---- */
+function buildHF() {
+  $('#pane-hf').innerHTML = `
+  <p class="lead">التكسير الهيدروليكي يضخ سائلاً بضغط يتجاوز إجهاد الصخر فيُنشئ شقاً، ثم يحمل مادة دعم (proppant) تبقي الشق مفتوحاً بعد توقف الضخ. من هنا يبدأ مسار جديد للهيدروكربونات: من الصخر إلى الشق إلى البئر. هذه الصفحة تبني المشهد بالترتيب: الموقع، ثم الضخ والشق، ثم السوائل، ثم الإنتاج.</p>
+
+  <div class="sec"><h2>١. موقع التكسير <small>Frac spread</small></h2>
+  <div class="mapwrap">${spreadSVG()}</div>
+  <div class="legend"><span><i style="border-color:var(--water)"></i>ماء/سائل منخفض الضغط</span><span><i style="border-color:var(--oil)"></i>proppant</span><span><i style="border-color:var(--ink)"></i>ضغط عالٍ</span><span>اضغط أي معدّة للشرح.</span></div>
+  <div class="detail" id="spr_detail" style="margin-top:12px;grid-template-columns:1fr"></div></div>
+
+  <div class="sec"><h2>٢. من الضخ إلى الشق إلى الإنتاج <small>محاكاة متزامنة</small></h2>
+  <div class="simbar"><button class="btn pri" id="hf_play" type="button">تشغيل</button><button class="btn" id="hf_rst" type="button">من البداية</button>
+   <label class="f" for="hf_t" style="flex:1;min-width:180px"><span class="fl">الزمن (غير خطي: الدقائق ← الساعات ← الأيام ← السنوات)</span><input id="hf_t" type="range" min="0" max="1000" value="0" style="width:100%"></label></div>
+  <div class="phchips" id="hf_chips">${HF_PH.map(p => `<button class="step phchip" type="button" data-ph="${p[0]}" aria-pressed="false">${p[1]}</button>`).join('')}</div>
+  <div class="simopts">
+   ${SEL('hf_fl', 'السائل الحامل', [['sw', 'Slickwater (≈ 2 cP)'], ['lg', 'Linear gel (≈ 25 cP)'], ['xl', 'Crosslinked gel (≈ 300 cP)'], ['cu', 'لزوجة مخصصة']], 'xl')}
+   ${F('hf_mu', 'اللزوجة المخصصة', 50, 'cP')}${F('hf_cmax', 'أقصى تركيز proppant', 4, 'ppg')}
+   ${SEL('hf_bar', 'الحواجز الإجهادية', [['strong', 'قوية (الشق محصور)'], ['weak', 'ضعيفة (ينمو الارتفاع)']], 'strong')}
+   ${SEL('hf_brk', 'فعالية الـ breaker', [['good', 'جيدة'], ['poor', 'ضعيفة (residue)']], 'good')}</div>
+  <div class="canvaswrap"><canvas id="hfcv" role="img" aria-label="محاكاة الشق: منظر جانبي لطول وارتفاع الشق، ومقطع عرضي لعرضه، مع توزيع الـ proppant وإغلاق الشق والإنتاج"></canvas></div>
+  <div class="legend" style="margin-top:6px"><span><b>يسار:</b> منظر جانبي (الطول × الارتفاع)، النقاط السوداء = proppant</span><span><b>يمين:</b> مقطع عمودي على مستوى الشق (العرض مبالغ فيه)</span><span>الأسهم السوداء = إجهاد الصخر، الزرقاء = ضغط السائل</span></div>
+  <div class="calc" style="margin-top:12px;padding:12px"><div class="kvs" id="hf_ro"></div></div>
+  <div class="detail" id="hf_ph" style="margin-top:12px;grid-template-columns:1fr"></div>
+  <figure style="margin-top:14px" id="hf_chartwrap"></figure>
+  <div class="note warn">الشكل نوعي: الأزمنة والمنحنيات مُمثَّلة لتوضيح التسلسل، ومدخلاتها (closure، net pressure، الاحتكاك، المعدل) من الحاسبات في الأسفل، وليست مخرجات نموذج انتشار شق (مثل PKN/KGD/pseudo-3D). النموذج الحقيقي يعتمد على المكمن وبيانات الـ DFIT.</div></div>
+
+  <div class="sec"><h2>٣. كيف يتشكل الشق؟ <small>الإجهادات تحدد كل شيء</small></h2>
+  <div class="twocol"><div><ul class="tight">
+   <li>الصخر تحت ثلاثة إجهادات رئيسية. <b>الشق يفتح عمودياً على أصغرها</b> لأن الضغط يحتاج أقل جهد لدفع الجدران في هذا الاتجاه ${BADGE.e}.</li>
+   <li>في الأعماق العادية يكون أصغر إجهاد أفقياً (σ_hmin) فتتكون شقوق <b>عمودية</b>؛ في الأعماق الضحلة جداً أو مع tectonics قد يصبح الأصغر هو العمودي فتتكون شقوق أفقية (Hubbert & Willis, 1957) ${BADGE.e}.</li>
+   <li><b>Breakdown:</b> يبدأ الشق عند جدار البئر عندما يتجاوز الإجهاد المماسي قوة شد الصخر. من حل Kirsch: P_bd = 3σ_h − σ_H − p_p + T₀ لسائل لا يخترق الصخر ${BADGE.e}.</li>
+   <li><b>Propagation:</b> بعد البدء يكفي أن يتجاوز ضغط السائل <b>closure stress</b> (≈ σ_hmin) بمقدار الـ net pressure اللازم لفتح الشق وتحمل الاحتكاك بداخله ${BADGE.e}.</li>
+   <li><b>العرض</b> يتناسب مع net pressure × الارتفاع ÷ معامل الصخر (E′)، لذا الصخر الصلب يعطي شقاً أضيق، وهذا يتحدى مرور الـ proppant ${BADGE.e}.</li>
+   <li><b>الارتفاع</b> يتوقف عند طبقات بإجهاد أعلى (barriers). عندما يضعف الفرق ينمو الارتفاع خارج المكمن ويضيع السائل والـ proppant ${BADGE.e}. جرّب "الحواجز الضعيفة" في المحاكاة.</li>
+   <li>في الـ shale مع الشقوق الطبيعية قد تتشكل <b>شبكة شقوق معقدة</b> بدل جناحين مستويين ${BADGE.i}.</li></ul></div>
+  <figure>${stressSVG()}<figcaption>الإجهادات الرئيسية الثلاثة واتجاه الشق العمودي.</figcaption></figure></div>
+  ${panel('hs', 'الإجهادات وضغط الانهيار', 'Eaton (uniaxial strain): σ_h = ν/(1−ν)(σ_v − αp_p) + αp_p + tectonic. وضغط الانهيار لسائل لا يخترق الصخر: P_bd = 3σ_h − σ_H − p_p + T₀. هذه تقديرات مسبقة وتُعايَر بـ DFIT أو سجلات الإجهاد (sonic).',
+    F('hs_tvd', 'TVD', 8000, 'ft') + F('hs_gob', 'تدرج overburden', 1.0, 'psi/ft') + F('hs_gp', 'تدرج ضغط المسام', 0.44, 'psi/ft') + F('hs_nu', 'Poisson ν', 0.25, '') + F('hs_al', 'Biot α', 1.0, '') + F('hs_tec', 'tectonic إضافي', 0, 'psi') + F('hs_dsh', 'σ_H − σ_h', 500, 'psi') + F('hs_t0', 'قوة الشد T₀', 500, 'psi'), { fill: true })}</div>
+
+  <div class="sec"><h2>٤. السوائل والـ proppant <small>الجل يعلّق، والـ proppant يُبقي الشق مفتوحاً</small></h2>
+  <p class="lead">الـ gel يؤدي ثلاث مهام: يحمل الـ proppant ويمنعه من الهبوط، ويعطي لزوجة تنتج عرض شق كافياً، ويقلل التسرب. لكنه يجب أن ينكسر بعد الشغل (breaker) كي لا يسد حزمة الدعم. هذا بالضبط مجال أطروحتك.</p>
+  <div class="tblwrap"><table><thead><tr><th>السائل</th><th>التركيب</th><th>الخاصية</th><th>التعليق/النقل</th><th>الاستعمال/المحاذير</th></tr></thead><tbody>${HF_FLUIDS.map(r => `<tr>${r.map(c => `<td style="white-space:normal;min-width:130px">${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
+  <div class="tblwrap" style="margin-top:12px"><table><thead><tr><th>الـ proppant</th><th>SG</th><th>ملاحظة</th></tr></thead><tbody>${HF_PROP.map(r => `<tr>${r.map(c => `<td style="white-space:normal;min-width:130px">${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
+  <div class="note">قاعدة يكثر ذكرها: لزوجة ≈ 100 cP عند ≈ 170 s⁻¹ كحد أدنى لتعليق جيد في الـ gel ${BADGE.i}. تتفاوت بين المصادر والحقول، ولا تعوّض اختبار الـ rheology عند حرارة المكمن ومعدل القص الفعلي (ISO 13503-1 لقياس لزوجة سوائل الإكمال ${BADGE.i}).</div>
+  ${panel('ht', 'سرعة هبوط الـ proppant', 'توازن وزن/سحب لحبيبة كروية مع معامل سحب Schiller–Naumann، وتصحيح التزاحم Richardson–Zaki. اللزوجة هنا ظاهرية ثابتة (نيوتنية)، أما الـ gel الحقيقي فهو shear-thinning؛ هذا الحساب تقريبي.',
+    SEL('ht_pre', 'سائل جاهز', [['sw', 'Slickwater'], ['lg', 'Linear gel'], ['xl', 'Crosslinked gel'], ['cu', 'مخصص']], 'sw') + F('ht_d', 'قطر الحبيبة', 600, 'µm') + F('ht_rp', 'كثافة الـ proppant', 2650, 'kg/m³') + F('ht_rf', 'كثافة السائل', 1000, 'kg/m³') + F('ht_mu', 'اللزوجة الظاهرية', 2, 'cP') + F('ht_c', 'التركيز', 2, 'ppg') + F('ht_H', 'ارتفاع الشق', 100, 'ft') + F('ht_res', 'زمن مكوث الـ slurry', 60, 'min'))}</div>
+
+  <div class="sec"><h2>٥. تعدد المراحل <small>Plug-and-perf</small></h2>
+  <p class="lead">البئر الأفقي لا يُكسَّر دفعة واحدة. يُقسَّم إلى مراحل: يُثبَّت plug لعزل ما تم، ثم تُثقب مجموعة عناقيد (clusters)، ثم يُضخ pad وproppant، ثم يتكرر الأمر نحو الـ heel. الشقوق المتجاورة تؤثر على بعضها (stress shadowing)، لذا تباعد العناقيد قرار تصميم ${BADGE.e}.</p>
+  <div class="simbar"><button class="btn pri" id="pp_play" type="button">تشغيل</button><label class="f" for="pp_v" style="flex:1;min-width:180px"><span class="fl">التقدم عبر المراحل</span><input id="pp_v" type="range" min="0" max="800" value="0" style="width:100%"></label></div>
+  <div class="mapwrap" style="margin-top:8px">${ppSVG()}</div><div class="msg" id="pp_msg" style="margin-top:8px"></div></div>
+
+  <div class="sec"><h2>٦. حسابات التصميم</h2>
+  ${panel('hp', 'الضغط السطحي وقدرة المضخات', 'BHTP = تدرج الشق×TVD + net pressure + perforation friction + tortuosity. الضغط السطحي = BHTP − الضغط الهيدروستاتيكي + احتكاك الأنبوب. احتكاك الـ perforations: Δp = 0.2369·q²·ρ/(C_d²·N²·d⁴). HHP = P·q/40.8 (psi، bpm).',
+    F('hp_tvd', 'TVD', 8000, 'ft') + F('hp_gf', 'تدرج الشق', 0.73, 'psi/ft') + F('hp_pnet', 'net pressure', 800, 'psi') + F('hp_q', 'المعدل', 60, 'bpm') + F('hp_ppg', 'تركيز الـ proppant', 2, 'ppg') + F('hp_spg', 'SG للـ proppant', 2.65, '') + F('hp_id', 'ID للـ casing', 4.778, 'in') + F('hp_fr', 'تخفيض الاحتكاك (FR)', 70, '%') + F('hp_np', 'عدد الـ perforations', 60, '') + F('hp_dp', 'قطر الـ perf', 0.38, 'in') + F('hp_cd', 'Cd', 0.85, '') + F('hp_tort', 'tortuosity', 300, 'psi') + F('hp_unit', 'قدرة المضخة الواحدة', 2250, 'hhp') + F('hp_util', 'نسبة الاستخدام', 80, '%') + F('hp_sb', 'احتياطي', 15, '%') + F('hp_rate', 'تصنيف الـ wellhead', 10000, 'psi'), { fill: true })}
+  <div style="height:14px"></div>
+  ${panel('hb', 'ميزان المادة وتوصيل الشق', 'الكتلة: مساحة الشق A = M_p/C_p، ونصف الطول x_f = A/(2h_f). عرض الحزمة w_p = C_p/(ρ_p(1−φ)). F_CD = k_f·w_p/(k·x_f) (Prats 1961؛ Cinco-Ley & Samaniego). k_f المحسوبة تُضرب بنسبة التوصيل المتبقي بعد ضرر الـ gel.',
+    F('hb_vi', 'السائل الكلي', 6000, 'bbl') + F('hb_eta', 'كفاءة الشق', 40, '%') + F('hb_mp', 'كتلة الـ proppant', 150000, 'lb') + F('hb_cp', 'تركيز مساحي C_p', 1.5, 'lb/ft²') + F('hb_spg', 'SG', 2.65, '') + F('hb_phi', 'مسامية الحزمة', 0.38, '') + F('hb_hf', 'ارتفاع الشق', 150, 'ft') + F('hb_kf', 'نفاذية الحزمة k_f', 60, 'D') + F('hb_ret', 'التوصيل المتبقي بعد الضرر', 50, '%') + F('hb_k', 'نفاذية المكمن k', 0.5, 'md'))}
+  <div class="note">أرقام k_f تعتمد على نوع الـ proppant وإجهاد الإغلاق والحرارة والزمن. وتظل نسبة التوصيل المتبقي (retained conductivity) بعد ضرر الـ gel أحد أهم الأرقام المتأثرة بالـ residue. قِسها مخبرياً (ISO 13503-5 للتوصيل ${BADGE.i}).</div></div>
+
+  <div class="sec"><h2>٧. بعد الشغل: الإنتاج <small>Decline</small></h2>
+  ${panel('ha', 'منحنى هبوط الإنتاج (Arps)', 'q(t) = q_i / (1 + b·D_i·t)^(1/b). الـ b بين 0 (أُسّي) و1 (توافقي) وقد يتجاوز 1 في الـ shale أثناء التدفق العابر. المعادلة تصف الشكل ولا تتنبأ به: تُعايَر ببيانات الإنتاج.',
+    F('ha_qi', 'المعدل الأولي q_i', 900, 'bbl/d') + F('ha_di', 'D_i الاسمي', 1.5, '1/yr') + F('ha_b', 'b', 1.0, '') + F('ha_lim', 'حد الجدوى', 15, 'bbl/d') + F('ha_T', 'الأفق الزمني', 10, 'yr'))}</div>`;
+  /* wire */
+  HFS.cv = document.getElementById('hfcv');
+  const eq = id => { const e = HF_EQ.find(x => x[0] === id); const d = document.getElementById('spr_detail'); $$('#spreadsvg .eqn').forEach(g => g.classList.toggle('sel', g.dataset.eq === id)); d.innerHTML = `<div><h3>${e[1]}<span class="en">${e[2]}</span></h3><p>${e[3]}</p></div>`; };
+  HFS.eq = eq; eq('blender');
+  hfRefresh();
+  ppRender();
+}
+function hfRefresh() { const w = document.getElementById('hf_chartwrap'); if (w) w.innerHTML = hfChartSVG() + '<figcaption>الضغط السطحي والمعدل وتركيز الـ proppant عبر المراحل (نوعي). الشريط الرمادي = مراحل pad/flush/flowback.</figcaption>'; hfUpdateUI(); }
+
+/* ---- calcs ---- */
+RUN.hs = () => {
+  const p = { TVD: num('hs_tvd'), Gob: num('hs_gob'), Gp: num('hs_gp'), nu: num('hs_nu'), alpha: num('hs_al'), tect: num('hs_tec'), dSH: num('hs_dsh'), T0: num('hs_t0') };
+  if (!Object.values(p).every(isFinite) || p.nu >= 1) return;
+  const r = stressCalc(p); HFCACHE.sigC = r.sh; HFCACHE.pp = r.pp;
+  out('hs', `<div class="kvs">${KV('σ_v', fmt(r.sv, 0), 'psi')}${KV('p_p', fmt(r.pp, 0), 'psi')}${KV('σ_hmin (closure)', fmt(r.sh, 0), 'psi', 'ok')}${KV('σ_Hmax', fmt(r.sH, 0), 'psi')}${KV('تدرج closure', fmt(r.fg, 3), 'psi/ft')}${KV('P_bd (قاع البئر)', fmt(r.pbd, 0), 'psi')}${KV('تدرج الانهيار', fmt(r.pbdG, 3), 'psi/ft')}</div>
+   ${r.vertical ? MSG('σ_hmin < σ_v: الشق عمودي (vertical) ويفتح عمودياً على σ_hmin.', 'ok') : MSG('σ_h > σ_v: يُتوقع شق أفقي (horizontal): حالة ضحلة أو tectonic قوي.', 'warn')}
+   ${MSG(`فرق الضغط الواجب: لكي ينتشر الشق يجب أن يتجاوز ضغط السائل ${fmt(r.sh, 0)} psi (≈ closure) بمقدار الـ net pressure؛ والانهيار الأولي أعلى منه بنحو ${fmt(r.pbd - r.sh, 0)} psi.`)}`);
+  hfRefresh();
+};
+FILL.hs = () => { const c = caseObj(); setv('hs_tvd', c.TVD); };
+
+RUN.hp = () => {
+  const p = { TVD: num('hp_tvd'), Gf: num('hp_gf'), pnet: num('hp_pnet'), q: num('hp_q'), ppg: num('hp_ppg'), spg: num('hp_spg'), id: num('hp_id'), mu: 1, fr: num('hp_fr'), nperf: num('hp_np'), dperf: num('hp_dp'), cd: num('hp_cd'), tort: num('hp_tort'), unit: num('hp_unit'), util: num('hp_util'), standby: num('hp_sb') };
+  const rate = num('hp_rate'); if (!Object.values(p).every(isFinite) || !isFinite(rate) || p.nperf <= 0) return;
+  const r = hfPressure(p);
+  HFCACHE.fric = Math.max(r.dpF + r.dpPerf + p.tort, 0); HFCACHE.rating = rate;
+  out('hp', `<div class="kvs">${KV('BHTP', fmt(r.bhtp, 0), 'psi')}${KV('Δp للـ perforations', fmt(r.dpPerf, 0), 'psi', r.dpPerf > 1500 ? 'warn' : '')}${KV('الضغط الهيدروستاتيكي', fmt(r.hyd, 0), 'psi')}${KV('احتكاك الأنبوب (بعد FR)', fmt(r.dpF, 0), 'psi')}${KV('الضغط السطحي', fmt(r.ps, 0), 'psi', r.ps > rate * 0.9 ? 'bad' : 'ok')}${KV('HHP', fmt(r.hhp, 0), 'hp')}${KV('عدد المضخات', fmt(r.units, 0), '', 'ok')}${KV('سرعة التدفق', fmt(r.v, 1), 'ft/s')}${KV('Proppant', fmt(r.propLbMin, 0), 'lb/min')}${KV('', fmt(r.propLbMin * 60 / 2000, 1), 'ton/hr')}</div>
+   ${r.ps > rate * 0.9 ? MSG('الضغط السطحي قريب من تصنيف الـ wellhead (أو أعلى منه): خفّض المعدل أو زد الـ perforations أو راجع الـ FR.', 'bad') : MSG(`ضغط السطح أقل من ${fmt(rate * 0.9, 0)} psi (90% من التصنيف).`, 'ok')}
+   ${MSG('احتكاك الأنبوب لسائل بلزوجة الماء مع FR ثابتة؛ الحقيقة تعتمد على تصميم السائل وتتغير مع تركيز الـ proppant. الصيغة ببارامترات Newtonian (Swamee–Jain).')}`);
+  hfRefresh();
+};
+FILL.hp = () => { const c = caseObj(); setv('hp_tvd', c.TVD); };
+
+RUN.hb = () => {
+  const p = { Vi: num('hb_vi'), eta: num('hb_eta'), Mp: num('hb_mp'), Cp: num('hb_cp'), spg: num('hb_spg'), phi: num('hb_phi'), hf: num('hb_hf'), kf: num('hb_kf'), ret: num('hb_ret'), k: num('hb_k') };
+  if (!Object.values(p).every(isFinite) || p.Cp <= 0 || p.k <= 0) return;
+  const r = fracBalance(p);
+  const cls = r.FCD < 1 ? 'bad' : r.FCD < 10 ? 'ok' : 'ok';
+  out('hb', `<div class="kvs">${KV('مساحة الشق (جناحان)', fmt(r.A, 0), 'ft²')}${KV('نصف الطول x_f', fmt(r.xf, 0), 'ft')}${KV('عرض ديناميكي متوسط', fmt(r.wbar * 12, 2), 'in')}${KV('عرض الحزمة w_p', fmt(r.wp * 12, 3), 'in')}${KV('k_f الفعالة', fmt(r.kfEff / 1000, 1), 'D')}${KV('F_CD', fmt(r.FCD, 2), '', cls)}</div>
+   ${r.FCD < 1 ? MSG('F_CD أقل من 1: الشق محدود التوصيل (choked)؛ الإنتاج يتقيد بتوصيل الحزمة وليس بمساحة الشق.', 'bad') : r.FCD < 10 ? MSG('F_CD بين 1 و10: متوازن تقريباً. القيمة ≈ 1.6 تُذكر كمثلى لتعظيم الأداء عند كتلة proppant ثابتة (Prats؛ Valko & Economides).', 'ok') : MSG('F_CD أعلى من 10: توصيل الشق كبير مقارنة بالمكمن؛ زيادة الطول أنفع من زيادة العرض.', 'ok')}
+   ${r.ratio < 1.2 ? MSG('العرض الديناميكي أقل من عرض الحزمة بقليل: المدخلات غير متسقة (الـ proppant لن يدخل الشق). زد الكفاءة أو الحجم أو قلل C_p.', 'warn') : MSG(`العرض الديناميكي ≈ ${fmt(r.ratio, 1)}× عرض الحزمة: تقلص العرض عند الإغلاق طبيعي.`, '')}
+   ${MSG('الحساب افتراضي مبسط: يُعطي طولاً مكافئاً لتوزيع متجانس. التوزيع الحقيقي لـ C_p غير منتظم (هبوط proppant، tortuosity).')}`);
+};
+
+const HT_PRE = { sw: [1000, 2], lg: [1000, 25], xl: [1050, 300] };
+RUN.ht = () => {
+  const d = num('ht_d') * 1e-6, rp = num('ht_rp'), rf = num('ht_rf'), mu = num('ht_mu') * 1e-3, ppg = num('ht_c'), H = num('ht_H') * 0.3048, res = num('ht_res');
+  if (![d, rp, rf, mu, ppg, H, res].every(isFinite) || mu <= 0) return;
+  const rpg = rp / 1000 * 8.345, c = (ppg / rpg) / (1 + ppg / rpg);
+  const s = settleV(d, rp, rf, mu, c);
+  const tSet = H / s.vh / 60;
+  out('ht', `<div class="kvs">${KV('v حر', fmt(s.v0 * 1000, 2), 'mm/s')}${KV('v مع التزاحم', fmt(s.vh * 1000, 3), 'mm/s')}${KV('Reynolds', fmt(s.Re, 2))}${KV('كسر حجمي للـ proppant', fmt(c, 3))}${KV('زمن الهبوط ' + fmt(H / 0.3048, 0) + ' ft', tSet < 120 ? fmt(tSet, 1) : fmt(tSet / 60, 1), tSet < 120 ? 'min' : 'h', tSet < res ? 'bad' : 'ok')}</div>
+   ${tSet < res ? MSG(`زمن الهبوط (${fmt(tSet, 1)} min) أقل من زمن المكوث (${res} min): يُتوقع تكوّن bank من الـ proppant في أسفل الشق ما لم تعوّض السرعة أو اللزوجة.`, 'bad') : MSG(`زمن الهبوط (${fmt(tSet / 60, 1)} h) أكبر بكثير من زمن المكوث: التعليق جيد.`, 'ok')}
+   ${s.Re > 1 ? MSG('Re > 1: خارج مدى Stokes؛ استُخدم معامل سحب Schiller–Naumann. في slickwater يُعتمد على سرعة التدفق لحمل الحبيبات وليس على اللزوجة.', 'warn') : ''}
+   ${MSG('الـ gel shear-thinning: داخل الشق، عند القص المنخفض، يكون الـ gel أكثر لزوجة مما تعطيه قيمة 170 s⁻¹؛ فالحساب النيوتني أعلاه متحفظ لتعليق الـ gel.')}`);
+  hfRefresh();
+};
+
+RUN.ha = () => {
+  const qi = num('ha_qi'), Di = num('ha_di'), b = num('ha_b'), lim = num('ha_lim'), T = num('ha_T');
+  if (![qi, Di, b, lim, T].every(isFinite) || Di <= 0 || b < 0) return;
+  const pts = []; for (let m = 0; m <= T * 12; m++) pts.push([m, arpsQ(qi, Di, b, m / 12)]);
+  const q1 = arpsQ(qi, Di, b, 1), np = arpsNp(qi, Di, b, T);
+  let tEcon = null; for (let m = 1; m <= 1200; m++) if (arpsQ(qi, Di, b, m / 12) <= lim) { tEcon = m / 12; break; }
+  const xm = Math.max(12, Math.ceil(T * 12 / 12) * 12);
+  out('ha', `<figure>${lineChart({ xmax: xm, ymax: niceMax(qi * 1.05), xlab: 'months', ylab: 'bbl/d', series: [{ pts, color: 'var(--oil)', label: 'q(t)' }], hlines: [{ y: lim, color: 'var(--gas)', label: 'economic limit' }], aria: 'منحنى هبوط الإنتاج' })}</figure>
+   <div class="kvs">${KV('هبوط السنة الأولى', fmt((1 - q1 / qi) * 100, 0), '%')}${KV('q بعد سنة', fmt(q1, 0), 'bbl/d')}${KV('q بعد 5 سنوات', fmt(arpsQ(qi, Di, b, 5), 0), 'bbl/d')}${KV(`تراكمي ${fmt(T, 0)} سنوات`, fmt(np / 1000, 0), 'Mbbl')}${KV('عمر الجدوى', tEcon ? fmt(tEcon, 1) : '>100', 'yr')}</div>
+   ${b > 1 ? MSG('b > 1: صالحة أثناء التدفق العابر فقط؛ على المدى الطويل تُحوَّل إلى معدل هبوط نهائي (terminal decline) لتفادي المبالغة في EUR.', 'warn') : ''}`);
+};
+
+/* ---- events ---- */
+function hfInit() {
+  document.addEventListener('input', e => {
+    const t = e.target;
+    if (t.id === 'hf_t') { HFS.playing = false; const b = document.getElementById('hf_play'); if (b) b.textContent = 'تشغيل'; hfSetT(+t.value / 1000); }
+    if (t.id === 'hf_fl') { HFS.fluid = t.value; hfUpdateUI(); }
+    if (t.id === 'hf_mu') hfUpdateUI();
+    if (t.id === 'hf_cmax') hfRefresh();
+    if (t.id === 'hf_bar') { HFS.barrier = t.value; hfUpdateUI(); }
+    if (t.id === 'hf_brk') { HFS.breaker = t.value; hfUpdateUI(); }
+    if (t.id === 'pp_v') { PP.playing = false; const b = document.getElementById('pp_play'); if (b) b.textContent = 'تشغيل'; PP.v = +t.value; ppRender(); }
+    if (t.id === 'ht_pre' && t.value !== 'cu') { const v = HT_PRE[t.value]; setv('ht_rf', v[0]); setv('ht_mu', v[1]); }
+  });
+  document.addEventListener('click', e => {
+    const t = e.target;
+    if (t.id === 'hf_play') return hfPlay(!HFS.playing);
+    if (t.id === 'hf_rst') { hfPlay(false); hfSetT(0); return; }
+    const ch = t.closest('.phchip'); if (ch) { const p = HF_PH.find(x => x[0] === ch.dataset.ph); hfPlay(false); hfSetT(p[2] + (p[3] - p[2]) * 0.55); return; }
+    if (t.id === 'pp_play') { PP.playing = !PP.playing; PP.last = 0; t.textContent = PP.playing ? 'إيقاف مؤقت' : 'تشغيل'; if (PP.playing) { if (PP.v >= 800) PP.v = 0; requestAnimationFrame(ppLoop); } return; }
+    const eq = t.closest('#spreadsvg .eqn'); if (eq && HFS.eq) HFS.eq(eq.dataset.eq);
+  });
+  document.addEventListener('keydown', e => { const eq = e.target.closest && e.target.closest('#spreadsvg .eqn'); if (eq && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); HFS.eq(eq.dataset.eq); } });
+  window.addEventListener('resize', () => hfDraw());
+  if (window.matchMedia) { const mq = window.matchMedia('(prefers-color-scheme: dark)'); if (mq.addEventListener) mq.addEventListener('change', () => hfDraw()); }
+}
+
 /* ===== Init ===== */
 function init() {
   $('#app').innerHTML = `<div class="top"><div class="brand"><h1>رحلة البرميل</h1><span>من قاع البئر إلى التصدير · أداة تعلّم هندسية</span></div>
@@ -1389,7 +1971,7 @@ function init() {
     ${caseHTML()}
     ${TABS.map(([id]) => `<main class="pane" id="pane-${id}" hidden></main>`).join('')}
     <div class="foot">أداة تعليمية: الحاسبات تقريبية وتعتمد على علاقات ارتباطية منشورة. لا تُستخدم للتصميم النهائي أو للقياس التجاري. راجع تبويب "مرجع" للحدود والمراجع.</div>`;
-  buildMap(); buildWell(); buildSep(); buildGas(); buildStore(); buildTrouble(); buildFrac(); buildRef();
+  buildMap(); buildWell(); buildSep(); buildGas(); buildStore(); buildTrouble(); buildFrac(); buildRef(); buildHF(); hfInit();
   const prev = $$('.pane'); void prev;
 
   document.addEventListener('input', e => {
@@ -1419,11 +2001,11 @@ function init() {
   window.scrollTo(0, 0);
 }
 function safe(k) { try { RUN[k](); } catch (err) { console.error(k, err); } }
-function runAll() { ['stream', 'fall', 'nodal', 'choke', 'al', 'sep', 'stokes', 'heat', 'comp', 'hyd', 'pw', 'tank', 'farm', 'pipe', 'frac'].forEach(safe); }
+function runAll() { ['hs', 'hp', 'hb', 'ht', 'ha', 'stream', 'fall', 'nodal', 'choke', 'al', 'sep', 'stokes', 'heat', 'comp', 'hyd', 'pw', 'tank', 'farm', 'pipe', 'frac'].forEach(safe); }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 
 /* ===== bidi: isolate Latin/number runs inside Arabic text ===== */
-const LAT_RE = /[A-Za-z0-9(Ͱ-Ͽ][A-Za-z0-9 .,:;\/%°≈<>±×·+\-−–'"µ²³⁰¹⁴-₉()=*^√→Ͱ-Ͽ]*/g;
+const LAT_RE = /[A-Za-z0-9(Ͱ-Ͽ][A-Za-z0-9 .,:;\/%°≈<>±×÷·+\-−–'"µ²³⁰¹⁴-₉()=*^√→_′≥≤Ͱ-Ͽ]*/g;
 function trimRun(s) {
   s = s.replace(/[ .,:;'"\-–−+=*^<>·]+$/, '');
   let bal = 0, bad = [];
