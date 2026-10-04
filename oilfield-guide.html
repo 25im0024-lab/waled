@@ -1,0 +1,1466 @@
+<title>رحلة البرميل</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout concept: drawing-board app. Sticky tab rail on top, shared "field case" drawer under it,
+   then one working surface per tab: explanation on the right, instruments (inputs/outputs) beside it. */
+:root{
+  --bg:#e7ecee; --surface:#f6f9f9; --surface2:#dbe4e7; --ink:#10212a; --muted:#4c5f68; --line:#bdcace;
+  --accent:#0a5b6d; --accent-ink:#ffffff; --accent-soft:#cfe4e9;
+  --oil:#97560a; --oil-bg:#ecd6b3; --water:#1a5fa3; --water-bg:#c9def2; --gas:#a93526; --gas-bg:#f1cfc8;
+  --ok:#1b6f43; --warn:#9a6200; --bad:#ae2219; --ok-bg:#d3ebdc; --warn-bg:#f5e4bd; --bad-bg:#f6d4d0;
+  --earth:#d9d0c2; --earth2:#c7bdac;
+  --font:'IBM Plex Sans Arabic','Segoe UI',Tahoma,system-ui,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0d171b; --surface:#142126; --surface2:#1d2e34; --ink:#e4edef; --muted:#93a8af; --line:#2b3d44;
+  --accent:#56bccf; --accent-ink:#06222a; --accent-soft:#17353d;
+  --oil:#e5a652; --oil-bg:#40301b; --water:#62aeea; --water-bg:#193349; --gas:#ec8173; --gas-bg:#4a2621;
+  --ok:#5fcf93; --warn:#e8b552; --bad:#f08a80; --ok-bg:#173a27; --warn-bg:#41330f; --bad-bg:#47201d;
+  --earth:#2b2a27; --earth2:#23221f; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0d171b; --surface:#142126; --surface2:#1d2e34; --ink:#e4edef; --muted:#93a8af; --line:#2b3d44;
+  --accent:#56bccf; --accent-ink:#06222a; --accent-soft:#17353d;
+  --oil:#e5a652; --oil-bg:#40301b; --water:#62aeea; --water-bg:#193349; --gas:#ec8173; --gas-bg:#4a2621;
+  --ok:#5fcf93; --warn:#e8b552; --bad:#f08a80; --ok-bg:#173a27; --warn-bg:#41330f; --bad-bg:#47201d;
+  --earth:#2b2a27; --earth2:#23221f; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:15px;line-height:1.75;padding-inline:16px;padding-block:0 48px;margin:0}
+#app{max-width:1240px;margin-inline:auto}
+h1,h2,h3,h4{line-height:1.35;margin:0;text-wrap:balance}
+p{margin:0}
+.ltr{direction:ltr;unicode-bidi:isolate}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+a{color:var(--accent)}
+button{font-family:inherit;font-size:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+/* header + tabs */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--bg);padding-block:12px 0;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;padding-bottom:8px}
+.brand h1{font-size:22px;font-weight:700;letter-spacing:0}
+.brand span{color:var(--muted);font-size:13px}
+.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:thin}
+.tab{flex:0 0 auto;border:0;background:transparent;padding:9px 14px;cursor:pointer;color:var(--muted);font-weight:500;border-bottom:3px solid transparent;white-space:nowrap}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent);font-weight:700}
+.tab:hover{color:var(--ink)}
+
+/* shared case drawer */
+details.case{margin-block:14px 0;background:var(--surface);border:1px solid var(--line);border-radius:6px}
+details.case>summary{cursor:pointer;padding:10px 14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;list-style:none}
+details.case>summary::-webkit-details-marker{display:none}
+details.case>summary b{font-weight:700}
+details.case>summary .sum{color:var(--muted);font-size:13px;font-family:var(--mono);direction:ltr}
+details.case>summary::before{content:"▸";color:var(--accent);transition:transform .15s}
+details.case[open]>summary::before{transform:rotate(90deg)}
+.case-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px 14px;padding:4px 14px 14px}
+.case-grp{grid-column:1/-1;font-size:12px;color:var(--muted);font-weight:600;letter-spacing:.04em;border-top:1px solid var(--line);padding-top:8px;margin-top:2px}
+.case-grp:first-child{border:0;padding:0;margin:0}
+
+/* sections */
+.pane{padding-block:22px 0}
+.pane[hidden]{display:none}
+.lead{max-width:78ch;color:var(--ink)}
+.sec{margin-top:30px}
+.sec>h2{font-size:19px;font-weight:700;padding-bottom:6px;margin-bottom:10px;border-bottom:1px solid var(--line)}
+.sec>h2 small{color:var(--muted);font-weight:500;font-size:13px;margin-inline-start:8px}
+.sec p+p{margin-top:8px}
+.twocol{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:22px;align-items:start}
+@media (max-width:900px){.twocol{grid-template-columns:minmax(0,1fr)}}
+.note{border-inline-start:3px solid var(--accent);background:var(--accent-soft);padding:8px 12px;border-radius:2px;margin-top:10px;font-size:14px}
+.note.warn{border-color:var(--warn);background:var(--warn-bg)}
+.note.bad{border-color:var(--bad);background:var(--bad-bg)}
+ul.tight{margin:6px 0 0;padding-inline-start:20px}
+ul.tight li{margin-block:2px}
+.badge{display:inline-block;font-size:11px;font-weight:600;padding:0 7px;border-radius:9px;line-height:1.7;vertical-align:1px;margin-inline:2px}
+.b-est{background:var(--ok-bg);color:var(--ok)}
+.b-inf{background:var(--warn-bg);color:var(--warn)}
+.b-spec{background:var(--bad-bg);color:var(--bad)}
+
+/* calculator panel */
+.calc{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:16px}
+.calc>h3{font-size:16px;font-weight:700;margin-bottom:2px}
+.calc>.sub{color:var(--muted);font-size:13px;margin-bottom:12px}
+.calc-body{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:20px}
+@media (max-width:820px){.calc-body{grid-template-columns:minmax(0,1fr)}}
+.fgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px 12px;align-content:start}
+.f{display:flex;flex-direction:column;gap:2px;min-width:0}
+.fl{font-size:12.5px;color:var(--muted);line-height:1.4}
+.fi{display:flex;align-items:center;border:1px solid var(--line);border-radius:4px;background:var(--bg);min-width:0}
+.fi:focus-within{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+.fi input,.fi select{flex:1;min-width:0;border:0;background:transparent;color:var(--ink);font-family:var(--mono);font-size:14px;padding:6px 8px;direction:ltr;text-align:left}
+.fi select{font-family:var(--font);direction:rtl;text-align:right}
+.fi input:focus,.fi select:focus{outline:0}
+.fi b{font-weight:500;font-size:11.5px;color:var(--muted);padding-inline:6px;font-family:var(--mono);direction:ltr;white-space:nowrap}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.btn{border:1px solid var(--line);background:var(--surface2);padding:6px 12px;border-radius:4px;cursor:pointer;font-size:13.5px}
+.btn:hover{border-color:var(--accent)}
+.btn.pri{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+.out{display:flex;flex-direction:column;gap:12px;min-width:0}
+.kvs{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.kv{border:1px solid var(--line);border-radius:4px;padding:6px 10px;background:var(--bg);min-width:0}
+.kv small{display:block;color:var(--muted);font-size:12px;line-height:1.4}
+.kv strong{font-family:var(--mono);font-size:17px;font-weight:600;direction:ltr;display:block;text-align:right;overflow-wrap:anywhere}
+.kv strong i{font-style:normal;font-size:11.5px;color:var(--muted);font-weight:500;margin-inline-start:4px}
+.kv.ok{border-color:var(--ok)} .kv.warn{border-color:var(--warn)} .kv.bad{border-color:var(--bad)}
+.kv.ok strong{color:var(--ok)} .kv.warn strong{color:var(--warn)} .kv.bad strong{color:var(--bad)}
+.msg{font-size:13.5px;padding:7px 10px;border-radius:4px;background:var(--surface2)}
+.msg.ok{background:var(--ok-bg);color:var(--ok)} .msg.warn{background:var(--warn-bg);color:var(--warn)} .msg.bad{background:var(--bad-bg);color:var(--bad)}
+.tblwrap{overflow-x:auto;border:1px solid var(--line);border-radius:4px;background:var(--bg)}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{padding:5px 10px;text-align:start;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-weight:600;color:var(--muted);font-size:12px;background:var(--surface2)}
+td.n,th.n{text-align:end;font-family:var(--mono);direction:ltr;font-variant-numeric:tabular-nums}
+tr.hi td{background:var(--ok-bg);font-weight:600}
+tr:last-child td{border-bottom:0}
+.chart{width:100%;height:auto;display:block;max-width:100%}
+.chart text{font-family:var(--mono);font-size:11px;fill:var(--muted)}
+.chart .tt{fill:var(--ink);font-family:var(--font);font-size:12px}
+.chart .axis{stroke:var(--line);stroke-width:1}
+.chart .gridl{stroke:var(--line);stroke-width:.6;stroke-dasharray:2 3}
+figure{margin:0}
+figcaption{font-size:12.5px;color:var(--muted);margin-top:4px}
+
+/* map */
+.mapwrap{overflow-x:auto;border:1px solid var(--line);border-radius:6px;background:var(--surface)}
+#mapsvg{min-width:1120px;width:100%;height:auto;display:block;direction:ltr}
+#mapsvg text{font-family:var(--font);fill:var(--ink)}
+#mapsvg .lb{font-size:14px;font-weight:600}
+#mapsvg .la{font-size:13px;fill:var(--muted)}
+#mapsvg .ls{font-size:12px;fill:var(--muted);font-family:var(--mono)}
+#mapsvg .zone{font-size:14px;font-weight:700;fill:var(--muted);letter-spacing:.03em}
+#mapsvg .sky{fill:var(--surface)}
+#mapsvg .earth{fill:var(--earth)}
+#mapsvg .ground{stroke:var(--ink);stroke-width:2}
+#mapsvg .strata{stroke:var(--earth2);stroke-width:2;stroke-dasharray:10 6;fill:none}
+#mapsvg .eq{fill:var(--surface);stroke:var(--ink);stroke-width:2}
+#mapsvg .eq2{fill:none;stroke:var(--ink);stroke-width:2}
+#mapsvg .thin{fill:none;stroke:var(--ink);stroke-width:1.4}
+#mapsvg .tub{fill:none;stroke:var(--ink);stroke-width:5}
+#mapsvg .perf{stroke:var(--ink);stroke-width:2}
+#mapsvg .f-gas{fill:var(--gas-bg)} #mapsvg .f-oil{fill:var(--oil-bg)} #mapsvg .f-water{fill:var(--water-bg)}
+#mapsvg .fill-gas{fill:var(--gas)}
+#mapsvg .ln{fill:none;stroke-width:3.2;stroke-linejoin:round}
+#mapsvg .ln-oil{stroke:var(--oil)} #mapsvg .ln-gas{stroke:var(--gas)} #mapsvg .ln-water{stroke:var(--water)} #mapsvg .ln-mix{stroke:var(--ink);stroke-width:2.6}
+#mapsvg .flow{stroke-dasharray:9 7;animation:flow 1.1s linear infinite}
+#mapsvg .m-oil{fill:var(--oil)} #mapsvg .m-gas{fill:var(--gas)} #mapsvg .m-water{fill:var(--water)} #mapsvg .m-ink{fill:var(--ink)}
+@keyframes flow{to{stroke-dashoffset:-16}}
+@media (prefers-reduced-motion:reduce){#mapsvg .flow{animation:none}}
+#mapsvg .node{cursor:pointer}
+#mapsvg .hl{fill:var(--accent);opacity:0}
+#mapsvg .node:hover .hl{opacity:.08}
+#mapsvg .node.sel .hl{opacity:.16}
+#mapsvg .node.sel .eq,#mapsvg .node.sel .eq2{stroke:var(--accent);stroke-width:3}
+#mapsvg .badgeN circle{fill:var(--ink)}
+#mapsvg .badgeN text{fill:var(--bg);font-size:12.5px;font-weight:700;font-family:var(--mono)}
+#mapsvg .node.sel .badgeN circle{fill:var(--accent)}
+#mapsvg .node.sel .badgeN text{fill:var(--accent-ink)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-top:8px}
+.legend i{display:inline-block;width:22px;height:0;border-top:3px solid;vertical-align:middle;margin-inline-end:6px}
+.steps{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0 10px}
+.step{border:1px solid var(--line);background:var(--surface);border-radius:15px;padding:2px 11px;font-size:13px;cursor:pointer}
+.step[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+.step small{font-family:var(--mono);margin-inline-end:5px;opacity:.75}
+.detail{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:22px;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:16px}
+@media (max-width:900px){.detail{grid-template-columns:minmax(0,1fr)}}
+.detail h3{font-size:18px}
+.detail h3 .en{font-family:var(--mono);font-size:13px;color:var(--muted);margin-inline-start:8px;direction:ltr;unicode-bidi:isolate}
+.detail h4{font-size:13px;color:var(--muted);font-weight:600;margin-top:12px;letter-spacing:.03em}
+.detail p{margin-top:8px}
+.detail .nav{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+dl.cond{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin:6px 0 0;font-size:13.5px}
+dl.cond dt{color:var(--muted)} dl.cond dd{margin:0}
+
+/* trouble cards */
+.tcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.tcard{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:14px;min-width:0}
+.tcard h3{font-size:16px}
+.tcard .sym{color:var(--muted);font-size:13.5px;margin-top:4px}
+.tcard h4{font-size:12px;color:var(--muted);margin-top:10px;letter-spacing:.04em}
+.tcard ul{margin:3px 0 0;padding-inline-start:18px;font-size:13.5px}
+.tcard .tg{font-size:11.5px;color:var(--accent);font-weight:600}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:14px;padding:1px 11px;cursor:pointer;font-size:13px}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+
+/* glossary */
+.gsearch{width:100%;max-width:420px;border:1px solid var(--line);border-radius:4px;background:var(--surface);color:var(--ink);padding:7px 10px;font-family:var(--font);font-size:14px;margin-bottom:10px}
+.gloss{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:2px 24px}
+.gloss div{padding:5px 0;border-bottom:1px solid var(--line);font-size:14px}
+.gloss b{font-family:var(--mono);font-size:13px;direction:ltr;unicode-bidi:isolate;display:inline-block;margin-inline-end:6px}
+.bar{height:8px;border-radius:4px;background:var(--surface2);overflow:hidden;min-width:90px}
+.bar i{display:block;height:100%;background:var(--accent)}
+.foot{margin-top:40px;padding-top:14px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}
+</style>
+
+<div id="app"></div>
+<script>
+/*CORE-START*/
+/* ===== Pure engineering functions (field units unless stated) ===== */
+const C = {
+  rhoW: 62.37,        // lb/ft3 fresh water @ 60F
+  lbPerBblW: 350.2,   // lb per bbl fresh water
+  gasLbScf: 0.0763,   // lb/scf per unit gas SG (air 28.964/379.48)
+  ft3Bbl: 5.6146,
+  g: 32.174
+};
+const apiToSG = api => 141.5 / (131.5 + api);
+const sgToApi = sg => 141.5 / sg - 131.5;
+
+/* Standing (1947) */
+function standingRs(P, T, api, gg) {
+  return gg * Math.pow((P / 18.2 + 1.4) * Math.pow(10, 0.0125 * api - 0.00091 * T), 1.2048);
+}
+function standingPb(Rs, T, api, gg) {
+  return 18.2 * (Math.pow(Rs / gg, 0.83) * Math.pow(10, 0.00091 * T - 0.0125 * api) - 1.4);
+}
+function standingBo(Rs, T, api, gg) {
+  const go = apiToSG(api);
+  return 0.9759 + 0.00012 * Math.pow(Rs * Math.sqrt(gg / go) + 1.25 * T, 1.2);
+}
+/* Sutton pseudo-criticals + Papay Z */
+function zPapay(P, T, gg) {
+  const Tpc = 169.2 + 349.5 * gg - 74 * gg * gg;
+  const Ppc = 756.8 - 131 * gg - 3.6 * gg * gg;
+  const Tpr = (T + 459.67) / Tpc, Ppr = P / Ppc;
+  return 1 - 3.52 * Ppr * Math.pow(10, -0.9813 * Tpr) + 0.274 * Ppr * Ppr * Math.pow(10, -0.8157 * Tpr);
+}
+/* Beggs-Robinson (1975) dead oil viscosity, cP, T in F */
+function muDeadOil(api, T) {
+  const z = 3.0324 - 0.02023 * api;
+  const y = Math.pow(10, z);
+  const x = y * Math.pow(T, -1.163);
+  return Math.pow(10, x) - 1;
+}
+
+/* ===== IPR: composite Darcy (above Pb) + Vogel (below Pb) ===== */
+function iprQ(pwf, Pr, Pb, J) {
+  pwf = Math.max(0, Math.min(pwf, Pr));
+  if (Pb >= Pr) { // saturated: pure Vogel
+    const qmax = J * Pr / 1.8, r = pwf / Pr;
+    return qmax * (1 - 0.2 * r - 0.8 * r * r);
+  }
+  const qb = J * (Pr - Pb);
+  if (pwf >= Pb) return J * (Pr - pwf);
+  const r = pwf / Pb;
+  return qb + (J * Pb / 1.8) * (1 - 0.2 * r - 0.8 * r * r);
+}
+function iprQmax(Pr, Pb, J) { return Pb >= Pr ? J * Pr / 1.8 : J * (Pr - Pb) + J * Pb / 1.8; }
+function iprPwf(q, Pr, Pb, J) {
+  if (Pb >= Pr) {
+    const qmax = J * Pr / 1.8; if (q >= qmax) return 0;
+    const x = q / qmax; return Pr * (-0.2 + Math.sqrt(0.04 + 3.2 * (1 - x))) / 1.6;
+  }
+  const qb = J * (Pr - Pb);
+  if (q <= qb) return Pr - q / J;
+  const qv = J * Pb / 1.8; const x = (q - qb) / qv;
+  if (x >= 1) return 0;
+  return Pb * (-0.2 + Math.sqrt(0.04 + 3.2 * (1 - x))) / 1.6;
+}
+
+/* ===== VLP: homogeneous no-slip, segment-wise, top -> bottom ===== */
+function vlpPwf(q, p) {
+  const N = p.N || 40;
+  const fo = 1 - p.wc, fw = p.wc, go = apiToSG(p.api);
+  const D = p.id / 12, A = Math.PI / 4 * D * D, eps = (p.eps || 0.0006) / 12;
+  let P = p.whp, z = 0;
+  const dz = p.TVD / N, dL = p.MD / N;
+  let pumpDone = !(p.dpPump > 0);
+  let gasFracTop = null, gasFracBot = null;
+  const props = (Pm, zm) => {
+    const T = p.Twh + (p.Tbh - p.Twh) * zm / p.TVD;
+    const Rs = Math.min(p.gor, standingRs(Pm, T, p.api, p.gg));
+    const Bo = standingBo(Rs, T, p.api, p.gg);
+    const Rfree = Math.max(p.gor - Rs, 0);
+    const inj = (p.glrInj > 0 && zm < p.zInj) ? p.glrInj : 0;
+    const Z = zPapay(Pm, T, p.gg);
+    const Bg = 0.02827 * Z * (T + 459.67) / Pm; // ft3/scf
+    const Vg = (fo * Rfree + inj) * Bg;
+    const Vo = fo * Bo * C.ft3Bbl, Vw = fw * C.ft3Bbl;
+    const Vt = Vo + Vw + Vg;
+    const mass = fo * (C.lbPerBblW * go + p.gor * p.gg * C.gasLbScf) + fw * C.lbPerBblW * p.gw + inj * p.gg * C.gasLbScf;
+    const rho = mass / Vt;
+    const v = q * Vt / 86400 / A;
+    const lamL = (Vo + Vw) / Vt;
+    const mu = Math.max(lamL * p.muL + (1 - lamL) * 0.015, 0.012);
+    const Re = 1488 * rho * v * D / mu;
+    let f;
+    if (Re < 2100) f = 64 / Math.max(Re, 1);
+    else { const t = Math.log10(eps / (3.7 * D) + 5.74 / Math.pow(Re, 0.9)); f = 0.25 / (t * t); }
+    const dpf = f * (dL / D) * rho * v * v / (2 * C.g) / 144;
+    const dph = rho * dz / 144;
+    return { dp: dph + dpf, gasFrac: Vg / Vt, rho, v, Re, dph, dpf };
+  };
+  let sumF = 0, sumH = 0;
+  for (let i = 0; i < N; i++) {
+    const zm = z + dz / 2;
+    let a = props(P, zm);
+    let Pend = P + a.dp;
+    const b = props((P + Pend) / 2, zm);
+    Pend = P + b.dp;
+    if (i === 0) gasFracTop = b.gasFrac;
+    if (i === N - 1) gasFracBot = b.gasFrac;
+    sumF += b.dpf; sumH += b.dph;
+    P = Pend; z += dz;
+    if (!pumpDone && z >= p.zPump - 1e-6) { P -= p.dpPump; pumpDone = true; }
+    if (!(P > 5)) return { pwf: NaN, bad: true };
+  }
+  return { pwf: P, gasFracTop, gasFracBot, dpFric: sumF, dpHyd: sumH };
+}
+/* operating point: stable intersection VLP/IPR */
+function nodalSolve(p, Pr, Pb, J) {
+  const qmax = iprQmax(Pr, Pb, J);
+  const g = q => { const v = vlpPwf(q, p).pwf; return isNaN(v) ? NaN : v - iprPwf(q, Pr, Pb, J); };
+  const n = 60; let prevQ = qmax * 0.01, prevG = g(prevQ);
+  let found = null;
+  for (let i = 2; i <= n; i++) {
+    const q = qmax * (i / n) * 0.995;
+    const gq = g(q);
+    if (!isNaN(prevG) && !isNaN(gq) && prevG < 0 && gq >= 0) {
+      let lo = prevQ, hi = q;
+      for (let k = 0; k < 40; k++) { const mid = (lo + hi) / 2; (g(mid) < 0 ? (lo = mid) : (hi = mid)); }
+      found = (lo + hi) / 2; break; // first upward crossing (lowest-rate stable point)
+    }
+    prevQ = q; prevG = gq;
+  }
+  return { q: found, qmax };
+}
+
+/* ===== Chokes (multiphase critical flow, empirical) ===== */
+const CHOKES = {
+  Gilbert:   { A: 10.0, B: 0.546, Cc: 1.89 },
+  Ros:       { A: 17.4, B: 0.5,   Cc: 2.0 },
+  Baxendell: { A: 9.56, B: 0.546, Cc: 1.93 },
+  Achong:    { A: 3.82, B: 0.65,  Cc: 1.88 }
+};
+const chokeP = (k, q, R, S) => { const c = CHOKES[k]; return c.A * Math.pow(R, c.B) * q / Math.pow(S, c.Cc); };
+const chokeS = (k, q, R, P) => { const c = CHOKES[k]; return Math.pow(c.A * Math.pow(R, c.B) * q / P, 1 / c.Cc); };
+
+/* ===== Separators (Arnold & Stewart style, horizontal, 50% liquid-filled) ===== */
+function gasDensity(P, T, gg) { const Z = zPapay(P, T, gg); return { Z, rho: 2.699 * gg * P / (Z * (T + 459.67)) }; }
+function dropletVt(dm, rhoL, rhoG, mu) {
+  let Cd = 0.34, Vt = 0;
+  for (let i = 0; i < 60; i++) {
+    Vt = 0.0119 * Math.sqrt((rhoL - rhoG) / rhoG * dm / Cd);
+    const Re = 0.0049 * rhoG * dm * Vt / mu;
+    const Cn = 0.34 + 3 / Math.sqrt(Re) + 24 / Re;
+    if (Math.abs(Cn - Cd) < 1e-6) { Cd = Cn; break; }
+    Cd = 0.5 * (Cd + Cn);
+  }
+  return { Vt, Cd };
+}
+function sepSizing(p) {
+  const T = p.T, P = p.Pg + 14.696, TR = T + 459.67;
+  const { Z, rho: rhoG } = gasDensity(P, T, p.gg);
+  const rhoO = 62.4 * apiToSG(p.api);
+  const { Vt, Cd } = dropletVt(p.dm, rhoO, rhoG, p.muG);
+  const dLg = 420 * (TR * Z * p.Qg / P) * Math.sqrt(rhoG / (rhoO - rhoG) * Cd / p.dm);
+  const d2L = 1.42 * (p.Qo * p.to + p.Qw * p.tw);
+  const rows = [];
+  for (const d of [24, 30, 36, 42, 48, 54, 60, 72, 84, 96, 108, 120]) {
+    const Lg = dLg / d, Ll = d2L / (d * d);
+    const gasGov = Lg >= Ll, Leff = Math.max(Lg, Ll);
+    const Lss = gasGov ? Leff + d / 12 : Leff * 4 / 3;
+    const SR = 12 * Lss / d;
+    rows.push({ d, Lg, Ll, Leff, Lss, SR, gasGov, ok: SR >= 3 && SR <= 5.5 });
+  }
+  let best = null;
+  for (const r of rows) if (r.ok && (!best || r.d * r.Lss < best.d * best.Lss)) best = r;
+  return { rhoG, rhoO, Z, Vt, Cd, dLg, d2L, rows, best };
+}
+
+/* ===== Stokes ===== */
+/* SI: d [m], drho [kg/m3], mu [Pa.s] -> m/s ; sign gives direction */
+const stokesV = (d, drho, mu) => 9.80665 * drho * d * d / (18 * mu);
+const stokesCut = (vs, drho, mu) => Math.sqrt(18 * mu * vs / (9.80665 * Math.abs(drho)));
+
+/* ===== Gas compression ===== */
+function compressor(p) {
+  const P1 = p.P1 + 14.696, P2 = p.P2 + 14.696, T1 = p.T1 + 459.67;
+  const r = P2 / P1;
+  const n = Math.max(1, Math.ceil(Math.log(r) / Math.log(p.rmax)));
+  const rs = Math.pow(r, 1 / n);
+  const Z = zPapay(P1, p.T1, p.gg);
+  const e = (p.k - 1) / p.k;
+  const nd = p.Q * 1e6 / (379.48 * 24); // lbmol/h
+  const wIs = (p.k / (p.k - 1)) * Z * 1.986 * T1 * (Math.pow(rs, e) - 1) * nd; // BTU/h per stage
+  const hpStage = wIs / p.eta / 2544.43;
+  const Td = T1 * (1 + (Math.pow(rs, e) - 1) / p.eta) - 459.67;
+  const acfm = p.Q * 1e6 / 1440 * (14.696 / P1) * (T1 / 519.67) * Z;
+  return { r, n, rs, Z, hpStage, hpTot: hpStage * n, Td, acfm };
+}
+
+/* ===== Hydrate inhibitor (Hammerschmidt) ===== */
+const INHIB = { MeOH: { M: 32.04, K: 2335, lbGal: 6.63 }, MEG: { M: 62.07, K: 2700, lbGal: 9.26 } };
+function hammerschmidt(dT, key) { const i = INHIB[key]; return 100 * dT * i.M / (i.K + dT * i.M); }
+
+/* ===== Crude volume correction (API MPMS 11.1 style, crude oil) ===== */
+function crudeCorr(apiObs, Tobs) {
+  const K0 = 341.0957, dT = Tobs - 60;
+  let rho60 = 141.5 / (131.5 + apiObs) * 999.016;
+  const rhoObs = rho60;
+  for (let i = 0; i < 50; i++) {
+    const a = K0 / (rho60 * rho60);
+    const vcf = Math.exp(-a * dT * (1 + 0.8 * a * dT));
+    rho60 = rhoObs / vcf;
+  }
+  const a = K0 / (rho60 * rho60);
+  const vcf = Math.exp(-a * dT * (1 + 0.8 * a * dT));
+  return { rho60, api60: 141.5 / (rho60 / 999.016) - 131.5, alpha: a, vcf };
+}
+const tankBblPerFt = d => Math.PI / 4 * d * d / C.ft3Bbl;
+
+/* ===== Pipeline hydraulics (liquid, Darcy-Weisbach, Swamee-Jain) ===== */
+function pipeline(p) {
+  const D = p.id / 12, A = Math.PI / 4 * D * D;
+  const Qf = p.Q * C.ft3Bbl / 86400;
+  const v = Qf / A;
+  const rho = 62.4 * apiToSG(p.api);
+  const Re = 1488 * rho * v * D / p.mu;
+  const eps = p.eps / 12;
+  let f;
+  if (Re < 2100) f = 64 / Re;
+  else { const t = Math.log10(eps / (3.7 * D) + 5.74 / Math.pow(Re, 0.9)); f = 0.25 / (t * t); }
+  const L = p.Lmi * 5280;
+  const dpPerMi = f * (5280 / D) * rho * v * v / (2 * C.g) / 144;
+  const dpF = dpPerMi * p.Lmi;
+  const dpS = rho * p.dz / 144;
+  const dpTot = dpF + dpS;
+  const Pdis = p.Pdel + dpTot;
+  const hpH = p.Q * dpTot / 58770;
+  const hrs = L / v / 3600;
+  const vol = A * L / C.ft3Bbl;
+  return { v, Re, f, dpPerMi, dpF, dpS, dpTot, Pdis, hpH, hrs, vol, rho, lam: Re < 2100 };
+}
+
+/* ===== Stage gas release (Standing Rs between stage pressures) ===== */
+function stageBalance(c) {
+  const T = c.Tres;
+  const qo = c.qL * (1 - c.wc / 100), qw = c.qL * c.wc / 100;
+  const Pb = standingPb(c.gor, T, c.api, c.gg);
+  const RsAt = P => Math.min(c.gor, standingRs(P, T, c.api, c.gg));
+  const Rs0 = RsAt(Pb), Rs14 = standingRs(14.696, T, c.api, c.gg);
+  const pts = [Pb, c.Psep1 + 14.696, c.Psep2 + 14.696, 14.696];
+  const denom = Rs0 - Rs14;
+  const frac = [];
+  for (let i = 1; i < pts.length; i++) frac.push((standingRs(pts[i - 1], T, c.api, c.gg) - standingRs(pts[i], T, c.api, c.gg)) / denom);
+  const Bo = standingBo(c.gor, T, c.api, c.gg);
+  return { qo, qw, Pb, Bo, shrink: 1 - 1 / Bo, frac, gas: frac.map(f => f * qo * c.gor / 1e6), gasTot: qo * c.gor / 1e6 };
+}
+/*CORE-END*/
+
+/* ===== Content data (Arabic + English technical terms) ===== */
+const STAGES = [
+  { id: 'reservoir', en: 'Reservoir', ar: 'المكمن', zone: 'تحت الأرض', tab: 'well',
+    what: ['صخر مسامي (غالباً sandstone أو carbonate) يحتوي نفطاً وغازاً وماءً مضغوطين. الموائع لا "تُسحب" من المكمن؛ تتحرك لأن ضغط المكمن Pr أعلى من ضغط قاع البئر المتدفق Pwf. الفرق Pr − Pwf يسمى drawdown.',
+           'مصدر الطاقة (drive mechanism) يحدد عمر الحقل: solution-gas drive (ينخفض الضغط بسرعة)، gas-cap drive، water drive (يحافظ على الضغط لكن يرفع water cut لاحقاً)، compaction.'],
+    cond: [['Pr نموذجي', '≈ 0.43–0.50 psi لكل قدم عمق (مكمن بضغط طبيعي)'], ['T المكمن', '≈ 1–1.6°F لكل 100 قدم فوق درجة حرارة السطح'], ['القياس', 'PBU / DST / PLT / gauges في قاع البئر']],
+    equip: ['لا معدات سطحية: القياس عبر downhole gauges واختبارات الضغط (build-up)'],
+    watch: ['اتجاه Pr بمرور الوقت (material balance)', 'ارتفاع GOR (gas coning أو هبوط Pr تحت Pb)', 'ارتفاع water cut (water coning / breakthrough)'],
+    fail: ['formation damage / skin عالٍ ← يقلل PI', 'sand production في الصخور الضعيفة', 'انخفاض Pr تحت bubble point ← تحرر غاز في المكمن وتدهور الإنتاج'] },
+
+  { id: 'wellbore', en: 'Wellbore', ar: 'قاع البئر حتى السطح', zone: 'تحت الأرض', tab: 'well',
+    what: ['المائع يدخل عبر perforations إلى الـ casing ثم يصعد في الـ tubing. الـ packer يعزل الـ annulus. صمام SCSSV (صمام أمان تحت السطح) يُغلق تلقائياً عند فقدان ضغط التحكم.',
+           'في الـ tubing الضغط يضيع أساساً في الـ hydrostatic head (وزن عمود المائع) ثم الاحتكاك. عندما ينزل الضغط تحت Pb يتحرر الغاز، فتنخفض كثافة الخليط ويخف عمود الضغط (لهذا يتدفق البئر طبيعياً).',
+           'إذا لم يكفِ ضغط المكمن لرفع المائع: artificial lift (ESP, gas lift, rod pump, PCP, plunger).'],
+    cond: [['Tubing OD شائع', '2⅞" – 4½" (ID ≈ 2.44–3.96")'], ['العمق', '3,000 – 15,000 ft (أمثلة شائعة)'], ['ضغط الـ annulus', 'يُراقب دوماً كمؤشر لسلامة الـ casing/tubing']],
+    equip: ['Casing + cement', 'Tubing + packer', 'SCSSV', 'Gas-lift mandrels / ESP / rods حسب طريقة الرفع'],
+    watch: ['Pwf ومنحنى VLP مقابل IPR', 'ضغط tubing مقابل casing', 'amps/vibration في ESP، dynamometer في rod pump'],
+    fail: ['ترسب scale / wax / asphaltene داخل tubing', 'sand fill فوق الـ perforations', 'تسريب tubing (ضغوط annulus متشابهة مع tubing)', 'gas lock في ESP'] },
+
+  { id: 'wellhead', en: 'Wellhead & Choke', ar: 'رأس البئر والـ Choke', zone: 'السطح', tab: 'well',
+    what: ['شجرة الإنتاج (Christmas tree): master valves + wing valve + swab valve. صمام SSV الهيدروليكي مربوط بنظام ESD ويُغلق عند ضغط عالٍ جداً أو منخفض جداً (PSHH / PSLL).',
+           'الـ choke يتحكم في معدل الإنتاج ويفصل البئر عن ضغط المنشأة. في التدفق الحرج (critical flow: نسبة الضغط downstream/upstream < ≈ 0.55) لا يؤثر ضغط الفاصل على معدل البئر.',
+           'هبوط الضغط الكبير عبر الـ choke يخفض درجة الحرارة (Joule–Thomson) ← خطر hydrates/wax. وإذا كان هناك رمل ← تآكل (erosion) الـ choke.'],
+    cond: [['FWHP', '≈ 100 – 3,000 psi حسب الحقل'], ['تصنيف الضغط', 'API 6A: 2K/3K/5K/10K/15K'], ['Choke', 'fixed bean أو adjustable needle (بالـ 64ths of inch)']],
+    equip: ['Master valves / wing valve / swab', 'SSV + ESD', 'Choke (positive/adjustable)', 'Pressure & temperature transmitters'],
+    watch: ['FWHP و FLP (flowline pressure) ونسبتهما للتدفق الحرج', 'حجم الـ choke ومعدل الإنتاج', 'درجة الحرارة downstream (hydrate margin)'],
+    fail: ['choke washout بسبب الرمل ← ارتفاع مفاجئ في المعدل وهبوط FWHP', 'تجمد/hydrate عند الـ choke', 'تسريب من flanges أو valve stem'] },
+
+  { id: 'flowline', en: 'Flowline & Manifold', ar: 'خطوط التدفق والـ Manifold', zone: 'السطح', tab: 'trouble',
+    what: ['الـ flowline ينقل مائعاً متعدد الأطوار (multiphase) من رأس كل بئر إلى الـ manifold. عند الـ manifold يمكن توجيه كل بئر إما إلى production header (مع باقي الآبار) أو إلى test header ثم test separator لقياس معدلات البئر منفرداً (well test) وتخصيص الإنتاج (allocation).',
+           'أنماط التدفق (slug, stratified, annular) تحدد استقرار الفاصل: slug كبير يسبب ارتفاع مستوى مفاجئ وربما trip.',
+           'Pigging دوري يزيل wax والسوائل المتراكمة. Corrosion inhibitor يُحقن غالباً عند رأس البئر.'],
+    cond: [['سرعة التدفق', 'عادةً أقل من حد التآكل (erosional velocity) المحسوب بمعادلة API RP 14E'], ['اختبار الآبار', 'دوري (أسبوعي – شهري/ربع سنوي حسب سياسة الحقل)'], ['Pigging', 'launcher/receiver على الخط']],
+    equip: ['Flowlines', 'Production & test headers', 'Test separator', 'Pig launcher/receiver', 'Chemical injection (inhibitor, demulsifier, anti-wax)'],
+    watch: ['ΔP للخط (ارتفاعه يعني ترسب أو انسداد)', 'نتائج well test (GOR، water cut) مقارنةً بالسابق', 'حقن الكيماويات ومعدلاتها'],
+    fail: ['slug flow', 'wax deposition وانسداد', 'corrosion (CO₂/H₂S/MIC)', 'تسريب/تجمد خطوط صغيرة'] },
+
+  { id: 'separator', en: 'HP Separator', ar: 'الفصل (3-phase separator)', zone: 'السطح', tab: 'sep',
+    what: ['فاصل أفقي (غالباً) ثلاثي الأطوار: الغاز يخرج من الأعلى، النفط من فوق الـ weir، الماء من الأسفل. الفصل يتم بالجاذبية (Stokes) بعد inlet device يكسر الزخم، مع mist extractor (mesh pad أو vane) لإزالة قطرات السائل من الغاز.',
+           'التصميم يتحكم فيه قيدان: سعة الغاز (سرعة ترسب القطرات) و retention time للسائل (الزمن الكافي لفصل النفط والماء). لذلك يُقسم الفصل على مراحل (HP → LP) لتقليل shrinkage وفقد المكونات الخفيفة.',
+           'التحكم: LIC (مستوى) و PIC (ضغط) مع LSHH/LSLL و PSV لحماية الوعاء.'],
+    cond: [['ضغط HP نموذجي', '≈ 100 – 500 psig (يتحدد بضغط الغاز المصدَّر)'], ['Retention time', '≈ 3 – 10 دقائق (أطول للنفط الثقيل/البارد)'], ['Slenderness ratio', '3 – 5 (Lss/d) لأفقي']],
+    equip: ['Inlet device', 'Weir + level controllers', 'Mist extractor', 'PSV', 'Sand jets/drains'],
+    watch: ['مستوى النفط/الماء/interface', 'ضغط الفاصل واستقراره', 'carryover (سائل في الغاز) وcarry-under (غاز في النفط)'],
+    fail: ['foaming', 'emulsion pad/rag layer عند الـ interface', 'تراكم رمل', 'slugging ← trip', 'PSV leaking'] },
+
+  { id: 'treater', en: 'Treating', ar: 'المعالجة (Heater treater / Desalter)', zone: 'السطح', tab: 'sep',
+    what: ['النفط الخارج من الفاصل يحمل ماءً مستحلباً (water-in-oil emulsion). كسر الاستحلاب يعتمد على أربع أدوات: كيماويات (demulsifier)، حرارة (تقلل اللزوجة وتضعف الفيلم المحيط بالقطرات)، زمن ترسب، وأحياناً مجال كهربائي (electrostatic coalescer).',
+           'Heater treater: وعاء واحد فيه firetube + فصل + ترسب. في الحقول الكبيرة: FWKO + heater + electrostatic dehydrator، ثم desalter (غسل بماء عذب لتخفيف الملوحة).',
+           'قاعدة Stokes: سرعة ترسب القطرة ∝ d² و Δρ ولا تتناسب عكسياً إلا مع اللزوجة μ؛ لذا رفع الحرارة (↓ μ) وتحسين التلاحم (↑ d) هما الرافعتان الرئيسيتان.'],
+    cond: [['درجة التشغيل', '≈ 100 – 180°F (حسب الخام)'], ['مواصفات شائعة للتسليم', 'BS&W ≈ 0.5 – 1% (حسب العقد/خط الأنابيب)'], ['Salt بعد الـ desalter', 'غالباً ≤ ≈ 10 PTB لمصافي التكرير (تختلف حسب العقد)']],
+    equip: ['FWKO', 'Heater treater / firetube', 'Electrostatic coalescer', 'Desalter + wash water', 'Demulsifier injection pump'],
+    watch: ['BS&W عند الخروج (centrifuge أو online analyzer)', 'استهلاك الوقود ودرجة الحرارة', 'interface/rag layer'],
+    fail: ['rag layer مستقر (ماء + نفط + مواد صلبة/surfactants)', 'burner flame-out', 'تآكل firetube', 'اختيار demulsifier غير مناسب'] },
+
+  { id: 'stabilizer', en: 'Stabilization', ar: 'التثبيت (LP flash / Stabilizer)', zone: 'السطح', tab: 'store',
+    what: ['خفض الضغط على مراحل حتى قرب الضغط الجوي يحرر المكونات الخفيفة (C1–C4) فيصبح الخام "مستقراً" ولا يفقد بخاراً في الخزانات. يُقاس ذلك بـ RVP/TVP.',
+           'الغاز المتحرر من LP flash/tanks يُجمع بـ VRU (vapor recovery unit) بدل الحرق أو التنفيس. وإذا كان الخام حامضياً (H₂S) يُجرى stripping لخفض H₂S في السائل.',
+           'هذه هي مرحلة shrinkage الحقيقية: حجم النفط في المكمن (مع الغاز المذاب) أكبر من حجمه في الخزان (STB). Bo = reservoir bbl لكل STB.'],
+    cond: [['ضغط LP نموذجي', '≈ 10 – 50 psig'], ['RVP للخام', 'حسب المواصفة (مثلاً ≤ ≈ 10–12 psi لبعض العقود)'], ['H₂S في السائل', 'حسب عقد التسليم (غالباً ppm منخفض)']],
+    equip: ['LP separator / flash drum', 'Stabilizer column (للحقول الكبيرة)', 'VRU compressor', 'Heat exchangers'],
+    watch: ['RVP/TVP للخام', 'معدل غاز الـ LP والـ tanks', 'ضغط LP واستقراره'],
+    fail: ['فقد بخار وانبعاثات من الخزانات', 'ضغط LP متذبذب ← carry-over', 'تجمد/hydrates في خطوط الغاز منخفض الضغط'] },
+
+  { id: 'gas', en: 'Gas handling', ar: 'معالجة الغاز والحرق', zone: 'السطح', tab: 'gas',
+    what: ['الغاز يمر على scrubber (KO drum) لإزالة السوائل، ثم ضاغط (reciprocating أو screw أو centrifugal) يرفعه إلى ضغط التصدير/الحقن/الوقود. يُجفف بـ TEG contactor لتفادي hydrates وتآكل، ويُحلّى بـ amine عند وجود H₂S/CO₂.',
+           'استعمالات الغاز: fuel gas للحقل، gas lift، إعادة حقن، تصدير عبر خط أنابيب، أو معالجة NGL. أي فائض أو حالة طوارئ يذهب إلى flare عبر KO drum.',
+           'الحرق الروتيني مُقيَّد تنظيمياً وبيئياً؛ مبادرة البنك الدولي "Zero Routine Flaring by 2030" معروفة (مؤكَّد).'],
+    cond: [['مواصفة الماء في الغاز', 'غالباً ≈ 7 lb لكل MMscf في عقود خطوط أنابيب أمريكية (تختلف)'], ['Compression ratio/stage', 'عادةً ≤ ≈ 4'], ['Flare', 'KO drum + pilot + smokeless tip']],
+    equip: ['Inlet scrubber', 'Compressor + intercoolers', 'TEG contactor/regenerator', 'Amine unit (إن لزم)', 'Flare KO drum + stack'],
+    watch: ['درجة حرارة التفريغ (discharge T)', 'ضغط الشفط والتفريغ', 'dew point للماء', 'معدل الحرق'],
+    fail: ['liquid carryover إلى الضاغط (تلف ميكانيكي)', 'hydrates', 'تآكل بسبب CO₂/H₂S + ماء', 'surge في centrifugal'] },
+
+  { id: 'water', en: 'Produced water', ar: 'معالجة مياه الإنتاج', zone: 'السطح', tab: 'gas',
+    what: ['الماء المصاحب يزداد مع عمر الحقل ويصبح غالباً أكبر مكوّن بالحجم. يمر على skim tank/API separator ثم CPI أو hydrocyclone أو IGF لإزالة النفط المتبقي، ثم filters قبل الحقن (waterflood) أو التخلص (disposal well).',
+           'مقاييس الجودة: oil-in-water (OIW)، TSS، حجم الجسيمات، البكتيريا (SRB)، وميل الترسب (scale index). المتطلبات الدقيقة تعتمد على نفاذية الطبقة المستقبِلة والتنظيم المحلي.',
+           'الفصل هنا أيضاً Stokes: أصغر قطرة نفط تُزال = f(Q/A) أي معدل التدفق إلى مساحة السطح.'],
+    cond: [['OIW للتصريف البحري', '≈ 30 mg/L متوسط شهري (OSPAR 2001/1)'], ['حقن ماء', 'أهداف TSS/OIW صغيرة جداً وتعتمد على النفاذية (تُحدد بـ core-flood وفلترة)'], ['Water cut', 'يزداد مع الزمن في الحقول الناضجة']],
+    equip: ['FWKO / skim tank', 'Hydrocyclones / IGF / CPI', 'Filters', 'Injection pumps', 'Chemical dosing (scale/biocide/oxygen scavenger)'],
+    watch: ['OIW و TSS', 'معدل الحقن والضغط (injectivity)', 'تحاليل الكيمياء (Ca/Ba/Sr/SO₄/Fe)'],
+    fail: ['scale (CaCO₃, BaSO₄)', 'سد الـ filters وهبوط injectivity', 'souring (SRB) وإنتاج H₂S', 'نفط زائد في الماء بعد upset'] },
+
+  { id: 'tank', en: 'Storage tanks', ar: 'وحدات التخزين (الخزانات)', zone: 'السطح', tab: 'store',
+    what: ['خزانات أسطوانية (API 650) fixed-roof أو floating-roof. تعمل كـ surge buffer بين الإنتاج المستمر والتسليم المتقطع (شاحنات/سفن). في بعض الحقول يوجد wash tank / gun barrel للترسب النهائي.',
+           'الحجم الفعلي لا يُقرأ من مقياس الارتفاع مباشرة: يُحسب من جدول المعايرة (strapping table) ثم يصحح للماء الحر ودرجة الحرارة (API MPMS Ch. 11.1) و BS&W.',
+           'Tank bottoms: ماء ورواسب وطين تتجمع تحت النفط وتحتاج تنظيفاً دورياً.'],
+    cond: [['سعة (bbl/ft)', '0.1399 × d² (d بالقدم)'], ['تعبئة آمنة', 'عادةً ≈ 85–95% من الارتفاع الاسمي حسب وضع الـ high-high level'], ['حرارة', 'تسخين بملفات للنفوط الشمعية']],
+    equip: ['Tanks + gauging (radar/ATG + manual dip)', 'High/high-high level alarms', 'Heating coils', 'Vapor recovery', 'Pumps'],
+    watch: ['مستويات الخزان واتجاه الماء الحر', 'BS&W في القاع', 'ضغط/vacuum الـ breather'],
+    fail: ['overfill', 'vapor losses', 'تراكم sludge', 'roof landing/sinking في floating roof', 'صاعقة/حريق'] },
+
+  { id: 'lact', en: 'LACT / Custody transfer', ar: 'القياس والتسليم (LACT)', zone: 'السطح', tab: 'store',
+    what: ['وحدة LACT (Lease Automatic Custody Transfer): sampler يأخذ عينة تمثيلية، BS&W monitor، meter (PD/turbine/Coriolis)، حساسات حرارة وضغط، وflow computer. إذا ارتفع BS&W فوق الحد يفتح divert valve ويرد الخام للمعالجة.',
+           'الحساب التجاري: Gross → (تصحيح حرارة CTL) → GSV → (طرح BS&W) → NSV. الـ meter يُعاير دورياً بـ prover (API MPMS Ch. 4).',
+           'هذه نقطة المال: خطأ 0.1% في الحجم أو BS&W يُترجم إلى مبالغ كبيرة.'],
+    cond: [['Meter factor', 'يُحدَّث بعد كل proving'], ['BS&W cut-off', 'حسب العقد، غالباً ≈ 0.5 – 1%'], ['مرجع', 'API MPMS Ch. 4 (proving), 8 (sampling), 11.1 (volume correction), 12 (calculations)']],
+    equip: ['Strainer/air eliminator', 'Meter + prover connections', 'Sampler + BS&W probe', 'Flow computer', 'Divert valve'],
+    watch: ['meter factor drift', 'تمثيلية العينة', 'divert events'],
+    fail: ['sampler fouling', 'تحيّز BS&W probe', 'تسرب هواء ← خطأ في القياس'] },
+
+  { id: 'export', en: 'Export', ar: 'التصدير (Pipeline / Truck / Tanker)', zone: 'التصدير', tab: 'store',
+    what: ['مضخات نقل ترفع الضغط للتغلب على احتكاك الخط وفرق الارتفاع. الخط يعمل غالباً في تدفق مضطرب؛ اللزوجة ودرجة الحرارة وpour point تحدد إن كانت هناك حاجة لتسخين أو drag reducer.',
+           'بدائل: شاحنات (road tankers) من loading rack، سكك حديدية، أو تحميل بحري (SPM / jetty). كل مسار يمر بقياس تجاري ونظام SCADA/leak detection.',
+           'Batching ومرور pigs لتنظيف الخط ومراقبة التآكل.'],
+    cond: [['سرعة نموذجية للخام', '≈ 3 – 7 ft/s (قد تقل في الخطوط الطويلة)'], ['MAOP', 'يحدد عدد محطات الضخ'], ['Pour point', 'يحدد الحاجة للتسخين/الحقن بالكيماويات']],
+    equip: ['Transfer pumps', 'Pipeline + pig traps', 'Loading rack/SPM', 'SCADA + leak detection (CPM)'],
+    watch: ['ΔP/mile مقابل التصميم', 'درجة حرارة الخط (wax)', 'ضغط التفريغ مقابل MAOP'],
+    fail: ['wax gelling عند توقف الضخ في الشتاء', 'تسرب/تآكل', 'cavitation في المضخات'] }
+];
+
+const TROUBLE = [
+  { id: 'emul', stage: 'treater', t: 'استحلاب شديد / rag layer', sym: 'BS&W مرتفع في الخروج، interface غير واضح، طبقة رمادية سميكة بين النفط والماء.',
+    cause: ['Surfactants طبيعية (asphaltenes, resins, naphthenic acids) أو كيماويات مضافة', 'جسيمات دقيقة صلبة (fines, corrosion products) تثبّت القطرات', 'خلط شديد (choke ΔP عالٍ، مضخة shear عالٍ)', 'حرارة منخفضة / زمن بقاء قصير / demulsifier غير مناسب'],
+    check: ['Bottle test بالخام الحقيقي عند درجة حرارة التشغيل', 'قياس الـ interface (level bridle / sampling taps)', 'تحليل الـ rag (ماء%، صلب%، فلزات)'],
+    fix: ['تغيير/تحسين demulsifier وجرعته ونقطة الحقن (قبل الـ choke أو upstream)', 'رفع الحرارة أو زيادة retention time', 'إزالة الصلب/تحسين الفلترة، وتخفيف shear'] },
+  { id: 'foam', stage: 'separator', t: 'Foaming في الفاصل', sym: 'مستوى سائل غير مستقر، liquid carryover في الغاز، trip عند LSHH.',
+    cause: ['سرعة تحرر غاز عالية (انخفاض ضغط مفاجئ)', 'surfactants / كيماويات حقل / corrosion inhibitor زائد', 'لزوجة نفط عالية تحبس الفقاعات', 'ملوثات (oil-based mud, fines)'],
+    check: ['زجاجة مستوى (sight glass) أو عينة', 'اختبار foam height/ half-life في المختبر', 'تغيّر في ضغط الفاصل مقابل المعدل'],
+    fix: ['حقن anti-foam بكمية مضبوطة (الجرعة الزائدة قد تفاقم المشكلة)', 'خفض المعدل أو رفع الضغط', 'زيادة retention time / إضافة internals (vane/ plates) في التصميم'] },
+  { id: 'slug', stage: 'flowline', t: 'Slugging', sym: 'تذبذب مستوى الفاصل، فتح/إغلاق متكرر لـ PSV، تذبذب ضغط الغاز.',
+    cause: ['terrain slugging في خط متعرج', 'hydrodynamic slugging عند معدلات منخفضة', 'pigging (slug أمام الـ pig)', 'severe slugging عند riser'],
+    check: ['سجل ضغط/مستوى زمني (trend)', 'GLR ومعدل الخط مقابل خريطة أنماط التدفق', 'حساب حجم الـ slug مقابل سعة الفاصل'],
+    fix: ['slug catcher أو فاصل أكبر', 'ضبط choke/ زيادة معدل الغاز', 'جدولة pigging مع تجهيز الفاصل'] },
+  { id: 'hydrate', stage: 'wellhead', t: 'Hydrates عند الـ choke أو الخطوط', sym: 'هبوط مفاجئ في التدفق، تجمد خارجي، ارتفاع ΔP عبر الـ choke.',
+    cause: ['ضغط عالٍ + حرارة منخفضة + ماء حر + غاز', 'Joule–Thomson عبر choke', 'إيقاف طويل بدون inhibitor'],
+    check: ['مقارنة T التشغيل مع منحنى تكوّن hydrate للغاز الحقيقي', 'تحقق من حقن MeOH/MEG وإنتاجيته', 'حرارة downstream الـ choke'],
+    fix: ['حقن methanol/MEG (راجع الحاسبة)', 'تسخين upstream الـ choke أو عزل الخط', 'Depressurize تدريجياً لإذابة السدة (إجراء أمان صارم)'] },
+  { id: 'wax', stage: 'flowline', t: 'ترسب Wax (Paraffin)', sym: 'ΔP يرتفع تدريجياً، انخفاض معدل الإنتاج، pig يخرج بكمية شمع كبيرة.',
+    cause: ['درجة الحرارة تحت WAT (wax appearance temperature)', 'نفط عالي المحتوى بالـ n-paraffins', 'توقف تدفق طويل ← gelling تحت pour point'],
+    check: ['قياس WAT/pour point (DSC أو cross-polarized microscopy، ASTM D97 لـ pour point)', 'حرارة الخط الفعلية', 'تحليل ما يخرجه الـ pig'],
+    fix: ['pigging منتظم', 'عزل/تسخين الخط', 'wax inhibitors / pour point depressants', 'hot oiling أو solvent soak للـ tubing'] },
+  { id: 'scale', stage: 'wellbore', t: 'ترسب Scale', sym: 'هبوط الإنتاج أو PI، تراكم قشرة في tubing/choke/مضخات، ارتفاع ضغط الحقن.',
+    cause: ['خلط مياه غير متوافقة (SO₄ من ماء البحر + Ba/Sr/Ca)', 'انخفاض ضغط يحرر CO₂ ← CaCO₃', 'تغير حرارة'],
+    check: ['تحليل ماء كامل + scale prediction', 'تحليل XRD للقشرة', 'مراقبة residual inhibitor'],
+    fix: ['scale inhibitor squeeze أو حقن مستمر', 'acid job للـ carbonate scale', 'تجنب خلط الماء غير المتوافق / sulfate removal'] },
+  { id: 'corr', stage: 'flowline', t: 'تآكل (CO₂/H₂S/MIC)', sym: 'تسرب، فقد سماكة في ILI/UT، حديد ذائب مرتفع في الماء.',
+    cause: ['CO₂ + ماء (sweet corrosion)', 'H₂S (sour) مع SSC/HIC', 'بكتيريا SRB (MIC)', 'سرعات عالية تكسر الفيلم الواقي'],
+    check: ['coupons وprobes، Fe count', 'تفتيش ILI/UT', 'pH وضغط جزئي لـ CO₂/H₂S'],
+    fix: ['corrosion inhibitor مع جدولة تحكم', 'biocide + pigging', 'اختيار مواد مناسبة (NACE MR0175/ISO 15156 لبيئات sour)'] },
+  { id: 'sand', stage: 'wellhead', t: 'إنتاج الرمل', sym: 'تآكل choke/مرفقات، تراكم رمل بالفاصل، ضوضاء/اهتزاز، ارتفاع BS&W.',
+    cause: ['drawdown عالٍ يفوق قوة الصخر', 'انخفاض الضغط/تغير الإجهادات مع الزمن', 'ارتفاع water cut يفكك الربط'],
+    check: ['sand monitor acoustic', 'أخذ عينات من الفاصل', 'مقارنة معدل الرمل بحدود التآكل'],
+    fix: ['خفض الـ drawdown/معدل', 'gravel pack / screens / chemical consolidation', 'sand jets وcyclones على السطح'] },
+  { id: 'bsw', stage: 'lact', t: 'BS&W مرتفع عند LACT', sym: 'divert متكرر، رفض شحنة، خلاف في الكمية.',
+    cause: ['upset في الـ heater treater', 'ماء حر في tank bottom يُسحب مع النفط', 'مستوى سحب (suction) منخفض جداً'],
+    check: ['centrifuge test (ASTM D4007) وKarl Fischer (ASTM D4377/D6304)', 'مستوى الماء الحر في الخزان', 'مراجعة تشغيل الـ treater (T، demulsifier)'],
+    fix: ['تصريف الماء الحر قبل التسليم', 'تثبيت التسخين/الكيماويات', 'رفع نقطة السحب أو recirculation'] },
+  { id: 'esp', stage: 'wellbore', t: 'ESP trip أو gas lock', sym: 'amps منخفضة/متذبذبة، تحميل منخفض، trip على under-load.',
+    cause: ['free gas عند intake (Pwf < Pb)', 'ارتفاع حرارة المحرك', 'رمل/صلب يتآكل impellers', 'جهد غير مستقر'],
+    check: ['منحنى amps/HZ', 'حساب gas fraction عند intake', 'حرارة المحرك ومقاومة العزل'],
+    fix: ['gas separator/handler', 'خفض معدل السحب أو رفع Pwf', 'VSD وإعادة ضبط الحدود'] },
+  { id: 'glinst', stage: 'wellbore', t: 'عدم استقرار Gas lift (heading)', sym: 'تذبذب دوري في المعدل والضغط، استهلاك غاز مرتفع.',
+    cause: ['حقن عبر valve واحد بضغط غير كافٍ', 'تذبذب بين casing وtubing (casing heading)', 'ضغط غاز الحقن متغير'],
+    check: ['trend ضغط tubing/casing ومعدل الحقن', 'two-pen chart / surveys', 'تحقق من الـ valves بالـ wireline'],
+    fix: ['تثبيت ضغط الحقن + choke حقن مناسب', 'تصميم valves (orifice) أصح', 'تحسين عمق نقطة الحقن'] },
+  { id: 'srp', stage: 'wellbore', t: 'Fluid pound / Gas interference (rod pump)', sym: 'dynamometer card غير ممتلئ، ضربات ميكانيكية.',
+    cause: ['pump-off (معدل السحب أعلى من الاتجاه)', 'غاز حر يدخل المضخة', 'سرعة ضخ عالية'],
+    check: ['dynamometer card (fillage)', 'مستوى السائل (echometer)', 'gas anchor وعمق الـ intake'],
+    fix: ['pump-off controller أو تقليل SPM', 'gas separator/anchor', 'تعميق المضخة أو تغيير stroke'] },
+  { id: 'tankloss', stage: 'tank', t: 'فقد بخار وارتفاع مستويات الخزان', sym: 'روائح/انبعاثات، تذبذب ضغط breather، مستويات غير متوقعة.',
+    cause: ['خام غير مستقر (RVP مرتفع)', 'تسخين زائد', 'لا يوجد VRU', 'تدفق غاز من الفاصل مع النفط (dump valve يتعطل)'],
+    check: ['قياس RVP/TVP', 'عمل الـ dump valve والمستوى بالفاصل', 'قراءة معدل الغاز إلى VRU'],
+    fix: ['LP stage إضافية أو stabilizer', 'تركيب VRU', 'تحسين تحكم المستوى والـ dump'] },
+  { id: 'inject', stage: 'water', t: 'هبوط injectivity', sym: 'ضغط الحقن يرتفع عند نفس المعدل.',
+    cause: ['جسيمات/زيت في الماء يسد الوجه', 'scale أو بكتيريا', 'ضغط يتجاوز fracture pressure أو تشكل fractures'],
+    check: ['Hall plot / ΔP vs. cumulative volume', 'تحليل OIW/TSS والفلاتر', 'membrane filtration test'],
+    fix: ['رفع جودة الماء (فلاتر/كيماويات)', 'acidizing/ backflush للبئر', 'تقييم الحقن تحت ضغط الكسر'] }
+];
+
+const AL_DATA = [
+  { k: 'srp', n: 'Sucker rod pump (SRP)', ar: 'مضخة قضبان' },
+  { k: 'esp', n: 'ESP', ar: 'مضخة غاطسة كهربائية' },
+  { k: 'gl',  n: 'Gas lift', ar: 'رفع بالغاز' },
+  { k: 'pcp', n: 'PCP', ar: 'مضخة تجويف متقدم' },
+  { k: 'pl',  n: 'Plunger lift', ar: 'مكبس (plunger)' }
+];
+
+const GLOSS = [
+  ['API gravity', 'مقياس كثافة النفط: 141.5/SG − 131.5. أعلى API = أخف.'],
+  ['BS&W', 'Basic Sediment & Water: نسبة الماء والرواسب في الخام (حجماً).'],
+  ['STB', 'Stock-tank barrel: برميل عند 60°F و14.696 psia بعد خروج الغاز.'],
+  ['Bo', 'Oil formation volume factor: bbl مكمن لكل STB.'],
+  ['Rs', 'Solution GOR: scf غاز مذاب لكل STB عند ضغط ودرجة معينة.'],
+  ['GOR / GLR', 'Gas-oil ratio / gas-liquid ratio (scf/STB أو scf/bbl سائل).'],
+  ['Pb', 'Bubble point: الضغط الذي يبدأ عنده تحرر الغاز.'],
+  ['PI / J', 'Productivity index: STB/d لكل psi drawdown (فوق Pb).'],
+  ['IPR', 'Inflow Performance Relationship: العلاقة بين معدل المكمن و Pwf.'],
+  ['VLP / TPR', 'Vertical Lift Performance: Pwf المطلوب لرفع معدل معين عبر الـ tubing.'],
+  ['Nodal analysis', 'تقاطع IPR مع VLP يحدد نقطة التشغيل.'],
+  ['Pwf / FBHP', 'Flowing bottom-hole pressure.'],
+  ['FWHP / FTHP', 'Flowing wellhead/tubing-head pressure.'],
+  ['Skin', 'معامل ضرر/تحسين قرب البئر (موجب = ضرر).'],
+  ['Drawdown', 'Pr − Pwf.'],
+  ['Xmas tree', 'مجموعة صمامات رأس البئر: master/wing/swab.'],
+  ['SCSSV / SSV', 'صمامات أمان تحت/فوق السطح تُغلق آلياً.'],
+  ['Choke', 'مقاوم تدفق يتحكم في المعدل ويخفض الضغط.'],
+  ['Critical flow', 'تدفق صوتي عبر choke لا يتأثر بالضغط downstream.'],
+  ['Manifold', 'تجميع وتوزيع تدفق عدة آبار (production/test header).'],
+  ['Test separator', 'فاصل لقياس معدلات بئر واحد.'],
+  ['Separator (2/3-phase)', 'وعاء يفصل غاز/سائل (ثنائي) أو غاز/نفط/ماء (ثلاثي).'],
+  ['FWKO', 'Free-water knockout: يفصل الماء الحر قبل المعالجة.'],
+  ['Heater treater', 'وعاء بـ firetube يكسر الاستحلاب بالحرارة.'],
+  ['Desalter', 'غسل الخام بماء عذب لتقليل الملح.'],
+  ['Demulsifier', 'كيماوي يكسر الاستحلاب ويسرّع تلاحم القطرات.'],
+  ['PTB', 'Pounds of salt per thousand barrels.'],
+  ['Retention time', 'زمن بقاء السائل في الوعاء = حجم السائل/المعدل.'],
+  ['Mist extractor', 'mesh/vane لإزالة قطرات السائل من الغاز.'],
+  ['Slug', 'دفعة سائل كبيرة في خط متعدد الأطوار.'],
+  ['Pigging', 'تمرير جهاز تنظيف/فحص في الخط.'],
+  ['Shrinkage', 'نقص حجم النفط من المكمن إلى الخزان بسبب تحرر الغاز.'],
+  ['RVP / TVP', 'Reid / true vapor pressure: ضغط بخار الخام.'],
+  ['Flash', 'تبخر مفاجئ عند خفض الضغط.'],
+  ['VRU', 'Vapor recovery unit: يجمع بخار الخزانات/LP.'],
+  ['Scrubber / KO drum', 'وعاء يفصل السوائل من الغاز قبل الضغط أو الحرق.'],
+  ['TEG', 'Triethylene glycol لتجفيف الغاز.'],
+  ['Amine', 'محلول يزيل H₂S/CO₂ (sweetening).'],
+  ['Flare', 'حرق آمن للغاز الزائد أو الطارئ.'],
+  ['PSV / PRV', 'Pressure safety/relief valve: حماية الوعاء من الضغط الزائد.'],
+  ['ESD', 'Emergency shutdown system.'],
+  ['LACT', 'Lease automatic custody transfer.'],
+  ['Prover', 'جهاز معايرة عداد التدفق.'],
+  ['TOV / GOV / GSV / NSV', 'Total observed / gross observed / gross standard / net standard volume.'],
+  ['CTL / VCF', 'Correction for temperature of liquid: معامل تصحيح الحجم إلى 60°F.'],
+  ['Tank bottoms', 'ماء ورواسب في قاع الخزان.'],
+  ['Wax / WAT', 'ترسب البارافين؛ WAT = درجة ظهور الشمع.'],
+  ['Pour point', 'أدنى درجة يبقى عندها الخام سائلاً.'],
+  ['Hydrate', 'بلورات ماء + غاز تسد الخطوط.'],
+  ['Scale', 'ترسب أملاح (CaCO₃, BaSO₄...).'],
+  ['MIC', 'Microbiologically influenced corrosion.'],
+  ['ESP', 'Electric submersible pump.'],
+  ['SRP / PCP', 'Sucker-rod pump / Progressing cavity pump.'],
+  ['Gas lift', 'حقن غاز في tubing لتخفيف العمود.'],
+  ['Plunger lift', 'مكبس يرفع سائلاً بدفعات باستعمال طاقة الغاز.'],
+  ['OIW / TSS', 'Oil-in-water / total suspended solids.'],
+  ['IGF / CPI', 'Induced gas flotation / corrugated plate interceptor.'],
+  ['Flowback', 'عودة سائل الـ frac بعد الشغل.'],
+  ['Proppant', 'مادة تدعيم تبقي الشقوق مفتوحة.'],
+  ['Breaker', 'مادة تكسر بوليمر gel بعد الشغل.'],
+  ['Residue', 'مادة غير ذائبة متبقية من البوليمر بعد الكسر.']
+];
+
+const REFS = [
+  ['Vogel, J.V. (1968). Inflow Performance Relationships for Solution-Gas Drive Wells. JPT 20(1): 83–92. DOI 10.2118/1476-PA', 'مرتفعة'],
+  ['Standing, M.B. (1947). A Pressure-Volume-Temperature Correlation for Mixtures of California Oils and Gases. Drilling and Production Practice, API.', 'مرتفعة (بدون DOI)'],
+  ['Beggs, H.D., Robinson, J.R. (1975). Estimating the Viscosity of Crude Oil Systems. JPT 27(9): 1140–1141. DOI 10.2118/5434-PA', 'مرتفعة'],
+  ['Beggs, H.D., Brill, J.P. (1973). A Study of Two-Phase Flow in Inclined Pipes. JPT 25(5): 607–617. DOI 10.2118/4007-PA', 'مرتفعة'],
+  ['Hagedorn, A.R., Brown, K.E. (1965). Experimental Study of Pressure Gradients Occurring During Continuous Two-Phase Flow in Small-Diameter Vertical Conduits. JPT 17(4): 475–484. DOI 10.2118/940-PA', 'مرتفعة'],
+  ['Gilbert, W.E. (1954). Flowing and Gas-Lift Well Performance. Drilling and Production Practice, API. (وكذلك Ros، Baxendell، Achong كما تُذكر في كتب Production Engineering)', 'متوسطة: الثوابت تُنقل من مراجع ثانوية؛ تحقق منها'],
+  ['Clegg, J.D., Bucaram, S.M., Hein, N.W. (1993). Recommendations and Comparisons for Selecting Artificial-Lift Methods. JPT 45(12): 1128–1167. DOI 10.2118/24834-PA', 'متوسطة–مرتفعة'],
+  ['Hammerschmidt, E.G. (1934). Formation of Gas Hydrates in Natural Gas Transmission Lines. Ind. Eng. Chem. 26(8): 851–855.', 'متوسطة–مرتفعة'],
+  ['Arnold, K., Stewart, M. Surface Production Operations, Vol. 1: Design of Oil-Handling Systems and Facilities. Gulf Professional Publishing.', 'مرتفعة (الكتاب)؛ أرقام المعادلات تختلف بين الطبعات'],
+  ['GPSA Engineering Data Book (Gas Processors Suppliers Association).', 'مرتفعة'],
+  ['API MPMS Chapter 11.1 (Temperature and Pressure Volume Correction Factors for Generalized Crude Oils...)؛ Ch. 4 (Proving); Ch. 8 (Sampling); Ch. 12 (Calculation).', 'مرتفعة (العناوين)؛ هذه الأداة تستخدم صيغة مبسطة لـ VCF وليس الجداول الكاملة'],
+  ['API 12J (Oil & Gas Separators); API 650 (Welded Tanks); API 6A (Wellhead & Tree Equipment); API RP 14E (Piping erosional velocity).', 'مرتفعة'],
+  ['ASTM D4007 (BS&W centrifuge), D4377/D6304 (Karl Fischer water in crude), D97 (pour point), D287/D1298 (API gravity).', 'مرتفعة'],
+  ['OSPAR Recommendation 2001/1 (30 mg/L oil in produced water, monthly average).', 'مرتفعة'],
+  ['Papay, J. (1968). Z-factor correlation (Hungarian oil & gas institute report).', 'متوسطة: أنا غير متأكد من التفاصيل الببليوغرافية؛ الصيغة شائعة في الكتب']
+];
+
+const MAP_SVG = `<svg id="mapsvg" viewBox="0 0 1320 700" role="img" aria-label="مخطط مبسط لسلسلة الإنتاج: المكمن، البئر، رأس البئر والـ choke، manifold، الفاصل، المعالجة، التثبيت، الغاز، المياه، الخزانات، LACT، التصدير">
+<defs>
+  <marker id="ar-oil" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 1L10 5L0 9z" class="m-oil"/></marker>
+  <marker id="ar-gas" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 1L10 5L0 9z" class="m-gas"/></marker>
+  <marker id="ar-water" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 1L10 5L0 9z" class="m-water"/></marker>
+  <marker id="ar-ink" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 1L10 5L0 9z" class="m-ink"/></marker>
+  <clipPath id="clip-res"><rect x="40" y="610" width="310" height="85" rx="40"/></clipPath>
+  <clipPath id="clip-sep"><rect x="440" y="262" width="180" height="76" rx="34"/></clipPath>
+  <clipPath id="clip-trt"><rect x="690" y="255" width="120" height="85" rx="12"/></clipPath>
+</defs>
+
+<rect class="sky" x="0" y="0" width="1320" height="450"/>
+<rect class="earth" x="0" y="450" width="1320" height="250"/>
+<path class="strata" d="M0 520H1320M0 565H1320"/>
+<line class="ground" x1="0" y1="450" x2="1320" y2="450"/>
+<text class="zone" x="20" y="30">منشآت السطح · SURFACE</text>
+<text class="zone" x="1300" y="478" text-anchor="end">تحت الأرض · SUBSURFACE</text>
+
+<!-- ===== liquid train (drawn first so vessels sit on top) ===== -->
+<path class="ln ln-mix flow" d="M200 428H340" marker-end="url(#ar-ink)"/>
+<path class="ln ln-mix flow" d="M312 392H340M312 356H340" marker-end="url(#ar-ink)"/>
+<path class="ln ln-oil flow" d="M350 300H1100" marker-end="url(#ar-oil)"/>
+<path class="ln ln-oil flow" d="M1165 300H1290" marker-end="url(#ar-oil)"/>
+
+<!-- ===== 1 Reservoir ===== -->
+<g class="node" data-stage="reservoir" tabindex="0" role="button" aria-label="1 المكمن Reservoir">
+  <rect class="hl" x="28" y="570" width="334" height="128" rx="22"/>
+  <g clip-path="url(#clip-res)"><rect class="f-gas" x="40" y="610" width="310" height="22"/><rect class="f-oil" x="40" y="632" width="310" height="34"/><rect class="f-water" x="40" y="666" width="310" height="30"/></g>
+  <rect class="eq2" x="40" y="610" width="310" height="85" rx="40"/>
+  <text class="ls" x="64" y="626">gas cap</text><text class="ls" x="64" y="654">oil</text><text class="ls" x="64" y="685">water</text>
+  <text class="lb" x="105" y="598" text-anchor="middle">Reservoir</text><text class="la" x="105" y="582" text-anchor="middle">المكمن</text>
+  <g class="badgeN"><circle cx="330" cy="598" r="11"/><text x="330" y="602.5" text-anchor="middle">1</text></g>
+</g>
+
+<!-- ===== 2 Wellbore ===== -->
+<g class="node" data-stage="wellbore" tabindex="0" role="button" aria-label="2 البئر Wellbore">
+  <rect class="hl" x="140" y="452" width="160" height="200" rx="8"/>
+  <path class="eq2" d="M181 450V650M199 450V650"/>
+  <path class="tub" d="M190 450V640"/>
+  <rect class="eq" x="176" y="588" width="8" height="14"/><rect class="eq" x="196" y="588" width="8" height="14"/>
+  <path class="eq" d="M190 485l7 7-7 7-7-7z"/>
+  <path class="perf" d="M168 632h13M168 643h13M168 654h13M199 632h13M199 643h13M199 654h13"/>
+  <path class="ln ln-oil" d="M146 643H166" marker-end="url(#ar-oil)"/><path class="ln ln-oil" d="M236 643H214" marker-end="url(#ar-oil)"/>
+  <text class="ls" x="214" y="494">SCSSV</text><text class="ls" x="214" y="548">Tubing</text><text class="ls" x="214" y="599">Packer</text><text class="ls" x="244" y="626">Perforations</text>
+  <text class="lb" x="146" y="520" text-anchor="end">البئر</text>
+  <g class="badgeN"><circle cx="150" cy="464" r="11"/><text x="150" y="468.5" text-anchor="middle">2</text></g>
+</g>
+
+<!-- ===== 3 Wellhead + choke ===== -->
+<g class="node" data-stage="wellhead" tabindex="0" role="button" aria-label="3 رأس البئر والـ choke">
+  <rect class="hl" x="140" y="366" width="170" height="82" rx="8"/>
+  <path class="tub" d="M190 450V402"/>
+  <rect class="eq" x="182" y="436" width="16" height="10"/><rect class="eq" x="182" y="420" width="16" height="10"/><rect class="eq" x="184" y="402" width="12" height="10"/>
+  <path class="ln ln-mix" d="M198 428H262"/>
+  <path class="eq" d="M222 421l8 7-8 7zM238 421l-8 7 8 7z"/>
+  <path class="eq" d="M262 418l18 10-18 10zM298 418l-18 10 18 10z"/>
+  <text class="lb" x="190" y="392" text-anchor="middle">Wellhead</text>
+  <text class="la" x="190" y="376" text-anchor="middle">رأس البئر</text>
+  <text class="ls" x="280" y="410" text-anchor="middle">Choke</text>
+  <g class="badgeN"><circle cx="150" cy="394" r="11"/><text x="150" y="398.5" text-anchor="middle">3</text></g>
+</g>
+
+<!-- ===== 4 Flowline + manifold ===== -->
+<g class="node" data-stage="flowline" tabindex="0" role="button" aria-label="4 خط التدفق والـ manifold">
+  <rect class="hl" x="304" y="244" width="64" height="206" rx="8"/>
+  <rect class="eq" x="340" y="290" width="10" height="150"/>
+  <text class="ls" x="304" y="388" text-anchor="end">well A</text><text class="ls" x="304" y="352" text-anchor="end">well B</text>
+  <text class="lb" x="345" y="278" text-anchor="middle">Manifold</text>
+  <text class="la" x="345" y="262" text-anchor="middle">تجميع الآبار</text>
+  <g class="badgeN"><circle cx="312" cy="318" r="11"/><text x="312" y="322.5" text-anchor="middle">4</text></g>
+</g>
+
+<!-- ===== 5 HP separator ===== -->
+<g class="node" data-stage="separator" tabindex="0" role="button" aria-label="5 فاصل ثلاثي الأطوار">
+  <rect class="hl" x="428" y="222" width="204" height="130" rx="10"/>
+  <g clip-path="url(#clip-sep)"><rect class="f-oil" x="440" y="300" width="180" height="22"/><rect class="f-water" x="440" y="322" width="180" height="16"/></g>
+  <rect class="eq2" x="440" y="262" width="180" height="76" rx="34"/>
+  <path class="thin" d="M585 300V338M494 272V282M500 272V282M506 272V282"/>
+  <text class="ls" x="545" y="288" text-anchor="middle">gas</text><text class="ls" x="520" y="315" text-anchor="middle">oil</text><text class="ls" x="520" y="333" text-anchor="middle">water</text>
+  <text class="lb" x="585" y="250" text-anchor="middle">3-phase Separator</text>
+  <text class="la" x="585" y="234" text-anchor="middle">الفاصل</text>
+  <g class="badgeN"><circle cx="440" cy="254" r="11"/><text x="440" y="258.5" text-anchor="middle">5</text></g>
+</g>
+
+<!-- ===== 6 Treater ===== -->
+<g class="node" data-stage="treater" tabindex="0" role="button" aria-label="6 المعالجة Heater treater">
+  <rect class="hl" x="678" y="222" width="144" height="128" rx="10"/>
+  <g clip-path="url(#clip-trt)"><rect class="f-oil" x="690" y="300" width="120" height="24"/><rect class="f-water" x="690" y="324" width="120" height="16"/></g>
+  <rect class="eq2" x="690" y="255" width="120" height="85" rx="12"/>
+  <path class="thin" d="M706 322H772q10 0 10-9t-10-9H706"/>
+    <text class="lb" x="752" y="250" text-anchor="middle">Heater Treater</text>
+  <text class="la" x="752" y="234" text-anchor="middle">فصل وتسخين</text>
+  <g class="badgeN"><circle cx="676" cy="250" r="11"/><text x="676" y="254.5" text-anchor="middle">6</text></g>
+</g>
+
+<!-- ===== 7 Stabilizer ===== -->
+<g class="node" data-stage="stabilizer" tabindex="0" role="button" aria-label="7 التثبيت LP flash">
+  <rect class="hl" x="838" y="196" width="84" height="154" rx="10"/>
+  <rect class="eq" x="855" y="240" width="50" height="100" rx="22"/>
+  <path class="thin" d="M865 268H895M865 288H895M865 308H895"/>
+  <text class="lb" x="880" y="228" text-anchor="middle">LP flash</text>
+  <text class="la" x="880" y="212" text-anchor="middle">تثبيت الخام</text>
+  <g class="badgeN"><circle cx="838" cy="236" r="11"/><text x="838" y="240.5" text-anchor="middle">7</text></g>
+</g>
+
+<!-- ===== 10 Tanks ===== -->
+<g class="node" data-stage="tank" tabindex="0" role="button" aria-label="10 خزانات التخزين">
+  <rect class="hl" x="936" y="218" width="172" height="132" rx="10"/>
+  <path class="eq" d="M950 262V340a32.5 8 0 0 0 65 0V262z"/>
+  <path class="f-oil" d="M950 295V340a32.5 8 0 0 0 65 0V295a32.5 8 0 0 1-65 0z"/>
+  <path class="eq" d="M1030 262V340a32.5 8 0 0 0 65 0V262z"/>
+  <path class="f-oil" d="M1030 312V340a32.5 8 0 0 0 65 0V312a32.5 8 0 0 1-65 0z"/>
+  <ellipse class="eq" cx="982.5" cy="262" rx="32.5" ry="8"/><ellipse class="eq" cx="1062.5" cy="262" rx="32.5" ry="8"/>
+  <text class="lb" x="1022" y="246" text-anchor="middle">Storage Tanks</text>
+  <text class="la" x="1022" y="230" text-anchor="middle">وحدات التخزين</text>
+  <g class="badgeN"><circle cx="948" cy="242" r="11"/><text x="948" y="246.5" text-anchor="middle">10</text></g>
+</g>
+
+<!-- ===== 11 LACT ===== -->
+<g class="node" data-stage="lact" tabindex="0" role="button" aria-label="11 LACT القياس والتسليم">
+  <rect class="hl" x="1094" y="236" width="82" height="106" rx="8"/>
+  <rect class="eq" x="1105" y="272" width="60" height="56" rx="6"/>
+  <circle class="eq" cx="1135" cy="300" r="13"/>
+  <text class="ls" x="1135" y="304" text-anchor="middle">M</text>
+  <text class="lb" x="1135" y="262" text-anchor="middle">LACT</text>
+  <text class="la" x="1135" y="250" text-anchor="middle">قياس وتسليم</text>
+  <g class="badgeN"><circle cx="1100" cy="346" r="11"/><text x="1100" y="350.5" text-anchor="middle">11</text></g>
+</g>
+
+<!-- ===== 12 Export ===== -->
+<g class="node" data-stage="export" tabindex="0" role="button" aria-label="12 التصدير">
+  <rect class="hl" x="1184" y="236" width="128" height="104" rx="8"/>
+  <circle class="eq" cx="1205" cy="300" r="13"/><path class="thin" d="M1198 307V293l14 7z"/>
+  <text class="lb" x="1250" y="272" text-anchor="middle">Export</text>
+  <text class="la" x="1250" y="256" text-anchor="middle">تصدير</text>
+  <text class="ls" x="1250" y="326" text-anchor="middle">Pipeline / Truck</text><text class="ls" x="1250" y="341" text-anchor="middle">Tanker</text>
+  <g class="badgeN"><circle cx="1194" cy="246" r="11"/><text x="1194" y="250.5" text-anchor="middle">12</text></g>
+</g>
+
+<!-- ===== 8 Gas train ===== -->
+<g class="node" data-stage="gas" tabindex="0" role="button" aria-label="8 منظومة الغاز والشعلة">
+  <rect class="hl" x="470" y="86" width="780" height="130" rx="10"/>
+  <path class="ln ln-gas flow" d="M500 262V150H1200"/>
+  <path class="ln ln-gas flow" d="M700 255V150M865 240V150M1000 262V150"/>
+  <rect class="eq" x="540" y="128" width="60" height="44" rx="10"/><text class="ls" x="570" y="155" text-anchor="middle">KO</text>
+  <circle class="eq" cx="735" cy="150" r="26"/><path class="thin" d="M720 138l30 12-30 12"/>
+  <rect class="eq" x="915" y="128" width="64" height="44" rx="6"/><path class="thin" d="M925 140H970M925 150H970M925 160H970"/>
+  <rect class="eq" x="1040" y="132" width="70" height="36" rx="6"/><text class="ls" x="1075" y="154" text-anchor="middle">sales</text>
+  <path class="ln ln-gas" d="M1200 150V62"/><path class="eq fill-gas" d="M1190 62l10-28 10 28-10-8z"/>
+  <text class="lb" x="800" y="110" text-anchor="middle">Gas train · منظومة الغاز</text>
+  <text class="ls" x="570" y="192" text-anchor="middle">Scrubber</text><text class="ls" x="735" y="192" text-anchor="middle">Compressor</text>
+  <text class="ls" x="947" y="192" text-anchor="middle">TEG dehy</text><text class="ls" x="1075" y="192" text-anchor="middle">Export / Fuel</text><text class="ls" x="1200" y="172" text-anchor="middle">Flare</text>
+  <g class="badgeN"><circle cx="486" cy="116" r="11"/><text x="486" y="120.5" text-anchor="middle">8</text></g>
+</g>
+
+<!-- ===== 9 Water train ===== -->
+<g class="node" data-stage="water" tabindex="0" role="button" aria-label="9 معالجة مياه الإنتاج والحقن">
+  <rect class="hl" x="462" y="358" width="560" height="296" rx="10"/>
+  <path class="ln ln-water flow" d="M480 338V400H880V640"/>
+  <path class="ln ln-water flow" d="M735 340V400"/>
+  <rect class="eq" x="520" y="382" width="72" height="36" rx="6"/><path class="thin" d="M530 400H582"/>
+  <rect class="eq" x="770" y="382" width="80" height="36" rx="6"/><circle class="eq" cx="810" cy="400" r="10"/>
+  <path class="eq2" d="M872 450V640M888 450V640"/>
+  <rect class="f-water" x="760" y="628" width="240" height="38" rx="14"/><rect class="eq2" x="760" y="628" width="240" height="38" rx="14"/>
+  <text class="lb" x="640" y="372" text-anchor="middle">Produced water · معالجة المياه</text>
+  <text class="ls" x="556" y="437" text-anchor="middle">Skim / IGF</text><text class="ls" x="810" y="437" text-anchor="middle">Filter + pump</text>
+  <text class="ls" x="900" y="520">Injection / disposal well</text><text class="ls" x="880" y="652" text-anchor="middle">disposal zone</text>
+  <g class="badgeN"><circle cx="478" cy="380" r="11"/><text x="478" y="384.5" text-anchor="middle">9</text></g>
+</g>
+</svg>
+`;
+/* ===== UI ===== */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+const num = id => parseFloat(document.getElementById(id).value);
+const setv = (id, v) => { const e = document.getElementById(id); if (e) e.value = v; };
+const fmt = (x, d = 0) => (typeof x === 'number' && isFinite(x)) ? x.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }) : '—';
+const F = (id, label, val, unit = '', o = {}) => `<label class="f" for="${id}"><span class="fl">${label}</span><span class="fi"><input id="${id}" type="number" inputmode="decimal" value="${val}" step="${o.step || 'any'}"${o.min != null ? ` min="${o.min}"` : ''}><b>${unit}</b></span></label>`;
+const SEL = (id, label, opts, val) => `<label class="f" for="${id}"><span class="fl">${label}</span><span class="fi"><select id="${id}">${opts.map(([v, t]) => `<option value="${v}"${String(v) === String(val) ? ' selected' : ''}>${t}</option>`).join('')}</select></span></label>`;
+const KV = (label, val, unit = '', cls = '') => `<div class="kv ${cls}"><small>${label}</small><strong>${val}${unit ? `<i>${unit}</i>` : ''}</strong></div>`;
+const MSG = (t, cls = '') => `<div class="msg ${cls}">${t}</div>`;
+const BADGE = { e: '<span class="badge b-est">مؤكَّد</span>', i: '<span class="badge b-inf">استنتاج</span>', s: '<span class="badge b-spec">تخمين</span>' };
+
+const RUN = {}; const FILL = {};
+function panel(id, title, sub, fields, o = {}) {
+  return `<section class="calc" data-calc="${id}"><h3>${title}</h3><p class="sub">${sub || ''}</p>
+  <div class="calc-body"><div><div class="fgrid">${fields}</div>
+  ${o.fill ? `<div class="btnrow"><button class="btn" type="button" data-fill="${id}">تعبئة من حالة الحقل</button></div>` : ''}</div>
+  <div class="out" id="o_${id}"></div></div>${o.after || ''}</section>`;
+}
+
+/* ---------- Case (shared inputs) ---------- */
+const CASE_FIELDS = [
+  ['الموائع', [['c_api', 'API gravity', 32, '°API'], ['c_gg', 'Gas SG (هواء = 1)', 0.75, ''], ['c_gor', 'GOR', 600, 'scf/STB'], ['c_wc', 'Water cut', 30, '%'], ['c_qL', 'السائل الكلي (stock-tank)', 2000, 'bbl/d']]],
+  ['المكمن والبئر', [['c_Pr', 'Pr', 3500, 'psia'], ['c_Tres', 'T المكمن', 180, '°F'], ['c_J', 'PI فوق Pb', 2, 'STB/d/psi'], ['c_TVD', 'TVD', 8000, 'ft'], ['c_id', 'Tubing ID', 2.992, 'in']]],
+  ['السطح', [['c_Pwh', 'FWHP', 400, 'psig'], ['c_Pchk', 'ضغط بعد الـ choke', 170, 'psig'], ['c_Ps1', 'HP separator', 150, 'psig'], ['c_Ps2', 'LP separator', 25, 'psig'], ['c_Ts', 'T الفاصل', 110, '°F']]]
+];
+function caseVals() {
+  return { api: num('c_api'), gg: num('c_gg'), gor: num('c_gor'), wc: num('c_wc'), qL: num('c_qL'), Pr: num('c_Pr'), Tres: num('c_Tres'), J: num('c_J'), TVD: num('c_TVD'), id: num('c_id'), Pwh: num('c_Pwh'), Pchk: num('c_Pchk'), Psep1: num('c_Ps1'), Psep2: num('c_Ps2'), Ts: num('c_Ts') };
+}
+function caseHTML() {
+  return `<details class="case" id="case" open><summary><b>حالة الحقل (مدخلات مشتركة)</b><span class="sum" id="casesum"></span></summary><div class="case-grid">${CASE_FIELDS.map(([g, fs]) => `<div class="case-grp">${g}</div>` + fs.map(([id, l, v, u]) => F(id, l, v, u)).join('')).join('')}</div></details>`;
+}
+
+/* ---------- Charts ---------- */
+function niceMax(v) { const p = Math.pow(10, Math.floor(Math.log10(v || 1))); const m = v / p; return (m <= 1 ? 1 : m <= 2 ? 2 : m <= 2.5 ? 2.5 : m <= 5 ? 5 : 10) * p; }
+function lineChart(o) {
+  const W = 640, H = 330, L = 58, R = 16, T = 16, B = 44;
+  const xm = o.xmax, ym = o.ymax;
+  const X = x => L + (x / xm) * (W - L - R), Y = y => T + (1 - y / ym) * (H - T - B);
+  let s = `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${o.aria || ''}">`;
+  for (let i = 0; i <= 5; i++) {
+    const yv = ym * i / 5, xv = xm * i / 5;
+    s += `<line class="gridl" x1="${L}" x2="${W - R}" y1="${Y(yv)}" y2="${Y(yv)}"/><text x="${L - 6}" y="${Y(yv) + 4}" text-anchor="end">${fmt(yv, 0)}</text>`;
+    s += `<text x="${X(xv)}" y="${H - B + 16}" text-anchor="middle">${fmt(xv, 0)}</text>`;
+  }
+  s += `<line class="axis" x1="${L}" x2="${W - R}" y1="${H - B}" y2="${H - B}"/><line class="axis" x1="${L}" x2="${L}" y1="${T}" y2="${H - B}"/>`;
+  s += `<text x="${(L + W - R) / 2}" y="${H - 6}" text-anchor="middle">${o.xlab}</text><text transform="rotate(-90)" x="${-(T + H - B) / 2}" y="13" text-anchor="middle">${o.ylab}</text>`;
+  (o.hlines || []).forEach(h => { if (h.y <= ym) s += `<line x1="${L}" x2="${W - R}" y1="${Y(h.y)}" y2="${Y(h.y)}" style="stroke:${h.color};stroke-width:1.2;stroke-dasharray:5 4"/><text x="${W - R - 4}" y="${Y(h.y) - 4}" text-anchor="end" style="fill:${h.color}">${h.label}</text>`; });
+  (o.series || []).forEach(se => {
+    const pts = se.pts.filter(p => isFinite(p[0]) && isFinite(p[1]) && p[0] <= xm && p[1] <= ym * 1.0001 && p[1] >= 0);
+    if (pts.length > 1) s += `<polyline points="${pts.map(p => X(p[0]).toFixed(1) + ',' + Y(p[1]).toFixed(1)).join(' ')}" style="fill:none;stroke:${se.color};stroke-width:${se.w || 2.4};${se.dash ? 'stroke-dasharray:6 4;' : ''}stroke-linejoin:round"/>`;
+  });
+  (o.marks || []).forEach(m => { s += `<circle cx="${X(m.x)}" cy="${Y(m.y)}" r="5.5" style="fill:${m.color || 'var(--ink)'};stroke:var(--bg);stroke-width:2"/><text class="tt" x="${X(m.x) + (m.dx || 10)}" y="${Y(m.y) + (m.dy || -8)}" text-anchor="${m.anchor || 'start'}">${m.label}</text>`; });
+  let lx = L + 8;
+  (o.series || []).forEach((se, i) => { s += `<line x1="${lx}" x2="${lx + 18}" y1="${T + 8 + i * 15}" y2="${T + 8 + i * 15}" style="stroke:${se.color};stroke-width:2.4;${se.dash ? 'stroke-dasharray:6 4' : ''}"/><text class="tt" x="${lx + 24}" y="${T + 12 + i * 15}">${se.label}</text>`; });
+  return s + '</svg>';
+}
+
+/* ---------- Stage detail (Map tab) ---------- */
+let curStage = 0;
+const TABNAMES = { well: 'البئر والـ choke', sep: 'الفصل والمعالجة', gas: 'الغاز والماء', store: 'التخزين والتصدير', trouble: 'أعطال حقلية' };
+function stageNode(id) { return $(`#mapsvg .node[data-stage="${id}"]`); }
+function selectStage(i) {
+  curStage = (i + STAGES.length) % STAGES.length;
+  const s = STAGES[curStage];
+  $$('#mapsvg .node').forEach(n => n.classList.toggle('sel', n.dataset.stage === s.id));
+  $$('.step').forEach((b, k) => b.setAttribute('aria-pressed', k === curStage));
+  $('#detail').innerHTML = `<div><h3>${curStage + 1}. ${s.ar}<span class="en">${s.en}</span></h3><div class="lead">${s.what.map(t => `<p>${t}</p>`).join('')}</div>
+    <h4>ما يراقبه المشغّل</h4><ul class="tight">${s.watch.map(t => `<li>${t}</li>`).join('')}</ul>
+    <h4>أعطال شائعة</h4><ul class="tight">${s.fail.map(t => `<li>${t}</li>`).join('')}</ul>
+    <div class="nav"><button class="btn" type="button" id="prevS">السابق</button><button class="btn pri" type="button" id="nextS">المرحلة التالية</button>${s.tab ? `<button class="btn" type="button" data-go="${s.tab}">افتح: ${TABNAMES[s.tab]}</button>` : ''}</div></div>
+    <div><h4 style="margin-top:0">ظروف نموذجية</h4><dl class="cond">${s.cond.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>
+    <h4>المعدات</h4><ul class="tight">${s.equip.map(t => `<li>${t}</li>`).join('')}</ul></div>`;
+}
+
+/* ---------- Tabs ---------- */
+const TABS = [['map', 'خريطة الحقل'], ['well', 'البئر والـ choke'], ['sep', 'الفصل والمعالجة'], ['gas', 'الغاز والماء'], ['store', 'التخزين والتصدير'], ['trouble', 'أعطال حقلية'], ['frac', 'من الـ frac إلى السطح'], ['ref', 'مرجع']];
+function showTab(id) {
+  if (!TABS.some(t => t[0] === id)) id = 'map';
+  $$('.pane').forEach(p => p.hidden = p.id !== 'pane-' + id);
+  $$('.tab').forEach(t => t.setAttribute('aria-selected', t.dataset.tab === id));
+  try { history.replaceState(null, '', '#' + id); } catch (e) { }
+  window.scrollTo(0, 0);
+}
+
+/* ---------- Build panes ---------- */
+function buildMap() {
+  $('#pane-map').innerHTML = `
+  <p class="lead">اتبع البرميل من المكمن إلى نقطة التسليم. اضغط أي معدّة في الرسم (أو رقمها بالأسفل). المدخلات في "حالة الحقل" أعلاه تغذي كل الحاسبات في الأدوات الأخرى.</p>
+  <div class="steps" id="steps">${STAGES.map((s, i) => `<button type="button" class="step" data-i="${i}" aria-pressed="false"><small>${i + 1}</small>${s.ar.split(' (')[0]}</button>`).join('')}</div>
+  <div class="mapwrap">${MAP_SVG}</div>
+  <div class="legend"><span><i style="border-color:var(--ink)"></i>مائع متعدد الأطوار من البئر</span><span><i style="border-color:var(--oil)"></i>نفط</span><span><i style="border-color:var(--gas)"></i>غاز</span><span><i style="border-color:var(--water)"></i>ماء</span><span>الرسم مبسّط وغير مرسوم بمقياس؛ الأرقام 1–12 هي مراحل الرحلة.</span></div>
+  <div class="detail" id="detail" style="margin-top:14px"></div>
+  <div class="sec"><h2>ميزان الموائع <small>ماذا يخرج من كل مرحلة بالحالة الحالية</small></h2><div id="o_stream"></div></div>
+  <div class="sec"><h2>أين يضيع الضغط؟ <small>من المكمن حتى الخزان</small></h2><div class="twocol"><div id="o_fall"></div><div id="o_fallnote"></div></div></div>`;
+}
+
+function buildWell() {
+  $('#pane-well').innerHTML = `
+  <p class="lead">هنا يتحدد ما يمكن أن ينتجه البئر. المكمن يعطي منحنى IPR، والـ tubing + ضغط رأس البئر يعطيان منحنى VLP، وتقاطعهما هو نقطة التشغيل. الرافعات (gas lift/ESP) تغيّر منحنى VLP لا IPR.</p>
+  <div class="sec"><h2>Nodal analysis <small>IPR × VLP</small></h2>
+  ${panel('nodal', 'نقطة التشغيل للبئر', 'IPR: Darcy فوق Pb + Vogel (1968) تحت Pb. VLP: نموذج homogeneous مبسط (بدون slip) مع خصائص Standing وPapay-Z. للتصميم الفعلي استخدم Hagedorn–Brown أو Beggs–Brill (1973) في PIPESIM/Prosper.',
+    F('n_MD', 'MD (طول الـ tubing)', 8200, 'ft') + F('n_Twh', 'T رأس البئر', 110, '°F') + F('n_eps', 'خشونة', 0.0006, 'in') + F('n_mu', 'لزوجة السائل', 3, 'cP') +
+    SEL('n_mode', 'وضع الرفع', [['none', 'تدفق طبيعي'], ['gl', 'Gas lift (حقن غاز)'], ['esp', 'ESP (رفع ضغط عند عمق)']], 'none') +
+    F('n_glr', 'غاز الحقن', 400, 'scf/bbl سائل') + F('n_zinj', 'عمق نقطة الحقن', 6000, 'ft') + F('n_dpp', 'ΔP للمضخة', 800, 'psi') + F('n_zp', 'عمق المضخة', 7500, 'ft'))}
+  <div class="note warn">القيود: no-slip homogeneous يقلل الـ hydrostatic عند المعدلات المنخفضة (slip يزيد كثافة الخليط الحقيقية). استخدمه لفهم الاتجاهات فقط وليس لتصميم completion. ${BADGE.e} الصيغ المستخدمة هي الصيغ المنشورة؛ ${BADGE.i} دقتها كأداة تصميم محدودة.</div></div>
+  <div class="sec"><h2>Choke <small>تدفق حرج</small></h2>
+  ${panel('choke', 'حجم الـ choke وضغط رأس البئر', 'أربع علاقات تجريبية (Gilbert, Ros, Baxendell, Achong) من الشكل P = A·R^B·q / S^C. الفروق بينها هي درس بحد ذاتها: كلها ±20–30%، وتُعايَر محلياً بقياسات الحقل.',
+    F('k_q', 'السائل الكلي', 2000, 'STB/d') + F('k_R', 'GLR (على السائل الكلي)', 420, 'scf/STB') + F('k_S', 'حجم الـ choke', 28, '/64 in') + F('k_pt', 'FWHP المستهدف', 400, 'psig') + F('k_pd', 'ضغط downstream', 170, 'psig'), { fill: true })}</div>
+  <div class="sec"><h2>Artificial lift <small>فرز أولي</small></h2>
+  ${panel('al', 'اختيار طريقة الرفع', 'تقييم قاعدي يستند إلى نطاقات تشغيل شائعة (راجع Clegg وآخرين 1993). الغرض: ترتيب الخيارات واستبعاد الواضح منها قبل دراسة الاقتصاد والتصميم.',
+    F('a_d', 'عمق المضخة/الحقن', 8000, 'ft') + F('a_q', 'المعدل المستهدف', 1200, 'bbl/d') + F('a_wc', 'Water cut', 30, '%') + F('a_gor', 'GOR', 600, 'scf/STB') + F('a_mu', 'لزوجة النفط', 5, 'cP') + F('a_T', 'درجة حرارة القاع', 180, '°F') +
+    SEL('a_sand', 'الرمل', [[0, 'لا يوجد'], [1, 'قليل'], [2, 'كثير']], 0) + SEL('a_h2s', 'H₂S', [[0, 'لا'], [1, 'نعم']], 0) + SEL('a_dev', 'مسار البئر', [[0, 'عمودي'], [1, 'مائل (deviated)'], [2, 'أفقي (horizontal)']], 0) +
+    SEL('a_gas', 'غاز متاح للحقن', [[1, 'نعم'], [0, 'لا']], 1) + SEL('a_pw', 'كهرباء متاحة', [[1, 'نعم'], [0, 'لا']], 1), { fill: true })}</div>`;
+}
+
+function buildSep() {
+  $('#pane-sep').innerHTML = `
+  <p class="lead">الفصل كله جاذبية: قطرة أثقل من الوسط تهبط، أخف تصعد، بسرعة تعطيها معادلة Stokes. كل ما يفعله المصمم والمشغّل هو تحسين شروط هذه المعادلة: قطرة أكبر (تلاحم)، لزوجة أقل (حرارة)، زمن أطول (حجم)، وتشتت أقل (حقن كيماويات في المكان الصحيح).</p>
+  <div class="sec"><h2>تحجيم الفاصل الأفقي <small>3-phase</small></h2>
+  ${panel('sep', 'Gas capacity × Liquid retention', 'يتبع منهج Arnold & Stewart المبسط: الوعاء ممتلئ 50% بالسائل. قطر الفاصل d (in) وطول التماس Leff (ft) يحققان قيدين: ترسب قطرات السائل من الغاز وبقاء السائل زمن retention المطلوب. النتيجة أولية، وتُراجع مع API 12J والـ vendor.',
+    F('s_p', 'ضغط التشغيل', 150, 'psig') + F('s_T', 'درجة الحرارة', 110, '°F') + F('s_Qg', 'الغاز', 0.81, 'MMscf/d') + F('s_Qo', 'النفط', 1400, 'bbl/d') + F('s_Qw', 'الماء', 600, 'bbl/d') + F('s_gg', 'Gas SG', 0.75, '') + F('s_api', 'API', 32, '°API') +
+    F('s_dm', 'قطر القطرة المراد إزالتها من الغاز', 100, 'µm') + F('s_mug', 'لزوجة الغاز', 0.012, 'cP') + F('s_to', 'Retention time للنفط', 3, 'min') + F('s_tw', 'Retention time للماء', 3, 'min'), { fill: true })}
+  <div class="note">أرقام الـ retention time هنا مدخلات المصمم. القيم الشائعة ≈ 3–5 دقائق للنفط الخفيف الساخن وأكثر للثقيل أو البارد (يُتحقق منها من bottle tests أو معايير الشركة). لا يتضمن الحساب slugs أو foaming أو الرمل: زد الهامش لها.</div></div>
+  <div class="sec"><h2>Stokes <small>الأداة الأهم لفهم الفصل</small></h2>
+  ${panel('stokes', 'سرعة الترسب أو الطفو لقطرة/جسيم', 'v = g·Δρ·d² / (18·μ). صالحة للتدفق اللزج (Re < 1) ولسوائل نيوتنية فقط. أي أرقام فوق ذلك تُبالغ في السرعة.',
+    SEL('st_pre', 'سيناريو جاهز', [['wo', 'قطرة ماء في نفط (treater)'], ['ow', 'قطرة نفط في ماء (skim/CPI)'], ['sand', 'رمل في ماء'], ['gas', 'فقاعة غاز في نفط']], 'wo') +
+    F('st_d', 'قطر الجسيم', 100, 'µm') + F('st_rp', 'كثافة الجسيم', 1050, 'kg/m³') + F('st_rf', 'كثافة الوسط', 865, 'kg/m³') + F('st_mu', 'لزوجة الوسط', 9.6, 'cP') + F('st_h', 'مسافة الترسب', 24, 'in') +
+    F('st_Q', 'للمقطع الأفقي: معدل التدفق', 2000, 'bbl/d') + F('st_A', 'مساحة السطح الأفقي', 200, 'ft²') +
+    F('st_api', 'مساعد: API', 32, '°API') + F('st_T', 'مساعد: درجة الحرارة', 110, '°F'))}</div>
+  <div class="sec"><h2>Heater treater <small>الطاقة المطلوبة</small></h2>
+  ${panel('heat', 'حمل التسخين واستهلاك الغاز', 'Q = Σ m·cp·ΔT. cp للنفط من علاقة Gambill (0.388+0.00045T)/√SG، وللماء 1.0. لا يشمل الفقد الحراري من الجدران أو الاستعادة بالمبادل.',
+    F('h_qo', 'النفط', 1400, 'bbl/d') + F('h_qw', 'الماء', 600, 'bbl/d') + F('h_api', 'API', 32, '°API') + F('h_Ti', 'T الدخول', 85, '°F') + F('h_To', 'T المطلوبة', 140, '°F') + F('h_lhv', 'LHV لغاز الوقود', 950, 'BTU/scf') + F('h_eff', 'كفاءة الـ firetube', 70, '%'), { fill: true })}</div>`;
+}
+
+function buildGas() {
+  $('#pane-gas').innerHTML = `
+  <p class="lead">الغاز والماء ليسا "منتجات جانبية": الغاز يحدد هل الحقل يبيع أو يحرق، والماء يحدد كلفة المعالجة وسلامة الحقن. هذه الأدوات تجيب عن الأسئلة التشغيلية الأولى لكل منهما.</p>
+  <div class="sec"><h2>ضاغط الغاز</h2>
+  ${panel('comp', 'القدرة وعدد المراحل', 'Isentropic work: W = k/(k−1)·Z·R·T₁·[r^((k−1)/k) − 1] / η لكل مرحلة، مع تبريد بيني حتى T₁. Z من Papay مع pseudo-criticals بدلالة SG. الحقيقة تحتاج منحنيات المصنّع.',
+    F('g_Q', 'معدل الغاز', 0.84, 'MMscf/d') + F('g_p1', 'ضغط الشفط', 150, 'psig') + F('g_T1', 'T الشفط', 100, '°F') + F('g_p2', 'ضغط التفريغ', 1000, 'psig') + F('g_gg', 'Gas SG', 0.75, '') + F('g_k', 'k = cp/cv', 1.27, '') + F('g_eta', 'isentropic efficiency', 0.78, '') + F('g_rm', 'أقصى ratio/stage', 4, ''), { fill: true })}</div>
+  <div class="sec"><h2>Hydrates</h2>
+  ${panel('hyd', 'جرعة المثبط (Hammerschmidt)', 'المدخل الأساسي هو "الخفض المطلوب في درجة تكوّن الـ hydrate" = T_hydrate − T_أدنى تشغيل + هامش أمان. T_hydrate تُؤخذ من منحنى/برنامج (CSMGem أو HYSYS) لغاز الحقل. الصيغة تقريبية وأدق عند W < ≈ 25%.',
+    F('y_dT', 'الخفض المطلوب', 18, '°F') + SEL('y_in', 'المثبط', [['MeOH', 'Methanol'], ['MEG', 'MEG (ethylene glycol)']], 'MeOH') + F('y_qw', 'معدل الماء', 600, 'bbl/d') + F('y_sg', 'SG للماء', 1.03, ''), { fill: false })}</div>
+  <div class="sec"><h2>Produced water</h2>
+  ${panel('pw', 'أصغر قطرة نفط تزيلها وحدة الفصل بالجاذبية', 'القطرة تُزال إذا كانت سرعة طفوها ≥ معدل التدفق ÷ مساحة السطح (Q/A) في وحدة مثالية. d_cut = √(18·μ·(Q/A)/(g·Δρ)). مساحة أكبر أو ماء أسخن (μ أقل) يعني قطرة أصغر.',
+    F('w_Q', 'معدل الماء', 600, 'bbl/d') + F('w_A', 'مساحة السطح الفعالة', 250, 'ft²') + F('w_T', 'درجة الحرارة', 110, '°F') + F('w_sg', 'SG للماء', 1.05, '') + F('w_api', 'API للنفط', 32, '°API') + F('w_tgt', 'القطرة المستهدفة', 30, 'µm'), { fill: true })}
+  <div class="note">أهداف الجودة: التصريف البحري ≈ 30 mg/L oil-in-water كمتوسط شهري (OSPAR 2001/1) ${BADGE.e}. أما أهداف الحقن (TSS، حجم الجسيمات، OIW) فتتوقف على نفاذية الطبقة: تُحدَّد بـ core-flood واختبارات فلترة، ولا يوجد رقم عالمي واحد ${BADGE.i}.</div></div>`;
+}
+
+function buildStore() {
+  $('#pane-store').innerHTML = `
+  <p class="lead">الخزان ليس مجرد حجم، بل وثيقة مالية: كم برميلاً "قياسياً" تسلمت وبأي نقاء. من قراءة الـ gauge إلى الـ NSV، ثم تدفع المضخة الخام عبر الخط.</p>
+  <div class="sec"><h2>القياس والتسليم <small>Tank → NSV</small></h2>
+  ${panel('tank', 'من قراءة الخزان إلى الحجم القياسي', 'TOV من جدول المعايرة (هنا: أسطوانة بسيطة)، ثم GOV = TOV − Free Water، ثم GSV = GOV × VCF، ثم NSV = GSV × (1 − BS&W). VCF بصيغة API 11.1 للخام العام: α₆₀ = 341.0957/ρ₆₀². الجدول الرسمي هو المرجع التجاري.',
+    F('t_d', 'قطر الخزان', 80, 'ft') + F('t_h', 'ارتفاع النفط (dip)', 22.5, 'ft') + F('t_fw', 'ارتفاع الماء الحر', 0.4, 'ft') + F('t_T', 'درجة الحرارة المقاسة', 95, '°F') + F('t_api', 'API المقروء عند T', 31.5, '°API') + F('t_bsw', 'BS&W', 0.4, '%'))}
+  <div class="note warn">هذه الحاسبة لا تتضمن: تصحيح تمدد جدار الخزان (CTSh)، وزن السقف العائم، الـ deadwood، ولا تصحيح ضغط الخام. لا تستخدمها للتسليم التجاري الفعلي.</div></div>
+  <div class="sec"><h2>مزرعة الخزانات <small>كم خزاناً أحتاج؟</small></h2>
+  ${panel('farm', 'سعة التخزين وعدد الخزانات', 'السعة الاسمية = 0.1399·d²·h (bbl). السعة العاملة = السعة × نسبة التعبئة الآمنة. الخزان الاحتياطي (N+1) للصيانة وللتنظيف.',
+    F('f_q', 'إنتاج النفط', 1400, 'STB/d') + F('f_days', 'أيام التخزين المطلوبة', 5, 'day') + F('f_d', 'قطر الخزان', 60, 'ft') + F('f_h', 'ارتفاع الجدار', 32, 'ft') + F('f_fill', 'تعبئة آمنة', 90, '%'), { fill: true })}</div>
+  <div class="sec"><h2>خط التصدير</h2>
+  ${panel('pipe', 'الاحتكاك وقدرة المضخة', 'Darcy–Weisbach مع Swamee–Jain للـ friction factor، سائل أحادي الطور. اللزوجة هنا قيمة واحدة عند حرارة الخط. (الخطوط الطويلة تتغير حرارتها، وتحتاج حساباً متدرجاً.)',
+    F('p_Q', 'المعدل', 20000, 'bbl/d') + F('p_id', 'القطر الداخلي', 12.25, 'in') + F('p_L', 'الطول', 50, 'mi') + F('p_eps', 'خشونة', 0.0018, 'in') + F('p_api', 'API', 32, '°API') + F('p_mu', 'اللزوجة عند T الخط', 10, 'cP') + F('p_dz', 'فرق الارتفاع (+ صعود)', 200, 'ft') + F('p_pd', 'ضغط التسليم', 50, 'psig') + F('p_maop', 'MAOP', 1440, 'psig') + F('p_eta', 'كفاءة المضخة', 75, '%'), { fill: true })}</div>`;
+}
+
+function buildTrouble() {
+  const stages = [['all', 'الكل']].concat(STAGES.filter(s => TROUBLE.some(t => t.stage === s.id)).map(s => [s.id, s.ar.split(' (')[0]]));
+  $('#pane-trouble').innerHTML = `<p class="lead">كل بطاقة تتبع نفس التسلسل: عَرَض ظاهر في الغرفة أو على السجل، أسباب محتملة، ما يُقاس أولاً، ثم الإجراء. الترتيب مهم: لا تعالج قبل أن تقيس.</p>
+  <div class="sec"><div class="chips" id="tchips">${stages.map(([k, n], i) => `<button class="chip" type="button" data-f="${k}" aria-pressed="${i === 0}">${n}</button>`).join('')}</div><div class="tcards" id="tcards"></div></div>`;
+  renderTrouble('all');
+}
+function renderTrouble(f) {
+  const nm = Object.fromEntries(STAGES.map(s => [s.id, s.ar.split(' (')[0]]));
+  $('#tcards').innerHTML = TROUBLE.filter(t => f === 'all' || t.stage === f).map(t => `<article class="tcard"><div class="tg">${nm[t.stage]}</div><h3>${t.t}</h3><p class="sym">${t.sym}</p>
+    <h4>أسباب محتملة</h4><ul>${t.cause.map(x => `<li>${x}</li>`).join('')}</ul><h4>ماذا تقيس أولاً</h4><ul>${t.check.map(x => `<li>${x}</li>`).join('')}</ul><h4>إجراءات</h4><ul>${t.fix.map(x => `<li>${x}</li>`).join('')}</ul></article>`).join('');
+}
+
+function buildFrac() {
+  $('#pane-frac').innerHTML = `
+  <p class="lead">أطروحتك تقع عند نقطة نادراً ما تُناقش في أبحاث الـ rheology: بعد الشغل، يعود جزء من الـ fracturing fluid إلى السطح (flowback) ويدخل نفس السلسلة التي رأيتها. السؤال العملي: هل يجعل gel الـ SPME أصعب أو أسهل على الفاصل والـ treater والمياه؟ هذه الصفحة تفصل بين ما هو معروف وما يحتاج قياساً.</p>
+  <div class="sec"><h2>ماذا يتغير على الأرض أثناء الـ flowback</h2>
+  <div class="twocol"><div><ul class="tight">
+   <li><b>المعدات مؤقتة غالباً:</b> flowback manifold مع chokes قابلة للتبديل، sand trap/desander، فاصل رباعي الأطوار (غاز/نفط/ماء/رمل)، خزانات frac مفتوحة (≈ 500 bbl)، وflare مؤقت.</li>
+   <li><b>الـ choke أخطر نقطة:</b> الـ proppant العائد ينحت الـ choke. يُدار معدل الـ flowback بالتدريج لحماية الـ proppant pack والمعدات.</li>
+   <li><b>التركيب يتغير مع الوقت:</b> الأيام الأولى: ماء الـ frac + gel مكسور + proppant + قليل من الهيدروكربون. لاحقاً يرتفع النفط/الغاز وتزداد ملوحة الماء (ماء التكوين).</li>
+   <li><b>نسبة الاسترجاع:</b> جزء فقط من الحجم المضخوخ يعود (يتفاوت كثيراً بين الحقول؛ في الـ shale غالباً أقل من النصف) ${BADGE.e}.</li></ul></div>
+  <figure>${flowbackSVG()}<figcaption>رسم توضيحي نوعي لتغير مكونات الـ flowback مع الزمن. ليس بيانات حقل.</figcaption></figure></div></div>
+  <div class="sec"><h2>اللزوجة المتبقية تبطئ الفصل <small>Stokes</small></h2>
+  ${panel('frac', 'زمن طفو قطرة نفط في ماء يحمل بوليمر متبقياً', 'المنطق: إذا بقي guar/مشتقاته مذاباً في الماء العائد فإن لزوجة الطور المائي ترتفع، وتنخفض سرعة طفو قطرات النفط بنفس النسبة. الحساب نيوتني: يعطي حداً أعلى للإبطاء، لأن محلول البوليمر shear-thinning وسرعة الترسب منخفضة الإجهاد.',
+    F('x_d', 'قطر قطرة النفط', 100, 'µm') + F('x_h', 'مسافة الطفو', 24, 'in') + F('x_mu', 'لزوجة الماء النظيف', 0.7, 'cP') + F('x_sg', 'SG للماء', 1.03, '') + F('x_api', 'API للنفط', 32, '°API'))}
+  <div class="note">القياس الذي يحسم المسألة هو rheology للماء العائد/المكسور عند معدلات القص المنخفضة وليس عند 100 s⁻¹ فقط ${BADGE.i}. النتيجة أعلاه تحدد "كم تهمّ اللزوجة"، لا "كم هي".</div></div>
+  <div class="sec"><h2>مكونات نظامك وانعكاساتها السطحية</h2>
+  <div class="tblwrap"><table><thead><tr><th>المكوّن</th><th>الأثر المتوقع على السطح</th><th>الثقة</th></tr></thead><tbody>
+   <tr><td>Natural guar (حمولة دنيا)</td><td style="white-space:normal">البوليمر يضيف لزوجة للماء ويترك residue غير ذائب بعد الكسر، وقد يسد filters ويطلي الأسطح. نسبة الـ residue تتفاوت بين المنتجات وتُقاس لكل دفعة (القيمة الشائعة للـ guar الخام عدة نسب مئوية). كسر الـ gel بـ breaker يخفض الوزن الجزيئي ولا يزيل الـ residue.</td><td>${BADGE.e}</td></tr>
+   <tr><td>Sodium oleate</td><td style="white-space:normal">صابون كربوكسيلات. يترسب بوجود Ca²⁺ و Mg²⁺ (أوليات الكالسيوم والمغنيسيوم قليلة الذوبان). ماء الـ flowback عالي الملوحة والصلابة، فالمتوقع فقدان جزء من الـ surfactant بالترسب واحتمال تكوّن رواسب صابونية على الأسطح والـ filters.</td><td>${BADGE.e} كيمياء الصابون، ${BADGE.i} للحجم الفعلي</td></tr>
+   <tr><td>Surfactant + co-surfactant على الـ interface</td><td style="white-space:normal">أي surfactant متبقٍ يتجمع عند interface النفط/الماء ويثبّت الاستحلاب ويكوّن rag layer. هل يحدث في نظامك وبأي درجة؟ يتوقف على التركيز المتبقي بعد الكسر وعلى ملوحة الماء.</td><td>${BADGE.i}</td></tr>
+   <tr><td>Clove oil (eugenol) و 2-ethylhexanol</td><td style="white-space:normal">مكونات عضوية ستتوزع بين الطورين. تأثيرها على OIW وعلى المعالجة الحيوية أو الـ demulsifiers لم أجد ما يسندها كمعطى مؤكد.</td><td>${BADGE.s}</td></tr>
+  </tbody></table></div></div>
+  <div class="sec"><h2>تجارب مخبرية تربط أطروحتك بالسطح</h2>
+  <ul class="tight"><li><b>Bottle test</b> بخام حقيقي + سائل مكسور من gel الـ SPME بنسب water-cut مختلفة وعند درجة حرارة المنشأة، مع قياس water drop مقابل الزمن وسمك الـ rag layer.</li>
+  <li><b>قياس الـ residue</b> بالفلترة والوزن بعد الكسر، ومقارنته بـ gel مرجعي (guar/HPG + borate).</li>
+  <li><b>IFT</b> (pendant/spinning drop) بين النفط والماء المكسور قبل وبعد الـ breaker.</li>
+  <li><b>توافق مع ماء التكوين</b> (Ca²⁺/Mg²⁺ عند ملوحات واقعية) لنظام oleate.</li>
+  <li><b>Karl Fischer</b> لماء الخام (ASTM D4377 أو D6304) وطريقة الـ centrifuge (D4007) لـ BS&W المرجعي.</li></ul>
+  <div class="note warn">لا تعتمد على هذا القسم كاقتباس علمي: الجدول يفصل الثقة بين المؤكد والاستنتاج والتخمين عمداً. أي ادعاء عن أثر نظامك يحتاج بيانات من تجاربك.</div></div>`;
+}
+function flowbackSVG() {
+  const W = 560, H = 250, L = 40, R = 12, T = 14, B = 34;
+  const x = t => L + t / 60 * (W - L - R), y = v => T + (1 - v) * (H - T - B);
+  const curve = f => { let d = ''; for (let t = 0; t <= 60; t += 2) d += (t ? ' L' : 'M') + x(t).toFixed(1) + ' ' + y(f(t)).toFixed(1); return d; };
+  const gel = t => 0.9 * Math.exp(-t / 6) + 0.02, solids = t => 0.85 * Math.exp(-t / 2.5) + 0.02, gas = t => Math.min(1, 0.12 + 0.85 * (1 - Math.exp(-t / 10))) * Math.exp(-t / 90), oil = t => 0.7 * (1 - Math.exp(-t / 15)) + 0.04;
+  let s = `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="رسم توضيحي: تتراجع حصة الـ gel والـ proppant في الـ flowback بسرعة بينما ترتفع حصة الغاز والنفط">`;
+  s += `<line class="axis" x1="${L}" x2="${W - R}" y1="${H - B}" y2="${H - B}"/><line class="axis" x1="${L}" x2="${L}" y1="${T}" y2="${H - B}"/>`;
+  [0, 15, 30, 45, 60].forEach(t => s += `<text x="${x(t)}" y="${H - B + 15}" text-anchor="middle">${t}</text>`);
+  s += `<text x="${(L + W - R) / 2}" y="${H - 6}" text-anchor="middle">الأيام بعد بدء الـ flowback</text><text transform="rotate(-90)" x="${-(T + H - B) / 2}" y="12" text-anchor="middle">مقياس نسبي</text>`;
+  const sers = [[gel, 'var(--water)', 'gel/polymer في الماء'], [solids, 'var(--ink)', 'proppant وصلب'], [gas, 'var(--gas)', 'غاز'], [oil, 'var(--oil)', 'نفط']];
+  sers.forEach(([f, c, l], i) => { s += `<path d="${curve(f)}" style="fill:none;stroke:${c};stroke-width:2.4"/><line x1="${W - R - 150}" x2="${W - R - 132}" y1="${T + 8 + i * 16}" y2="${T + 8 + i * 16}" style="stroke:${c};stroke-width:2.4"/><text class="tt" x="${W - R - 126}" y="${T + 12 + i * 16}">${l}</text>`; });
+  return s + '</svg>';
+}
+
+function buildRef() {
+  $('#pane-ref').innerHTML = `
+  <div class="sec"><h2>قاموس</h2><input class="gsearch" id="gq" type="search" placeholder="ابحث: GOR, separator, hydrate..." aria-label="بحث في القاموس"><div class="gloss" id="gl"></div></div>
+  <div class="sec"><h2>ظروف القياس القياسية</h2>
+  <div class="tblwrap"><table><thead><tr><th>الاصطلاح</th><th>الظروف</th><th>ملاحظة</th></tr></thead><tbody>
+   <tr><td>STB / scf (US field)</td><td class="n">60°F, 14.696 psia</td><td style="white-space:normal">المستعمل في هذه الأداة</td></tr>
+   <tr><td>Sm³ (SI)</td><td class="n">15°C (288.15 K), 101.325 kPa</td><td style="white-space:normal">قد تختلف الشركات (0°C أو 20°C أيضاً)؛ تحقق من العقد</td></tr>
+   <tr><td>1 bbl</td><td class="n">42 US gal = 0.158987 m³</td><td style="white-space:normal">5.6146 ft³</td></tr>
+   <tr><td>1 MMscf</td><td class="n">1,000,000 scf ≈ 28,317 Sm³ (فرق ظروف قياس)</td><td style="white-space:normal">تقريب لأن المراجع تختلف</td></tr>
+  </tbody></table></div></div>
+  <div class="sec"><h2>حدود هذه الأداة</h2><ul class="tight">
+   <li>الحاسبات تعليمية/أولية: تُظهر الاتجاهات والرتب وتساعد على الفهم، ولا تغني عن برامج المحاكاة أو معايير الشركة أو مراجعة مهندس مرخّص.</li>
+   <li>خصائص الموائع من علاقات ارتباطية (Standing, Beggs–Robinson, Papay). تتفاوت دقتها بحسب نوع الخام والمدى. للحقل الحقيقي استخدم PVT مخبري.</li>
+   <li>توزيع الغاز على مراحل الفصل مقدَّر من Standing؛ التقسيم الفعلي يحتاج flash بمعادلة حالة (EOS).</li>
+   <li>ثوابت الـ choke correlations منقولة عن مراجع ثانوية؛ تحقق منها قبل الاعتماد عليها.</li></ul></div>
+  <div class="sec"><h2>المراجع <small>مع درجة ثقتي في دقة الببليوغرافيا</small></h2><div class="tblwrap"><table><thead><tr><th>المرجع</th><th>الثقة</th></tr></thead><tbody>${REFS.map(([r, c]) => `<tr><td style="white-space:normal;min-width:320px;direction:ltr;text-align:left">${r}</td><td style="white-space:normal">${c}</td></tr>`).join('')}</tbody></table></div>
+  <p class="note warn" style="margin-top:10px">راجع الأرقام (DOI/الصفحات) من المصدر قبل أي اقتباس رسمي في الأطروحة. ما لم أذكر له DOI فذلك لأنني غير متأكد منه.</p></div>`;
+  const render = q => { $('#gl').innerHTML = GLOSS.filter(g => !q || (g[0] + ' ' + g[1]).toLowerCase().includes(q.toLowerCase())).map(g => `<div><b>${g[0]}</b>${g[1]}</div>`).join('') || '<div>لا نتائج</div>'; };
+  render(''); $('#gq').addEventListener('input', e => render(e.target.value.trim()));
+}
+
+/* ===== Calculators ===== */
+const out = (id, html) => { const e = document.getElementById('o_' + id); if (e) e.innerHTML = html; };
+const dens = api => 62.4 * apiToSG(api);
+const muWaterCp = TF => { const TK = (TF - 32) / 1.8 + 273.15; return 2.414e-5 * Math.pow(10, 247.8 / (TK - 140)) * 1000; };
+
+function caseObj() { return caseVals(); }
+
+RUN.stream = () => {
+  const c = caseObj(); if (![c.qL, c.wc, c.gor, c.api, c.gg, c.Tres].every(isFinite)) return;
+  const b = stageBalance(c);
+  const names = [['HP separator', c.Psep1], ['LP separator', c.Psep2], ['Stock tank / VRU', 0]];
+  const rows = names.map(([n, p], i) => `<tr><td>${n}</td><td class="n">${fmt(p, 0)}</td><td class="n">${fmt(b.gas[i] * 1000, 1)}</td><td class="n">${fmt(b.frac[i] * 100, 1)}%</td></tr>`).join('');
+  const ro = dens(c.api);
+  const sat = c.Pr < b.Pb;
+  $('#o_stream').innerHTML = `<div class="twocol"><div class="out"><div class="kvs">${KV('نفط (stock tank)', fmt(b.qo, 0), 'STB/d')}${KV('ماء', fmt(b.qw, 0), 'bbl/d')}${KV('غاز كلي', fmt(b.gasTot, 3), 'MMscf/d')}${KV('Pb (Standing)', fmt(b.Pb, 0), 'psia', sat ? 'warn' : '')}${KV('Bo عند Pb', fmt(b.Bo, 3), 'rb/STB')}${KV('Shrinkage', fmt(b.shrink * 100, 1), '%')}${KV('كثافة النفط', fmt(ro, 1), 'lb/ft³')}</div>
+   ${sat ? MSG('Pr أقل من Pb: المكمن saturated، فالـ GOR المُدخَل قد لا يمثل الـ solution GOR. الحساب هنا تقريبي.', 'warn') : MSG('Pr أعلى من Pb: المكمن undersaturated، فالنفط يصل البئر مذاباً فيه الغاز ويتحرر لاحقاً. هذا هو سبب الـ shrinkage.', '')}</div>
+   <div class="out"><div class="tblwrap"><table><thead><tr><th>المرحلة</th><th class="n">psig</th><th class="n">Mscf/d</th><th class="n">حصة الغاز</th></tr></thead><tbody>${rows}</tbody></table></div>
+   ${MSG('توزيع الغاز على المراحل مقدَّر من Standing؛ يميل لتقدير غاز المرحلة الأولى أعلى مما يحدث في الواقع. التوزيع الحقيقي يحتاج flash لتركيب المائع.', '')}</div></div>`;
+  const casesum = `API ${c.api} · GOR ${c.gor} · WC ${c.wc}% · q ${fmt(c.qL, 0)} · Pr ${fmt(c.Pr, 0)} · FWHP ${c.Pwh}`; $('#casesum').textContent = casesum;
+};
+
+RUN.fall = () => {
+  const c = caseObj(); if (![c.Pr, c.Pwh, c.Pchk, c.Psep1, c.Psep2, c.J, c.qL].every(isFinite)) return;
+  const b = stageBalance(c);
+  const pwfI = iprPwf(c.qL, c.Pr, b.Pb, c.J);
+  const qmax = iprQmax(c.Pr, b.Pb, c.J);
+  const lv = [c.Pr - 14.696, pwfI - 14.696, c.Pwh, c.Pchk, c.Psep1, c.Psep2, 0];
+  const names = ['Drawdown', 'Tubing', 'Choke', 'Flowline', 'HP→LP', 'LP→tank'];
+  const cols = ['var(--oil)', 'var(--accent)', 'var(--gas)', 'var(--muted)', 'var(--water)', 'var(--water)'];
+  const W = 640, H = 300, L = 56, R = 12, T = 18, B = 40, ym = niceMax(lv[0] * 1.05);
+  const Y = v => T + (1 - Math.max(v, 0) / ym) * (H - T - B), bw = (W - L - R) / 6;
+  let s = `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="رسم شلال الضغط من المكمن حتى الخزان">`;
+  for (let i = 0; i <= 4; i++) { const v = ym * i / 4; s += `<line class="gridl" x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${L - 6}" y="${Y(v) + 4}" text-anchor="end">${fmt(v, 0)}</text>`; }
+  s += `<text transform="rotate(-90)" x="${-(T + H - B) / 2}" y="12" text-anchor="middle">psig</text>`;
+  for (let i = 0; i < 6; i++) {
+    const hi = Math.max(lv[i], lv[i + 1]), lo = Math.min(lv[i], lv[i + 1]), x = L + i * bw + 6;
+    s += `<rect x="${x}" y="${Y(hi)}" width="${bw - 12}" height="${Math.max(Y(lo) - Y(hi), 1)}" style="fill:${cols[i]};opacity:.85"/>`;
+    s += `<text x="${x + (bw - 12) / 2}" y="${Y(hi) - 5}" text-anchor="middle" class="tt">${fmt(lv[i] - lv[i + 1], 0)}</text><text x="${x + (bw - 12) / 2}" y="${H - B + 15}" text-anchor="middle">${names[i]}</text>`;
+  }
+  s += `<line class="axis" x1="${L}" x2="${W - R}" y1="${H - B}" y2="${H - B}"/></svg>`;
+  $('#o_fall').innerHTML = `<figure>${s}<figcaption>كل عمود هو الضغط المفقود في مرحلة (psi). المجموع من Pr حتى الخزان.</figcaption></figure>`;
+  /* consistency: VLP vs IPR at qL */
+  const lift = vlpParams(c, 'none');
+  const v = vlpPwf(c.qL, lift);
+  let msg = '';
+  if (!(c.qL < qmax)) msg = MSG(`المعدل المُدخَل (${fmt(c.qL, 0)}) أكبر من qmax للمكمن (${fmt(qmax, 0)} bbl/d).`, 'bad');
+  else if (!isFinite(v.pwf)) msg = MSG('VLP لم يُحسب (ضغط سالب أو غير واقعي).', 'bad');
+  else {
+    const d = v.pwf - pwfI;
+    msg = Math.abs(d) < 150 ? MSG(`متسق: الـ tubing يحتاج Pwf ≈ ${fmt(v.pwf, 0)} psia والمكمن يعطي ${fmt(pwfI, 0)} psia عند هذا المعدل.`, 'ok')
+      : d > 0 ? MSG(`غير متسق: الـ tubing يحتاج Pwf ≈ ${fmt(v.pwf, 0)} psia لكن المكمن لا يعطي إلا ${fmt(pwfI, 0)} psia عند هذا المعدل. البئر لن يصل هذا المعدل بدون رفع أو خفض ضغط السطح.`, 'warn')
+        : MSG(`الـ tubing يحتاج ${fmt(v.pwf, 0)} psia والمكمن يعطي ${fmt(pwfI, 0)}: هناك فائض ضغط ≈ ${fmt(-d, 0)} psi، فيمكن رفع المعدل أو زيادة الاختناق.`, 'ok');
+  }
+  const ratio = (c.Pchk + 14.696) / (c.Pwh + 14.696);
+  $('#o_fallnote').innerHTML = `<div class="out">${msg}${MSG(`نسبة ضغط الـ choke (downstream/upstream) = ${fmt(ratio, 2)}. ${ratio < 0.55 ? 'أقل من ≈ 0.55: تدفق حرج، فضغط المنشأة لا يؤثر على معدل البئر.' : 'أعلى من ≈ 0.55: تدفق تحت حرج، فتغيّر ضغط السطح سيغيّر معدل البئر.'}`, ratio < 0.55 ? 'ok' : 'warn')}
+   <p>الدرس: في الحقول الطبيعية الضغط يُصرف أساساً في ثلاثة أماكن: الـ drawdown (لا بد منه)، رفع العمود في الـ tubing، والـ choke. المراحل السطحية الأخيرة صغيرة بالمقارنة، لكنها هي التي تحدد كم غاز يتحرر ومدى استقرار الخام.</p></div>`;
+};
+
+function vlpParams(c, mode) {
+  const g = (id, d) => { const e = document.getElementById(id); const v = e ? parseFloat(e.value) : NaN; return isFinite(v) ? v : d; };
+  const p = { whp: c.Pwh + 14.696, TVD: c.TVD, MD: Math.max(g('n_MD', c.TVD), c.TVD), id: c.id, Twh: g('n_Twh', 110), Tbh: c.Tres, wc: c.wc / 100, gor: c.gor, api: c.api, gg: c.gg, gw: 1.05, eps: g('n_eps', 0.0006), muL: g('n_mu', 3), N: 40, glrInj: 0, zInj: 0, dpPump: 0, zPump: 0 };
+  if (mode === 'gl') { p.glrInj = g('n_glr', 0); p.zInj = Math.min(g('n_zinj', 0), c.TVD); }
+  if (mode === 'esp') { p.dpPump = g('n_dpp', 0); p.zPump = Math.min(g('n_zp', 0), c.TVD); }
+  return p;
+}
+
+RUN.nodal = () => {
+  const c = caseObj(); if (![c.Pr, c.J, c.TVD, c.id, c.gor, c.api].every(isFinite)) return;
+  const mode = document.getElementById('n_mode').value;
+  const b = stageBalance(c), Pb = b.Pb;
+  const p0 = vlpParams(c, 'none'), p1 = vlpParams(c, mode);
+  const qmax = iprQmax(c.Pr, Pb, c.J);
+  const base = nodalSolve(p0, c.Pr, Pb, c.J);
+  const lifted = mode === 'none' ? base : nodalSolve(p1, c.Pr, Pb, c.J);
+  const ipr = [], v0 = [], v1 = [], N = 36;
+  for (let i = 0; i <= N; i++) {
+    const q = qmax * i / N * 0.99, pw = iprPwf(q, c.Pr, Pb, c.J); ipr.push([q, pw]);
+    if (i >= 1) { v0.push([q, vlpPwf(q, p0).pwf]); if (mode !== 'none') v1.push([q, vlpPwf(q, p1).pwf]); }
+  }
+  const ym = niceMax(c.Pr * 1.05), xm = niceMax(qmax * 1.02);
+  const series = [{ pts: ipr, color: 'var(--oil)', label: 'IPR (المكمن)' }, { pts: v0, color: 'var(--water)', label: mode === 'none' ? 'VLP (tubing)' : 'VLP بدون رفع', dash: mode !== 'none' }];
+  if (mode !== 'none') series.push({ pts: v1, color: 'var(--accent)', label: mode === 'gl' ? 'VLP مع gas lift' : 'VLP مع ESP' });
+  const marks = []; const res = lifted;
+  let det = '';
+  if (res.q) { const pw = iprPwf(res.q, c.Pr, Pb, c.J); marks.push({ x: res.q, y: pw, label: `${fmt(res.q, 0)} bbl/d`, color: 'var(--ink)', dx: -8, dy: -10, anchor: 'end' }); const vv = vlpPwf(res.q, p1);
+    const oil = res.q * (1 - c.wc / 100);
+    let hp = ''; if (mode === 'esp') hp = KV('hp هيدروليكي للمضخة', fmt(res.q * p1.dpPump / 58770, 0), 'hp');
+    det = `<div class="kvs">${KV('نقطة التشغيل', fmt(res.q, 0), 'bbl/d', 'ok')}${KV('النفط', fmt(oil, 0), 'STB/d')}${KV('Pwf', fmt(pw, 0), 'psia')}${KV('Drawdown', fmt(c.Pr - pw, 0), 'psi')}${KV('احتكاك الـ tubing', fmt(vv.dpFric, 0), 'psi')}${KV('غاز حر أعلى/أسفل', fmt(vv.gasFracTop * 100, 0) + '/' + fmt(vv.gasFracBot * 100, 0), '%')}${hp}</div>`;
+    if (mode !== 'none' && base.q) det += MSG(`المكسب من الرفع: ${fmt(res.q - base.q, 0)} bbl/d (من ${fmt(base.q, 0)} إلى ${fmt(res.q, 0)}).`, 'ok');
+    else if (mode !== 'none') det += MSG(`البئر لا يتدفق طبيعياً بهذه الظروف، والرفع جعله ينتج ${fmt(res.q, 0)} bbl/d.`, 'ok');
+    if (pw < Pb) det += MSG('Pwf أقل من Pb: يتحرر الغاز عند الـ perforations وفي الـ tubing؛ توقع إنتاج GOR أعلى وتحميلاً أسوأ للمضخة.', 'warn');
+  } else det = MSG(mode === 'none' ? 'لا يوجد تقاطع: البئر لا يتدفق طبيعياً (VLP فوق IPR في كل المدى). يحتاج artificial lift أو خفض FWHP.' : 'لا يوجد تقاطع حتى مع الرفع الحالي. زد الحقن/الـ ΔP أو راجع المدخلات.', 'bad');
+  $('#o_nodal').innerHTML = `<figure>${lineChart({ xmax: xm, ymax: ym, xlab: 'Liquid rate (bbl/d)', ylab: 'Pwf (psia)', series, marks, hlines: [{ y: Pb, color: 'var(--gas)', label: 'Pb' }], aria: 'منحنيا IPR و VLP ونقطة التشغيل' })}</figure>${det}`;
+};
+
+RUN.choke = () => {
+  const q = num('k_q'), R = num('k_R'), S = num('k_S'), pt = num('k_pt'), pd = num('k_pd');
+  if (![q, R, S, pt, pd].every(isFinite) || S <= 0) return;
+  const rows = Object.keys(CHOKES).map(k => `<tr><td>${k}</td><td class="n">${fmt(chokeP(k, q, R, S), 0)}</td><td class="n">${fmt(chokeS(k, q, R, pt), 1)}</td></tr>`).join('');
+  const ps = Object.keys(CHOKES).map(k => chokeP(k, q, R, S)), avg = ps.reduce((a, b) => a + b, 0) / ps.length;
+  const ratio = (pd + 14.696) / (avg + 14.696);
+  $('#o_choke').innerHTML = `<div class="tblwrap"><table><thead><tr><th>العلاقة</th><th class="n">FWHP عند S (psig)</th><th class="n">S لـ FWHP المستهدف (/64)</th></tr></thead><tbody>${rows}</tbody></table></div>
+   <div class="kvs">${KV('متوسط FWHP', fmt(avg, 0), 'psig')}${KV('مدى الاختلاف', fmt(Math.min(...ps), 0) + '–' + fmt(Math.max(...ps), 0), 'psig')}${KV('نسبة ضغط الـ choke', fmt(ratio, 2), '', ratio < 0.55 ? 'ok' : 'bad')}</div>
+   ${ratio < 0.55 ? MSG('تدفق حرج: العلاقات صالحة تقريبياً.', 'ok') : MSG('تحت حرج (النسبة ≥ ≈ 0.55): هذه العلاقات غير صالحة، ويؤثر ضغط downstream على المعدل.', 'bad')}`;
+};
+FILL.choke = () => { const c = caseObj(); const b = stageBalance(c); setv('k_q', c.qL); setv('k_R', Math.round(c.gor * (1 - c.wc / 100))); setv('k_pt', c.Pwh); setv('k_pd', c.Pchk); };
+
+RUN.al = () => {
+  const i = { d: num('a_d'), q: num('a_q'), wc: num('a_wc'), gor: num('a_gor'), mu: num('a_mu'), T: num('a_T'), sand: +document.getElementById('a_sand').value, h2s: +document.getElementById('a_h2s').value, dev: +document.getElementById('a_dev').value, gas: +document.getElementById('a_gas').value, pw: +document.getElementById('a_pw').value };
+  if (![i.d, i.q, i.wc, i.gor, i.mu, i.T].every(isFinite)) return;
+  const R = {}; AL_DATA.forEach(a => R[a.k] = { s: 100, w: [], x: false });
+  const pen = (k, p, why) => { R[k].s -= p; R[k].w.push(why); }, bon = (k, p, why) => { R[k].s += p; R[k].w.push(why + ' (+)'); }, ex = (k, why) => { R[k].x = true; R[k].w.push('مستبعد: ' + why); };
+  /* SRP */
+  if (i.d > 14000) ex('srp', 'العمق أكبر من النطاق العملي لـ SRP'); if (i.q > 4000) ex('srp', 'المعدل أكبر من النطاق العملي');
+  if (i.q > 1500 && i.d > 7000) pen('srp', 30, 'معدل عالٍ مع عمق كبير يحمّل القضبان');
+  if (i.dev === 2) pen('srp', 40, 'البئر الأفقي يعيق الضخ بالقضبان'); if (i.dev === 1) pen('srp', 15, 'الانحراف يزيد تآكل القضبان/tubing');
+  if (i.sand === 2) pen('srp', 25, 'رمل كثير يتلف المضخة'); else if (i.sand === 1) pen('srp', 8, 'رمل قليل');
+  if (i.gor > 800) pen('srp', 15, 'غاز حر يقلل كفاءة الشوط'); if (i.mu > 500) pen('srp', 15, 'لزوجة عالية');
+  /* ESP */
+  if (!i.pw) ex('esp', 'لا تتوفر كهرباء'); if (i.q < 150) pen('esp', 45, 'المعدل أقل من النطاق الكفؤ'); else if (i.q < 300) pen('esp', 15, 'معدل منخفض نسبياً');
+  if (i.d > 13000) pen('esp', 20, 'عمق كبير');
+  if (i.T > 300) pen('esp', 50, 'حرارة تتجاوز حد المحركات/الكوابل القياسية'); else if (i.T > 260) pen('esp', 25, 'حرارة عالية على المحرك');
+  if (i.sand === 2) pen('esp', 35, 'رمل كثير يتلف impellers'); else if (i.sand === 1) pen('esp', 10, 'رمل قليل');
+  if (i.gor > 800) pen('esp', 25, 'غاز حر عند الـ intake'); else if (i.gor > 400) pen('esp', 10, 'غاز معتبر');
+  if (i.mu > 1000) pen('esp', 40, 'لزوجة عالية جداً'); else if (i.mu > 200) pen('esp', 15, 'لزوجة عالية');
+  if (i.h2s) pen('esp', 8, 'H₂S يتطلب مواد خاصة'); if (i.dev === 2) pen('esp', 10, 'ضرورة وضع المضخة في المقطع العمودي'); if (i.wc > 50) bon('esp', 8, 'water cut عالٍ يناسب ESP');
+  /* Gas lift */
+  if (!i.gas) ex('gl', 'لا يتوفر غاز للحقن'); if (i.q < 100) pen('gl', 30, 'معدل منخفض لا يبرر البنية'); if (i.q > 5000) bon('gl', 8, 'مناسب للمعدلات العالية');
+  if (i.sand === 2) pen('gl', 10, 'رمل كثير (تآكل سطحي)'); if (i.mu > 300) pen('gl', 20, 'لزوجة عالية تضعف الرفع'); if (i.wc > 70) pen('gl', 8, 'water cut عالٍ يرفع الغاز المطلوب');
+  if (i.gor > 300) bon('gl', 5, 'الغاز المصاحب يساعد'); if (i.dev > 0) bon('gl', 5, 'يتحمل الانحراف جيداً'); if (i.d > 14000) pen('gl', 10, 'ضغط ضغط كبير للحقن');
+  /* PCP */
+  if (i.d > 8000) ex('pcp', 'العمق أكبر من حدود PCP'); else if (i.d > 6000) pen('pcp', 30, 'عمق كبير'); else if (i.d > 4500) pen('pcp', 10, 'عمق متوسط');
+  if (i.q > 2500) ex('pcp', 'المعدل أكبر من حدود PCP'); else if (i.q > 1200) pen('pcp', 30, 'معدل مرتفع');
+  if (i.T > 300) ex('pcp', 'الحرارة تتجاوز حد الـ elastomer'); else if (i.T > 250) pen('pcp', 30, 'حرارة عالية على الـ elastomer'); else if (i.T > 200) pen('pcp', 8, 'حرارة تقصّر عمر الـ stator');
+  if (i.gor > 500) pen('pcp', 20, 'غاز يضر بالـ elastomer'); if (i.sand) bon('pcp', 8, 'يتحمل الرمل أفضل من SRP/ESP'); if (i.mu >= 100) bon('pcp', 10, 'مناسب للنفط اللزج');
+  if (i.h2s) pen('pcp', 5, 'H₂S/مكونات عطرية قد تنفخ الـ elastomer'); if (i.dev === 2) pen('pcp', 15, 'تآكل القضبان في الأفقي'); else if (i.dev === 1) pen('pcp', 5, 'انحراف');
+  /* Plunger */
+  if (i.q > 500) ex('pl', 'المعدل أكبر بكثير من نطاق plunger'); else if (i.q > 200) pen('pl', 40, 'معدل أعلى من النطاق المعتاد');
+  const need = 300 * i.d / 1000; if (i.gor < need) pen('pl', 40, `GOR أقل من ≈ ${fmt(need, 0)} scf/bbl (قاعدة تقريبية 300/1000 ft)`);
+  if (i.sand === 2) pen('pl', 15, 'رمل كثير'); if (i.dev === 2) pen('pl', 25, 'أفقي'); else if (i.dev === 1) pen('pl', 10, 'انحراف'); if (i.mu > 50) pen('pl', 10, 'لزوجة');
+  const list = AL_DATA.map(a => ({ ...a, s: R[a.k].x ? 0 : Math.max(0, Math.min(100, R[a.k].s)), x: R[a.k].x, w: R[a.k].w })).sort((a, b) => b.s - a.s);
+  $('#o_al').innerHTML = `<div class="tblwrap"><table><thead><tr><th>الطريقة</th><th>الملاءمة</th></tr></thead><tbody>${list.map(l => `<tr class="${l === list[0] && !l.x ? 'hi' : ''}"><td>${l.n}<br><small style="color:var(--muted)">${l.ar}</small></td><td><div style="display:flex;align-items:center;gap:8px"><div class="bar" style="flex:1"><i style="width:${l.s}%"></i></div><span class="mono">${l.x ? 'مستبعد' : l.s}</span></div></td></tr>`).join('')}</tbody></table></div>
+   ${list.map(l => l.w.length ? `<div class="msg ${l.x ? 'bad' : ''}"><b>${l.n}:</b> ${l.w.join('، ')}</div>` : '').join('')}
+   ${MSG('الأرقام لا تحمل معنى مطلقاً: هي ترتيب نسبي لتقليص الخيارات، وليست احتمال نجاح. تعتمد على نطاقات تشغيل عامة وقد تختلف عن نطاقات المورّد.', '')}`;
+};
+FILL.al = () => { const c = caseObj(); setv('a_d', c.TVD); setv('a_q', c.qL); setv('a_wc', c.wc); setv('a_gor', c.gor); setv('a_T', c.Tres); };
+
+RUN.sep = () => {
+  const p = { Pg: num('s_p'), T: num('s_T'), Qg: num('s_Qg'), Qo: num('s_Qo'), Qw: num('s_Qw'), gg: num('s_gg'), api: num('s_api'), dm: num('s_dm'), muG: num('s_mug'), to: num('s_to'), tw: num('s_tw') };
+  if (!Object.values(p).every(isFinite)) return;
+  const r = sepSizing(p);
+  const rows = r.rows.map(x => `<tr class="${r.best && x.d === r.best.d ? 'hi' : ''}"><td class="n">${x.d}</td><td class="n">${fmt(x.Lg, 1)}</td><td class="n">${fmt(x.Ll, 1)}</td><td class="n">${fmt(x.Lss, 1)}</td><td class="n">${fmt(x.SR, 1)}</td><td>${x.gasGov ? 'الغاز' : 'السائل'}</td><td>${x.ok ? 'مقبول' : '—'}</td></tr>`).join('');
+  $('#o_sep').innerHTML = `<div class="kvs">${KV('ρ الغاز', fmt(r.rhoG, 2), 'lb/ft³')}${KV('ρ النفط', fmt(r.rhoO, 1), 'lb/ft³')}${KV('Z', fmt(r.Z, 3))}${KV('Vt للقطرة', fmt(r.Vt, 2), 'ft/s')}${KV('Cd', fmt(r.Cd, 2))}${KV('d·Leff (غاز)', fmt(r.dLg, 0), 'in·ft')}${KV('d²·Leff (سائل)', fmt(r.d2L, 0), 'in²·ft')}</div>
+   <div class="tblwrap"><table><thead><tr><th class="n">d (in)</th><th class="n">Leff غاز (ft)</th><th class="n">Leff سائل (ft)</th><th class="n">Lss (ft)</th><th class="n">12·Lss/d</th><th>يحكم</th><th>مقبول؟</th></tr></thead><tbody>${rows}</tbody></table></div>
+   ${r.best ? MSG(`أقل كلفة تقريبية ضمن SR 3–5.5 (المثالي 3–5): قطر ${r.best.d}" × طول ${fmt(r.best.Lss, 1)} ft (Lss). ${r.best.gasGov ? 'قيد الغاز هو الحاكم.' : 'قيد السائل هو الحاكم.'}`, 'ok') : MSG('لا يوجد قطر ضمن SR 3–5.5 في الجدول: استخدم وعاءً رأسياً أو أضف وحدات متوازية.', 'warn')}`;
+};
+FILL.sep = () => { const c = caseObj(); const b = stageBalance(c); setv('s_p', c.Psep1); setv('s_T', c.Ts); setv('s_Qg', +(b.gas[0]).toFixed(3)); setv('s_Qo', Math.round(b.qo)); setv('s_Qw', Math.round(b.qw)); setv('s_gg', c.gg); setv('s_api', c.api); };
+
+const STPRE = { wo: [100, 1050, 865, 9.6], ow: [100, 865, 1050, 0.6], sand: [100, 2650, 1000, 0.7], gas: [200, 5, 865, 9.6] };
+RUN.stokes = () => {
+  const d = num('st_d') * 1e-6, rp = num('st_rp'), rf = num('st_rf'), mu = num('st_mu') * 1e-3, h = num('st_h') * 0.0254;
+  if (![d, rp, rf, mu, h].every(isFinite) || mu <= 0) return;
+  const v = stokesV(d, rp - rf, mu), av = Math.abs(v), Re = rf * av * d / mu;
+  const muOil = muDeadOil(num('st_api'), num('st_T'));
+  const t = av > 0 ? h / av : Infinity;
+  const Q = num('st_Q'), A = num('st_A'); const vs = Q * 0.158987 / 86400 / (A * 0.092903);
+  const dcut = stokesCut(vs, rp - rf, mu);
+  $('#o_stokes').innerHTML = `<div class="kvs">${KV('الاتجاه', v >= 0 ? 'يهبط' : 'يطفو')}${KV('السرعة', fmt(av * 1000, av < 0.001 ? 4 : 3), 'mm/s')}${KV('السرعة', fmt(av * 1000 * 60 / 25.4, 3), 'in/min')}${KV('زمن قطع المسافة', t < 3600 ? fmt(t / 60, 1) : fmt(t / 3600, 1), t < 3600 ? 'min' : 'h')}${KV('Reynolds', fmt(Re, 3), '', Re < 1 ? 'ok' : 'bad')}${KV('أصغر قطرة تُزال عند Q/A', fmt(dcut * 1e6, 1), 'µm')}</div>
+   ${Re < 1 ? MSG('Re < 1: نظام Stokes صالح.', 'ok') : MSG('Re ≥ 1: Stokes غير صالح، والسرعة الحقيقية أقل من الحساب (استخدم Cd للمنطقة الانتقالية أو حاسبة الفاصل).', 'bad')}
+   ${MSG(`مساعد: لزوجة النفط الميت (Beggs–Robinson) عند ${num('st_T')}°F وAPI ${num('st_api')} ≈ ${fmt(muOil, 2)} cP. ضعها في "لزوجة الوسط" إذا كان النفط هو الوسط.`)}
+   ${MSG('الأثر العملي: السرعة تتناسب مع d²: مضاعفة قطر القطرة (بالتلاحم) تزيد السرعة 4 مرات، وخفض اللزوجة للنصف يضاعفها.')}`;
+};
+
+RUN.heat = () => {
+  const qo = num('h_qo'), qw = num('h_qw'), api = num('h_api'), Ti = num('h_Ti'), To = num('h_To'), lhv = num('h_lhv'), eff = num('h_eff') / 100;
+  if (![qo, qw, api, Ti, To, lhv, eff].every(isFinite) || eff <= 0) return;
+  const sg = apiToSG(api), Tm = (Ti + To) / 2;
+  const cpo = (0.388 + 0.00045 * Tm) / Math.sqrt(sg);
+  const mo = qo * C.lbPerBblW * sg / 24, mw = qw * C.lbPerBblW * 1.03 / 24;
+  const Q = (mo * cpo + mw * 1.0) * (To - Ti);
+  const fuel = Q / eff / lhv * 24 / 1000;
+  const m1 = muDeadOil(api, Ti), m2 = muDeadOil(api, To);
+  $('#o_heat').innerHTML = `<div class="kvs">${KV('الحمل الحراري', fmt(Q / 1e6, 2), 'MMBTU/hr')}${KV('يومياً', fmt(Q * 24 / 1e6, 1), 'MMBTU/d')}${KV('غاز الوقود', fmt(fuel, 1), 'Mscf/d')}${KV('cp النفط', fmt(cpo, 3), 'BTU/lb·°F')}${KV('μ النفط عند الدخول', fmt(m1, 1), 'cP')}${KV('μ النفط عند الخروج', fmt(m2, 1), 'cP')}${KV('نسبة الخفض', fmt(m1 / m2, 1), '×')}</div>
+   ${MSG(`حصة الماء من الحمل: ${fmt(mw * (To - Ti) / Q * 100, 0)}%. الماء مكلف حرارياً (cp = 1.0)، لذا فصله (FWKO) قبل الـ heater يوفر وقوداً.`)}`;
+};
+FILL.heat = () => { const c = caseObj(); const b = stageBalance(c); setv('h_qo', Math.round(b.qo)); setv('h_qw', Math.round(b.qw)); setv('h_api', c.api); };
+
+RUN.comp = () => {
+  const p = { Q: num('g_Q'), P1: num('g_p1'), T1: num('g_T1'), P2: num('g_p2'), gg: num('g_gg'), k: num('g_k'), eta: num('g_eta'), rmax: num('g_rm') };
+  if (!Object.values(p).every(isFinite) || p.P2 <= p.P1 || p.rmax <= 1) { out('comp', MSG('ضغط التفريغ يجب أن يكون أعلى من الشفط.', 'warn')); return; }
+  const r = compressor(p);
+  out('comp', `<div class="kvs">${KV('Ratio كلي', fmt(r.r, 2))}${KV('عدد المراحل', fmt(r.n, 0))}${KV('Ratio/stage', fmt(r.rs, 2))}${KV('القدرة/مرحلة', fmt(r.hpStage, 0), 'hp')}${KV('القدرة الكلية', fmt(r.hpTot, 0), 'hp', 'ok')}${KV('hp لكل MMscf/d', fmt(r.hpTot / p.Q, 0))}${KV('T التفريغ/مرحلة', fmt(r.Td, 0), '°F', r.Td > 325 ? 'warn' : '')}${KV('Z عند الشفط', fmt(r.Z, 3))}${KV('ACFM عند الشفط', fmt(r.acfm, 0))}</div>
+   ${r.Td > 325 ? MSG('درجة حرارة التفريغ مرتفعة: يحدّها تلف الزيوت/الحشوات وغالباً تُحدّد بـ ≈ 300–350°F؛ زد عدد المراحل أو راجع الكفاءة.', 'warn') : ''}${MSG('القدرة المحسوبة على عمود الإدارة (bhp) بدون فقد ميكانيكي وفقد الـ valves. أضف ≈ 5–10% للفقد الميكانيكي حسب نوع الضاغط.')}`);
+};
+FILL.comp = () => { const c = caseObj(); const b = stageBalance(c); setv('g_Q', +b.gasTot.toFixed(3)); setv('g_p1', c.Psep1); setv('g_gg', c.gg); };
+
+RUN.hyd = () => {
+  const dT = num('y_dT'), key = document.getElementById('y_in').value, qw = num('y_qw'), sg = num('y_sg');
+  if (![dT, qw, sg].every(isFinite)) return;
+  const W = hammerschmidt(dT, key), mw = qw * C.lbPerBblW * sg, mi = mw * W / (100 - W);
+  const gal = mi / INHIB[key].lbGal;
+  out('hyd', `<div class="kvs">${KV('التركيز في الطور المائي', fmt(W, 1), 'wt%', W > 25 ? 'warn' : 'ok')}${KV('المثبط النقي', fmt(mi, 0), 'lb/d')}${KV('الحجم', fmt(gal, 0), 'gal/d')}${KV('لكل bbl ماء', fmt(gal / qw, 2), 'gal')}</div>
+   ${W > 25 ? MSG('W > ≈ 25 wt%: الصيغة تفقد دقتها؛ استخدم برنامج hydrate.', 'warn') : ''}
+   ${key === 'MeOH' ? MSG('Methanol يتوزع أيضاً في الغاز والنفط (فقد في الطور البخاري) ولا يُحسب هنا: الجرعة الفعلية أعلى. MEG أقل فقداً ويُسترجع بالـ regeneration.') : MSG('MEG غالباً يُسترجع ويُعاد حقنه؛ تُضبط الجرعة بحسب تركيز الـ lean MEG المحقون (هنا افترضنا نقياً).')}`);
+};
+
+RUN.pw = () => {
+  const Q = num('w_Q'), A = num('w_A'), T = num('w_T'), sg = num('w_sg'), api = num('w_api'), tgt = num('w_tgt');
+  if (![Q, A, T, sg, api, tgt].every(isFinite)) return;
+  const mu = muWaterCp(T) * 1e-3, rw = sg * 999.016, ro = 999.016 * apiToSG(api);
+  const vs = Q * 0.158987 / 86400 / (A * 0.092903), dc = stokesCut(vs, rw - ro, mu);
+  const vt = stokesV(tgt * 1e-6, rw - ro, mu), Areq = Q * 0.158987 / 86400 / vt / 0.092903;
+  out('pw', `<div class="kvs">${KV('μ الماء', fmt(mu * 1000, 3), 'cP')}${KV('Δρ', fmt(rw - ro, 0), 'kg/m³')}${KV('Q/A', fmt(vs * 1000, 3), 'mm/s')}${KV('أصغر قطرة تُزال', fmt(dc * 1e6, 1), 'µm', dc * 1e6 <= tgt ? 'ok' : 'warn')}${KV(`المساحة لإزالة ${tgt} µm`, fmt(Areq, 0), 'ft²')}</div>
+   ${dc * 1e6 <= tgt ? MSG('المساحة الحالية كافية للقطرة المستهدفة (في وحدة مثالية بدون short-circuiting).', 'ok') : MSG('المساحة الحالية لا تكفي: تحتاج مساحة أكبر أو حرارة أعلى أو تلاحم (coalescing media/CPI).', 'warn')}
+   ${MSG('الوحدات الحقيقية تقلّ كفاءتها عن المثالية (قصر مسار، اضطراب)؛ تُعتمد معاملات أمان 1.5–2× على المساحة عادةً.')}`);
+};
+FILL.pw = () => { const c = caseObj(); const b = stageBalance(c); setv('w_Q', Math.round(b.qw)); setv('w_T', c.Ts); setv('w_api', c.api); };
+
+RUN.tank = () => {
+  const d = num('t_d'), h = num('t_h'), fw = num('t_fw'), T = num('t_T'), api = num('t_api'), bsw = num('t_bsw');
+  if (![d, h, fw, T, api, bsw].every(isFinite)) return;
+  const bpf = tankBblPerFt(d), tov = bpf * h, fwv = bpf * fw, gov = tov - fwv;
+  const cc = crudeCorr(api, T), gsv = gov * cc.vcf, nsv = gsv * (1 - bsw / 100);
+  out('tank', `<div class="kvs">${KV('سعة لكل قدم', fmt(bpf, 1), 'bbl/ft')}${KV('TOV', fmt(tov, 0), 'bbl')}${KV('ماء حر', fmt(fwv, 0), 'bbl')}${KV('GOV', fmt(gov, 0), 'bbl')}${KV('API عند 60°F', fmt(cc.api60, 1), '°API')}${KV('VCF', fmt(cc.vcf, 4))}${KV('GSV', fmt(gsv, 0), 'bbl')}${KV('NSV', fmt(nsv, 0), 'bbl', 'ok')}</div>
+   ${MSG(`الفرق بين TOV و NSV: ${fmt(tov - nsv, 0)} bbl (${fmt((tov - nsv) / tov * 100, 2)}%). هذا ما يفصل "ما قرأته على المقياس" عن "ما تُحاسب عليه".`)}`);
+};
+
+RUN.farm = () => {
+  const q = num('f_q'), days = num('f_days'), d = num('f_d'), h = num('f_h'), fill = num('f_fill') / 100;
+  if (![q, days, d, h, fill].every(isFinite)) return;
+  const nom = tankBblPerFt(d) * h, work = nom * fill, need = q * days, n = Math.ceil(need / work);
+  out('farm', `<div class="kvs">${KV('السعة الاسمية/خزان', fmt(nom, 0), 'bbl')}${KV('السعة العاملة', fmt(work, 0), 'bbl')}${KV('المطلوب', fmt(need, 0), 'bbl')}${KV('عدد الخزانات', fmt(n, 0), '', 'ok')}${KV('مع N+1', fmt(n + 1, 0))}</div>`);
+};
+FILL.farm = () => { const c = caseObj(); const b = stageBalance(c); setv('f_q', Math.round(b.qo)); };
+
+RUN.pipe = () => {
+  const p = { Q: num('p_Q'), id: num('p_id'), Lmi: num('p_L'), eps: num('p_eps'), api: num('p_api'), mu: num('p_mu'), dz: num('p_dz'), Pdel: num('p_pd') };
+  const maop = num('p_maop'), eta = num('p_eta') / 100;
+  if (!Object.values(p).every(isFinite) || !isFinite(maop) || !isFinite(eta) || eta <= 0) return;
+  const r = pipeline(p);
+  const st = Math.max(1, Math.ceil(r.Pdis / maop));
+  const hpS = r.hpH / eta;
+  out('pipe', `<div class="kvs">${KV('السرعة', fmt(r.v, 2), 'ft/s')}${KV('Reynolds', fmt(r.Re, 0))}${KV('f', fmt(r.f, 4))}${KV('ΔP احتكاك/ميل', fmt(r.dpPerMi, 1), 'psi/mi')}${KV('ΔP احتكاك', fmt(r.dpF, 0), 'psi')}${KV('ΔP ارتفاع', fmt(r.dpS, 0), 'psi')}${KV('ضغط التفريغ المطلوب', fmt(r.Pdis, 0), 'psig', r.Pdis > maop ? 'bad' : 'ok')}${KV('hp هيدروليكي', fmt(r.hpH, 0), 'hp')}${KV('hp على العمود', fmt(hpS, 0), 'hp')}${KV('زمن العبور', fmt(r.hrs, 1), 'h')}${KV('حجم الخط', fmt(r.vol, 0), 'bbl')}</div>
+   ${r.lam ? MSG('تدفق رقائقي (laminar): نادر للخام الخفيف، شائع لثقيل جداً/بارد؛ الاحتكاك يتناسب خطياً مع اللزوجة.', 'warn') : ''}
+   ${r.Pdis > maop ? MSG(`ضغط التفريغ يتجاوز MAOP: تحتاج ≈ ${st} محطات ضخ على الأقل، أو قطراً أكبر.`, 'bad') : MSG('ضمن MAOP لمحطة ضخ واحدة.', 'ok')}
+   ${MSG('الاحتكاك يتناسب تقريباً مع Q^1.8–2 ومع 1/D^4.8–5: مضاعفة القطر تخفض الاحتكاك ≈ 25 مرة. هذا هو سبب أن تكبير الخط غالباً أرخص من محطات ضخ إضافية.')}`);
+};
+FILL.pipe = () => { const c = caseObj(); setv('p_api', c.api); };
+
+RUN.frac = () => {
+  const d = num('x_d') * 1e-6, h = num('x_h') * 0.0254, mu0 = num('x_mu'), sg = num('x_sg'), api = num('x_api');
+  if (![d, h, mu0, sg, api].every(isFinite) || mu0 <= 0) return;
+  const drho = sg * 999.016 - 999.016 * apiToSG(api);
+  const mult = [1, 2, 5, 10, 30, 100];
+  const t0 = h / stokesV(d, drho, mu0 * 1e-3);
+  const rows = mult.map(m => { const mu = mu0 * m, v = stokesV(d, drho, mu * 1e-3), t = h / v; return `<tr><td class="n">${fmt(mu, 1)}</td><td class="n">${m}×</td><td class="n">${fmt(v * 1000, 3)}</td><td class="n">${t < 3600 ? fmt(t / 60, 1) + ' min' : fmt(t / 3600, 1) + ' h'}</td></tr>`; }).join('');
+  out('frac', `<div class="tblwrap"><table><thead><tr><th class="n">μ الماء (cP)</th><th class="n">× النظيف</th><th class="n">v (mm/s)</th><th class="n">زمن الطفو</th></tr></thead><tbody>${rows}</tbody></table></div>
+   ${MSG(`في الماء النظيف تحتاج القطرة ${fmt(t0 / 60, 1)} دقيقة لتصعد ${num('x_h')} بوصة. مع لزوجة 10× يصبح الزمن ${fmt(t0 * 10 / 60, 0)} دقيقة: الـ retention time المصمّم لن يكفي.`, 'warn')}`);
+};
+
+/* ===== Init ===== */
+function init() {
+  $('#app').innerHTML = `<div class="top"><div class="brand"><h1>رحلة البرميل</h1><span>من قاع البئر إلى التصدير · أداة تعلّم هندسية</span></div>
+    <div class="tabs" role="tablist">${TABS.map(([id, n]) => `<button class="tab" role="tab" type="button" data-tab="${id}" aria-selected="false">${n}</button>`).join('')}</div></div>
+    ${caseHTML()}
+    ${TABS.map(([id]) => `<main class="pane" id="pane-${id}" hidden></main>`).join('')}
+    <div class="foot">أداة تعليمية: الحاسبات تقريبية وتعتمد على علاقات ارتباطية منشورة. لا تُستخدم للتصميم النهائي أو للقياس التجاري. راجع تبويب "مرجع" للحدود والمراجع.</div>`;
+  buildMap(); buildWell(); buildSep(); buildGas(); buildStore(); buildTrouble(); buildFrac(); buildRef();
+  const prev = $$('.pane'); void prev;
+
+  document.addEventListener('input', e => {
+    const t = e.target;
+    if (t.id === 'st_pre') { const v = STPRE[t.value]; setv('st_d', v[0]); setv('st_rp', v[1]); setv('st_rf', v[2]); setv('st_mu', v[3]); }
+    if (t.closest && t.closest('#case')) runAll();
+    else { const p = t.closest && t.closest('[data-calc]'); if (p && RUN[p.dataset.calc]) safe(p.dataset.calc); if (p && p.dataset.calc === 'nodal') safe('fall'); }
+  });
+  document.addEventListener('click', e => {
+    const t = e.target;
+    const tab = t.closest('[data-tab]'); if (tab) return showTab(tab.dataset.tab);
+    const go = t.closest('[data-go]'); if (go) return showTab(go.dataset.go);
+    const st = t.closest('.step'); if (st) return selectStage(+st.dataset.i);
+    const nd = t.closest('#mapsvg .node'); if (nd) return selectStage(STAGES.findIndex(s => s.id === nd.dataset.stage));
+    if (t.id === 'prevS') return selectStage(curStage - 1);
+    if (t.id === 'nextS') return selectStage(curStage + 1);
+    const fl = t.closest('[data-fill]'); if (fl) { FILL[fl.dataset.fill](); safe(fl.dataset.fill); return; }
+    const ch = t.closest('.chip'); if (ch) { $$('.chip').forEach(c => c.setAttribute('aria-pressed', c === ch)); renderTrouble(ch.dataset.f); }
+  });
+  document.addEventListener('keydown', e => {
+    const nd = e.target.closest && e.target.closest('#mapsvg .node');
+    if (nd && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); selectStage(STAGES.findIndex(s => s.id === nd.dataset.stage)); }
+  });
+  runAll();
+  selectStage(0);
+  showTab((location.hash || '').replace('#', '') || 'map');
+  window.scrollTo(0, 0);
+}
+function safe(k) { try { RUN[k](); } catch (err) { console.error(k, err); } }
+function runAll() { ['stream', 'fall', 'nodal', 'choke', 'al', 'sep', 'stokes', 'heat', 'comp', 'hyd', 'pw', 'tank', 'farm', 'pipe', 'frac'].forEach(safe); }
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+
+/* ===== bidi: isolate Latin/number runs inside Arabic text ===== */
+const LAT_RE = /[A-Za-z0-9(Ͱ-Ͽ][A-Za-z0-9 .,:;\/%°≈<>±×·+\-−–'"µ²³⁰¹⁴-₉()=*^√→Ͱ-Ͽ]*/g;
+function trimRun(s) {
+  s = s.replace(/[ .,:;'"\-–−+=*^<>·]+$/, '');
+  let bal = 0, bad = [];
+  for (let i = 0; i < s.length; i++) { if (s[i] === '(') bal++; else if (s[i] === ')') { if (bal) bal--; else bad.push(i); } }
+  if (bal) { let k = s.indexOf('('); s = s.slice(0, k) ? s.slice(0, k) : ''; s = s.replace(/[ .,:;'"\-–−+=*^<>·]+$/, ''); }
+  if (bad.length && bad[bad.length - 1] === s.length - 1) s = s.slice(0, -1);
+  return s;
+}
+function wrapText(node) {
+  const t = node.nodeValue; if (!/[A-Za-z0-9Ͱ-Ͽ]/.test(t) || !/[؀-ۿ]/.test(t)) return;
+  const frag = document.createDocumentFragment(); let last = 0, any = false; LAT_RE.lastIndex = 0; let m;
+  while ((m = LAT_RE.exec(t))) {
+    let run = trimRun(m[0]); if (!run || !/[A-Za-z0-9Ͱ-Ͽ]/.test(run)) continue;
+    const start = m.index; const end = start + run.length;
+    if (start > last) frag.appendChild(document.createTextNode(t.slice(last, start)));
+    const b = document.createElement('bdi'); b.dir = 'ltr'; b.textContent = run; frag.appendChild(b); last = end; any = true; LAT_RE.lastIndex = end;
+  }
+  if (!any) return;
+  if (last < t.length) frag.appendChild(document.createTextNode(t.slice(last)));
+  node.parentNode.replaceChild(frag, node);
+}
+function fixBidi(root) {
+  if (!root || root.nodeType === 8) return;
+  if (root.nodeType === 3) { if (!root.parentNode.closest('svg,script,style,bdi,option,textarea,.ltr')) wrapText(root); return; }
+  if (root.nodeType !== 1 || root.closest('svg,script,style,bdi,option,textarea')) return;
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, { acceptNode: n => n.parentNode.closest('svg,script,style,bdi,option,textarea,.ltr') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT });
+  const nodes = []; while (w.nextNode()) nodes.push(w.currentNode); nodes.forEach(wrapText);
+}
+(function () {
+  const start = () => {
+    const app = document.getElementById('app'); if (!app) return;
+    fixBidi(app);
+    let pend = false; const q = new Set();
+    const mo = new MutationObserver(ms => { ms.forEach(m => m.addedNodes.forEach(n => q.add(n))); if (!pend) { pend = true; requestAnimationFrame(() => { pend = false; mo.disconnect(); q.forEach(n => { if (n.isConnected) fixBidi(n); }); q.clear(); mo.observe(app, { childList: true, subtree: true }); }); } });
+    mo.observe(app, { childList: true, subtree: true });
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(start, 0)); else setTimeout(start, 0);
+})();
+
+</script>
