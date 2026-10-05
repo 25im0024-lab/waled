@@ -11,6 +11,7 @@
 
 | القسم | المحتوى |
 |---|---|
+| **Plan** | خطة دراسة من اليوم حتى الاختبار (تشخيص ← أساسيات ← بناء ← تدريب تحت الوقت ← محاكاة ← أسبوع تخفيف) حسب ساعاتك ويوم راحتك وأضعف مهارة. مهام يومية بعلامات إنجاز وروابط للأقسام، وتسجيل نتائج اختبارات Cambridge الرسمية (درجة خام ← band تقريبي ← منحنى التقدم)، ودفتر أخطاء |
 | Reading | اختبار كامل: 3 نصوص، 40 سؤالًا، 60 د، شاشة مقسومة، navigator وflags وhighlighter، استئناف بعد إغلاق الصفحة، تحليل دقة حسب نوع السؤال. + 4 نصوص تدريب مفردة |
 | Listening | 4 أقسام، 40 سؤالًا، تسلسل الاختبار (30 ث قراءة ← تشغيل مرة واحدة ← 30 ث مراجعة)، أصوات متعددة، خريطة SVG، Dictation |
 | Writing | اختبار 60 د (Task 1 + Task 2) أو مهمة واحدة. 11 مهمة Task 1 برسوم SVG (line/bar/stacked/horizontal/pie/table/process/map) و20 سؤال Task 2 |
@@ -42,7 +43,7 @@ ielts/
   js/exam.js                        # محرك الأسئلة المشترك (Reading/Listening)
   js/ai.js                          # Claude + فحوص محلية
   js/data/*.js                      # المحتوى
-  js/mod/*.js                       # الأقسام
+  js/mod/*.js                       # الأقسام (home, plan, reading, listening, writing, speaking, vocab, grammar, toolkit)
   tools/validate-data.js            # فحص سلامة المحتوى
 ```
 

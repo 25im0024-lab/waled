@@ -40,7 +40,7 @@
   const defaults = () => ({
     target: 7, exam: '', vocab: {}, custom: [], deckSel: 'core', newToday: { day: 0, n: 0 },
     grammar: { right: 0, total: 0, wrong: {}, byCat: {} }, days: {},
-    writing: [], speaking: [], reading: [], listening: [], mocks: []
+    writing: [], speaking: [], reading: [], listening: [], mocks: [], plan: null
   });
   function load() {
     try { return Object.assign(defaults(), JSON.parse(localStorage.getItem(KEY) || '{}')); }

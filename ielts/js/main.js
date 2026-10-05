@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   const I = window.IELTS;
-  const ORDER = ['home', 'reading', 'listening', 'writing', 'speaking', 'vocab', 'grammar', 'toolkit'];
+  const ORDER = ['home', 'plan', 'reading', 'listening', 'writing', 'speaking', 'vocab', 'grammar', 'toolkit'];
   I.tabs.sort((a, b) => ORDER.indexOf(a.id) - ORDER.indexOf(b.id));
   const start = location.hash.replace('#/', '');
   I.show(I.tabs.some(t => t.id === start) ? start : 'home', false);
