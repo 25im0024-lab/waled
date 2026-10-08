@@ -1,0 +1,13 @@
+<!doctype html><html><head><meta charset="utf-8"><title>villa</title>
+<style>html,body{margin:0;background:#000;overflow:hidden}
+#c{position:absolute;left:0;top:0;width:1920px;height:1080px}
+#vig{position:absolute;left:0;top:0;width:1920px;height:1080px;pointer-events:none;
+ background:radial-gradient(ellipse at 50% 50%,rgba(0,0,0,0) 55%,rgba(0,0,0,.38) 100%)}
+#fade{position:absolute;left:0;top:0;width:1920px;height:1080px;background:#000;opacity:0;pointer-events:none}
+#title{position:absolute;left:96px;bottom:92px;color:#fff;font:300 22px/1.2 'Helvetica Neue',Arial,sans-serif;letter-spacing:.42em;opacity:0;text-transform:uppercase;text-shadow:0 2px 18px rgba(0,0,0,.55)}
+#title b{display:block;font-weight:200;font-size:54px;letter-spacing:.2em;margin-bottom:12px}
+#title i{display:block;width:90px;height:2px;background:#e9b872;margin:16px 0 0 2px}</style></head>
+<body><canvas id="c" width="1920" height="1080"></canvas><div id="vig"></div>
+<div id="title"><b>Modern Villa</b>From foundation to finish<i></i></div><div id="fade"></div>
+<script type="importmap">{"imports":{"three":"/node_modules/three/build/three.module.js","three/addons/":"/node_modules/three/examples/jsm/"}}</script>
+<script type="module" src="/scene.js"></script></body></html>
