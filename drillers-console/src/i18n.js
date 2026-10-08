@@ -9,7 +9,7 @@ const AR = {
   // header / toolbar
   "Driller's Console": 'لوحة تحكم الحفّار', '— Drilling Rig Control': '— Driller\'s Console', Sim: 'المحاكاة', Units: 'الوحدات', SI: 'SI', Field: 'Field',
   Pause: 'إيقاف مؤقت', 'Alarm horn': 'صفارة الإنذار', '🔇 Horn': '🔇 الصفارة', '🔊 Horn': '🔊 الصفارة', 'Instructor / Setup': 'المدرّب / الإعداد',
-  Language: 'اللغة', Guide: 'الدليل (PDF)', 'Parameter guide (PDF, Arabic + English)': 'دليل البارامترات (PDF، عربي + إنجليزي)',
+  Language: 'اللغة', Guide: 'الدليل (PDF)', 'Field Hydraulics': 'حاسبة البيانات الحقلية', 'Hydraulics calculator for real well data (API RP 13D)': 'حاسبة هيدروليكا لبيانات الآبار الحقيقية (API RP 13D)', 'Parameter guide (PDF, Arabic + English)': 'دليل البارامترات (PDF، عربي + إنجليزي)',
   'Rig ID': 'رقم المنصة', Well: 'البئر', 'Well status': 'حالة البئر', ESD: 'ESD', Comms: 'الاتصال', Rig: 'المنصة', TVD: 'TVD', Sat: 'القمر',
   Online: 'متصل', Offline: 'غير متصل', Paused: 'متوقف', 'Bit / Formation': 'البت / التكوين', 'Click to acknowledge': 'اضغط للإقرار',
   'No active alarms': 'لا توجد إنذارات', 'All systems normal': 'كل الأنظمة طبيعية', READY: 'جاهز', 'CONFIRM?': 'تأكيد؟', 'ACTIVE — RESET': 'مفعّل — إعادة ضبط',
@@ -201,5 +201,7 @@ function init() {
   try { const q = new URLSearchParams(location.search).get('lang'); l = q || localStorage.getItem('dc-lang') || 'en'; } catch (e) { /* default */ }
   setLang(l);
 }
-root.I18N = { t, f, setLang, init, get lang() { return lang; }, AR };
+// other pages (e.g. hydraulics/) add their own strings and message patterns
+function add(dict, pats) { Object.assign(AR, dict || {}); if (pats) PAT.push(...pats); }
+root.I18N = { t, f, setLang, init, add, get lang() { return lang; }, AR };
 })(typeof window !== 'undefined' ? window : globalThis);

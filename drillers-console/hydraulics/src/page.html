@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Field Hydraulics</title>
+<meta name="description" content="Drilling hydraulics calculator for field data: wellpath (minimum curvature), Herschel-Bulkley rheology from Fann readings, pipe/annulus/bit pressure losses, ECD and hole cleaning per API RP 13D, with comparison to measured SPP/ECD.">
+<link rel="icon" href="../icon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#0b2340">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+<header class="hdr">
+  <div class="title">
+    <h1>Field Hydraulics <span>— API RP 13D · Herschel-Bulkley</span></h1>
+    <div class="toolbar">
+      <label class="lbl">Depth <select data-unit="len"><option value="m">m</option><option value="ft">ft</option></select></label>
+      <label class="lbl">Density <select data-unit="dens"><option value="sg">sg</option><option value="ppg">ppg</option></select></label>
+      <label class="lbl">Flow <select data-unit="flow"><option value="lpm">L/min</option><option value="gpm">gpm</option></select></label>
+      <label class="lbl">Pressure <select data-unit="press"><option value="bar">bar</option><option value="psi">psi</option><option value="kPa">kPa</option></select></label>
+      <span class="seg" data-i18n-skip><button class="btn sm on" data-lang="en">English</button><button class="btn sm" data-lang="ar">العربية</button></span>
+    </div>
+  </div>
+  <div class="toolbar">
+    <button class="btn sm cy" id="exBtn">Load example</button>
+    <button class="btn sm" id="clrBtn">New well</button>
+    <button class="btn sm" id="expBtn">Export JSON</button>
+    <label class="btn sm">Import JSON<input type="file" id="impFile" accept=".json,application/json" hidden></label>
+    <button class="btn sm" id="prtBtn">Print / PDF report</button>
+    <a class="btn sm" href="../index.html">Driller's Console</a>
+    <a class="btn sm" href="../guide/drillers-console-guide.pdf" target="_blank" rel="noopener">Guide</a>
+  </div>
+  <p class="warnbox">Engineering aid, not validated software. Results depend on the inputs and on the model assumptions listed below. Compare them with measured SPP / ECD (PWD) or with a commercial program before using them for decisions.</p>
+</header>
+
+<main class="grid">
+  <section class="inputs">
+    <div class="card"><h2>Well</h2><div class="body form" id="fWell"></div></div>
+    <div class="card"><h2>Casing / liner <button class="btn sm" data-add="casing">+ Row</button></h2><div class="body" id="fCasing"></div></div>
+    <div class="card"><h2>Open hole</h2><div class="body form" id="fHole"></div></div>
+    <div class="card"><h2>Drill string <small>from the bit upwards · empty length = to surface</small> <button class="btn sm" data-add="string">+ Row</button></h2><div class="body" id="fString"></div></div>
+    <div class="card"><h2>Surface lines</h2><div class="body form" id="fSurf"></div></div>
+    <div class="card"><h2>Mud &amp; cuttings <small>Fann 35 dial readings</small></h2><div class="body form" id="fMud"></div></div>
+    <div class="card"><h2>Pumps</h2><div class="body form" id="fPumps"></div></div>
+    <div class="card"><h2>Bit &amp; BHA</h2><div class="body form" id="fBit"></div></div>
+    <div class="card"><h2>Limits</h2><div class="body form" id="fOps"></div></div>
+    <div class="card"><h2>Survey <small>MD, Inc (°), Azi (°) — one station per line; paste from Excel</small></h2>
+      <div class="body"><textarea id="survey" rows="7" spellcheck="false" dir="ltr"></textarea><p class="note" id="survNote"></p></div></div>
+    <div class="card"><h2>Measured data <small>SPP, PWD ECD, or another program's results</small> <button class="btn sm" data-add="measured">+ Row</button></h2><div class="body" id="fMeas"></div></div>
+  </section>
+
+  <section class="results">
+    <div class="card"><h2>Results <small id="resQ"></small></h2><div class="body"><div class="kpis" id="kpis"></div><div id="warns"></div></div></div>
+    <div class="card"><h2>Pressure breakdown</h2><div class="body"><canvas id="cBreak" dir="ltr"></canvas></div></div>
+    <div class="card"><h2>Comparison with measured data</h2><div class="body tw" id="cmp"></div></div>
+    <div class="card"><h2>Rheology — Herschel-Bulkley fit</h2><div class="body rheo"><div id="rheoTab" class="tw"></div><canvas id="cRheo" dir="ltr"></canvas></div></div>
+    <div class="card"><h2>Drill string (inside)</h2><div class="body tw" id="pipeTab"></div></div>
+    <div class="card"><h2>Annulus</h2><div class="body tw" id="annTab"></div></div>
+    <div class="card"><h2>ECD profile &amp; wellpath</h2><div class="body two"><canvas id="cEcd" dir="ltr"></canvas><canvas id="cPath" dir="ltr"></canvas></div></div>
+    <div class="card"><h2>Survey stations (minimum curvature)</h2><div class="body tw" id="survTab"></div></div>
+    <div class="card"><h2>Method &amp; assumptions</h2><div class="body note">
+      <ul>
+        <li>Rheology: Herschel-Bulkley, τ = τy + K·γⁿ with τy = 2R3 − R6, n = 3.32·log[(R600 − τy)/(R300 − τy)], K = (R300 − τy)/511ⁿ. Dial readings taken as lbf/100 ft².</li>
+        <li>Pressure losses: generalized Reynolds number and friction factor of API RP 13D for pipe and concentric annulus. Not included: tool joints, eccentricity, pipe rotation, and temperature/pressure effects on rheology and density.</li>
+        <li>Bit: ΔP = 8.311×10⁻⁵·ρ·Q²/(Cd²·TFA²). MWD/motor losses are a user input.</li>
+        <li>ECD = MW + Σ annular ΔP / (0.052·TVD); TVD from the survey (minimum curvature). The cuttings effect uses Moore's slip velocity with the HB apparent viscosity at the annular wall. This is valid only for near-vertical sections (inclination &lt; 30°).</li>
+        <li>Full equations and their meaning: see the guide (PDF), sections 10–11.</li>
+      </ul></div></div>
+  </section>
+</main>
+</div>
+<div id="toast"></div>
+<script src="../../src/i18n.js"></script>
+<script src="i18n-ar.js"></script>
+<script src="core.js"></script>
+<script src="ui.js"></script>
+</body>
+</html>
