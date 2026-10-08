@@ -1,6 +1,6 @@
 /* Driller's Console service worker: offline cache (stale-while-revalidate) for this folder.
    Bump CACHE when the app shell changes to drop old copies. */
-const CACHE = 'drillers-console-v3';
+const CACHE = 'drillers-console-v4';
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icon.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'guide/drillers-console-guide.pdf', 'hydraulics/index.html'];
 const SCOPE_PATH = new URL('./', self.location).pathname;
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
