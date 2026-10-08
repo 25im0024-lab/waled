@@ -41,7 +41,19 @@ for (const sc of ['washout', 'packoff', 'plug', 'pump2']) { m = new RigSim(); m.
 m = new RigSim(); m.c.ad.ropTarget = 40; m.zeroPit();
 for (let i = 0; i < 12 * 3600 * 2 && !m.alarm.KICK.active && !m.alarm.PITGAIN.active; i++) { m.step(0.5); if (i % 7200 === 0) snap(m, 'to sand'); }
 snap(m, 'sand kick'); check(m.s.Dh > 3215, 'kick from gas sand');
-// 7. cold start
+// 7. mud circulation: velocities, Moore slip velocity, cuttings transport, lag test (tracer), bottoms-up
+m = new RigSim(); const cc = m.s.circ;
+console.log(`circulation    vp=${f(cc.vp, 2)}m/s va=${f(cc.va * 60)}m/min vn=${f(cc.vn)}m/s vs=${f(cc.vs * 60)}m/min Ft=${f(cc.Ft, 3)} Ca=${f(cc.Ca * 100, 2)}% BU=${f(cc.stkBU, 0)}stk/${f(cc.tBU / 60)}min lag=${f(cc.lagDepth)}m`);
+check(Math.abs(cc.va - m.s.qin / m.Aann()) < 1e-9 && Math.abs(cc.vp - m.s.qin / m.Ap()) < 1e-9, 'velocities = Q/A');
+check(cc.vs > 0 && cc.vs < cc.va && cc.Ft > 0.5 && cc.Ft < 1, 'slip velocity / transport ratio plausible');
+check(cc.Ca > 0 && cc.Ca < 0.05, 'cuttings concentration plausible'); check(cc.lagDepth > 3000, 'lag depth seeded at hot start');
+check(Math.abs(cc.stkBU * cc.disp - m.Aann() * m.bitDepth()) < 1e-6, 'bottoms-up strokes = annular volume / displacement');
+m.injectTracer(); m.startBottomsUp(); for (let i = 0; i < 4 * 3 * 3600 && !m.s.tracer.done; i++) m.step(0.25);
+const tr = m.s.tracer; console.log(`tracer         ${f(tr.stkAct, 0)} strokes (calc ${f(tr.stkExp, 0)}), ${f(tr.tAct / 60)} min`);
+check(tr.done && Math.abs(tr.stkAct / tr.stkExp - 1) < 0.02, 'tracer returns at calculated strokes'); check(m.s.bu.done, 'bottoms-up counter completes');
+m.c.pumps.forEach(p => p.on = false); run(m, 120); const z1 = new Map(m.cut.map(p => [p.id, p.z])); run(m, 60);
+check(m.cut.every(p => !z1.has(p.id) || p.z >= z1.get(p.id) - 1e-9), 'cuttings do not rise with pumps off');
+// 8. cold start
 m = new RigSim({ hot: false }); run(m, 10); snap(m, 'cold');
 console.log(fail.length ? 'FAILURES: ' + fail.length : 'ALL CHECKS PASSED');
 process.exit(fail.length ? 1 : 0);

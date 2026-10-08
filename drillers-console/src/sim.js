@@ -22,6 +22,8 @@ const CFG = {
   dw: { kw: 1119, lines: 10, drumD: 0.9, vmax: 1.0, accel: 0.4, hlRated: 2200 },
   td: { J: 1.5, maxTq: 35, aMax: 4 },
   bopRating: 345, accumNom: 207, tripTank: 20, pitNom: 520,
+  surfVol: 4,                                          // surface lines: pump -> standpipe -> hose -> top drive, m3
+  cut: { d: 0.25, rho: 2.6 },                          // cuttings: equivalent diameter (in), density (sg)
 };
 
 /* lithology column (vertical well, MD = TVD). pp/fg as equivalent mud weight (sg), linear within each layer */
@@ -103,6 +105,7 @@ const ALARMS = [
   ['CONN', 'STAND DRILLED DOWN — CONNECTION REQUIRED', 3, 2, m => m.s.connected && !m.s.inSlips && m.s.blockH <= CFG.standEndH + 0.05 && !m.m.active],
   ['BIT', 'BIT WORN — CONSIDER TRIP', 3, 0, m => m.s.wear > 0.85],
   ['ROTBOP', 'ROTATING / MOVING WITH BOP CLOSED', 2, 2, m => m.sealed() && (m.s.rpm > 5 || Math.abs(m.s.vUp) > 0.02)],
+  ['HOLECLEAN', 'POOR HOLE CLEANING — HIGH CUTTINGS LOAD', 3, 30, m => m.s.circ.Ca > 0.05 || (m.s.rop > 2 && m.pumpsOn() && m.s.circ.Ft < 0.5)],
 ];
 
 class RigSim {
@@ -138,9 +141,12 @@ class RigSim {
       choke: 0, sheared: false,
       fault: { kick: null, lossK: 0, lcm: 1, packTarget: 0, pack: 0, washTarget: 0, wash: 0, plug: 0, tdCool: false, accumLeak: false, wearX: 1 },
       pitIntegral: 0, kickVol: 0, shutin: null, scr: null,
+      circ: { vp: 0, va: 0, vn: 0, vs: 0, mua: 0, nre: 0, Ft: 0, Ca: 0, disp: 0, volPipe: 0, volAnn: 0, stkBit: 0, stkBU: 0, tBit: 0, tBU: 0, tCut: 0, genT: 0, genV: 0, shaker: 0, cutVol: 0, lagDepth: null, lagForm: '' },
+      tracer: null, bu: null,
     };
+    this.cut = []; this.cutId = 0;
     this.pipe = new Fifo(); this.ann = new Fifo();
-    this.pipe.push(this.Ap() * Dh + 4, 1.20); this.ann.push(this.Aann() * Dh, 1.20);
+    this.pipe.push(this.Ap() * Dh + CFG.surfVol, 1.20); this.ann.push(this.Aann() * Dh, 1.20);
     this.m = { active: false, step: 0, t: 0, msg: '', v: null, saved: null };
     this.ad = { state: 'OFF', iu: 0.005, capWob: this.c.ad.wobLimit, sp: 0, pv: 0, out: 0 };
     this.d = {};
@@ -150,7 +156,7 @@ class RigSim {
     for (const k of TREND_KEYS) this.trend.ch[k] = new Float32Array(4320);
     this.msg = [];
     this.tStart = 0; this.clock0 = Date.now();
-    if (on) { for (let i = 0; i < 3600; i++) { this.step(0.5); if (i === 240) { this.trend.n = 0; this.trend.last = -1e9; } } this.tStart = this.s.t; this.s.pitRef = this.s.pit; this.d.pitDelta = 0; this.d.pit = this.s.pit; for (const a of Object.values(this.alarm)) { a.active = false; a.acked = true; a.t = 0; } this.log = []; }
+    if (on) { for (let i = 0; i < 3600; i++) { this.step(0.5); if (i === 240) { this.trend.n = 0; this.trend.last = -1e9; } } this._seedCuttings(); this.tStart = this.s.t; this.s.pitRef = this.s.pit; this.d.pitDelta = 0; this.d.pit = this.s.pit; for (const a of Object.values(this.alarm)) { a.active = false; a.acked = true; a.t = 0; } this.log = []; }
     else this._sense(1);
   }
 
@@ -173,7 +179,7 @@ class RigSim {
     const s = this.s; s.t += dt;
     this._ops(dt); this._macro(dt); this._faults(dt); this._bopUpdate(dt); this._pumps(dt); this._mud(dt);
     this._drawworks(dt); this._topdrive(dt); this._bit(dt); this._well(dt); this._hydraulics(dt);
-    this._sense(dt); this._alarms(dt); this._record();
+    this._circ(dt); this._sense(dt); this._alarms(dt); this._record();
   }
 
   /* ---------- rig-floor operations (timed) ---------- */
@@ -323,7 +329,7 @@ class RigSim {
     const s = this.s, c = this.c;
     if (c.mud.mixing) s.pitRho = approach(s.pitRho, c.mud.mwSet, 0.02 / 60, dt);
     const dV = s.qin * dt;
-    this.pipe.fit(this.Ap() * this.bitDepth() + 4, true);
+    this.pipe.fit(this.Ap() * this.bitDepth() + CFG.surfVol, true);
     this.ann.fit(this.Aann() * s.Dh, false);
     if (dV > 0) {
       this.pipe.push(dV, s.pitRho); const r1 = this.pipe.pop(dV);
@@ -463,7 +469,7 @@ class RigSim {
     else if (s.inSlips) s.hl = k.blockW + this._slipF();
     else s.hl = k.blockW + s.wBuoy - s.wob + drag;
     s.overpull = s.connected && !s.inSlips && s.vUp > 0 ? s.hl - (k.blockW + s.wBuoy) : 0;
-    s.cutRho = lag(s.cutRho, s.qin > 0.005 ? clamp(s.rop / 3600 * PI / 4 * k.holeD ** 2 / (s.qin * 0.7) * (2600 - s.rhoA * 1000) / 1000, 0, 0.05) : 0, s.qin > 0.005 ? 120 : 400, dt);
+    s.cutRho = lag(s.cutRho, s.qin > 0.005 ? clamp(s.rop / 3600 * PI / 4 * k.holeD ** 2 / (s.qin * clamp(s.circ.Ft || 0.7, 0.3, 1)) * (CFG.cut.rho * 1000 - s.rhoA * 1000) / 1000, 0, 0.05) : 0, s.qin > 0.005 ? 120 : 400, dt);
   }
 
   /* ---------- well: BHP, influx/losses, kick gas, casing pressure, returns, pits ---------- */
@@ -556,7 +562,7 @@ class RigSim {
     const kmw = si.mw + si.sidpp / (0.0980665 * si.tvd);
     const o = { sidpp: si.sidpp, sicp: si.sicp, pitGain: si.pit, tvd: si.tvd, mw: si.mw, kmw };
     if (scr) { o.icp = si.sidpp + scr.spp; o.fcp = scr.spp * kmw / si.mw; o.scrSpm = scr.spm; o.scrSpp = scr.spp; }
-    o.strokesToBit = (this.Ap() * this.bitDepth() + 4) / (s.pumps[0].q > 0 ? s.pumps[0].q / Math.max(s.pumps[0].spm / 60, 1e-6) : 0.0133);
+    o.strokesToBit = (this.Ap() * this.bitDepth() + CFG.surfVol) / this.strokeDisp();
     return o;
   }
 
@@ -590,6 +596,85 @@ class RigSim {
     }
     const g = s.gas;
     s.gasU = 6 + 90 * Math.exp(-Math.max(s.overbal, 0) / 8) + (g.m > 0 && s.qin > 0.001 ? 1500 * clamp(1 - (g.zt || g.zb) / 400, 0, 1) : 0) + (g.surf ? 800 : 0);
+  }
+
+  /* ---------- mud circulation: velocities, cuttings transport, lag, tracer ---------- */
+  strokeDisp() { // m3 per pump stroke (running pumps' average, else pump 1 nominal)
+    const s = this.s, spm = s.pumps.reduce((a, p) => a + p.spm, 0);
+    if (spm > 1 && s.qin > 1e-5) return s.qin / (spm / 60);
+    const D = this.c.pumps[0].liner * 0.0254; return 3 * PI / 4 * D * D * CFG.pump.stroke * CFG.pump.eff;
+  }
+  totStrokes() { return this.s.pumps.reduce((a, p) => a + p.strokes, 0); }
+  _circ(dt) {
+    const s = this.s, k = CFG, c = s.circ, Q = s.qin, bd = this.bitDepth();
+    const Ap = this.Ap(), Aa = this.Aann(), Ab = PI / 4 * k.holeD ** 2;
+    c.vp = Q / Ap; c.va = Q / Aa; c.vn = s.connected && !s.sheared ? Q / k.tfa : 0; // m/s
+    // slip velocity of cuttings: Moore correlation (field units) with Bingham apparent viscosity of the annulus
+    const r = this.rheo(s.rhoA), pv = r.pv * 1000, yp = r.yp / 0.4788;          // cP, lbf/100ft2
+    const rf = s.rhoA * 8.3454, rs = k.cut.rho * 8.3454, ds = k.cut.d;           // ppg, in
+    const vaF = Math.max(c.va * 3.28084, 0.05), gap = (k.holeD - k.dp.od) / 0.0254; // ft/s, in
+    const mua = pv + 5 * yp * gap / vaF;
+    let vs = 2.90 * ds * Math.pow(rs - rf, 0.667) / (Math.pow(rf, 0.333) * Math.pow(mua, 0.333));
+    let nre = 928 * rf * vs * ds / mua;
+    if (nre > 300) vs = 1.54 * Math.sqrt(ds * (rs - rf) / rf);
+    else if (nre < 3) vs = 82.87 * ds * ds * (rs - rf) / mua;
+    c.mua = mua; c.nre = 928 * rf * vs * ds / mua; c.vs = vs / 3.28084;
+    c.Ft = c.va > 0.01 ? clamp(1 - c.vs / c.va, 0, 1) : 0;
+    const qc = s.rop / 3600 * Ab;                                                 // drilled rock, m3/s
+    c.Ca = qc > 1e-7 && Q > 1e-4 ? qc / (qc + Q * Math.max(c.Ft, 0.05)) : 0;
+    // circulating volumes, strokes and times
+    c.disp = this.strokeDisp(); c.volPipe = Ap * bd + k.surfVol; c.volAnn = Aa * bd;
+    c.stkBit = c.volPipe / c.disp; c.stkBU = c.volAnn / c.disp;
+    c.tBit = Q > 1e-4 ? c.volPipe / Q : 0; c.tBU = Q > 1e-4 ? c.volAnn / Q : 0;
+    c.tCut = Q > 1e-4 && c.va - c.vs > 1e-3 ? bd / (c.va - c.vs) : 0;
+    // cuttings cohorts: generated at the bit every 5 s, rise at (va - vs); settle at vs with pumps off
+    c.genT += dt; c.genV += qc * dt;
+    if (c.genT >= 5) { if (c.genV > 1e-6) { const f = formAt(s.Dh, this.haz); this.cut.push({ id: this.cutId++, z: bd, z0: s.Dh, v: c.genV, col: f.col, n: f.n }); } c.genT = 0; c.genV = 0; }
+    const up = (Q > 1e-4 ? c.va : 0) - c.vs;
+    let arr = 0, inHole = 0;
+    if (this.cut.length) {
+      const keep = [];
+      for (const p of this.cut) {
+        p.z = Math.min(p.z - up * dt, s.Dh);
+        if (p.z <= 0) { arr += p.v; c.lagDepth = p.z0; c.lagForm = p.n; } else { keep.push(p); inHole += p.v; }
+      }
+      this.cut = keep.length > 3000 ? keep.slice(-3000) : keep;
+    }
+    c.cutVol = inHole; c.shaker = lag(c.shaker, arr / dt, 30, dt);                 // m3/s of cuttings over the shakers
+    // tracer (lag test): injected at the pump suction, travels the surface lines, the string, then the annulus
+    const T = s.tracer;
+    if (T && !T.done && Q > 1e-4) {
+      if (T.ph === 'pipe') { T.z += c.vp * dt; if (T.z >= bd) { T.ph = 'ann'; T.z = bd; T.tBit = s.t - T.t0; } }
+      else {
+        T.z -= c.va * dt;
+        if (T.z <= 0) {
+          T.z = 0; T.done = true; T.tAct = s.t - T.t0; T.stkAct = this.totStrokes() - T.stk0;
+          this._log('MUD', 'Tracer at shakers after ' + (T.tAct / 60).toFixed(1) + ' min / ' + T.stkAct.toFixed(0) + ' strokes (calculated ' + T.stkExp.toFixed(0) + ' strokes)', 3, 'EVENT');
+        }
+      }
+    }
+    const B = s.bu;
+    if (B && !B.done && this.totStrokes() - B.stk0 >= B.need) { B.done = true; this._log('MUD', 'Bottoms-up complete (' + B.need.toFixed(0) + ' strokes)', 3, 'EVENT'); }
+  }
+  injectTracer() {
+    const s = this.s, c = s.circ;
+    if (!this.pumpsOn()) return this.note('Start the mud pumps before injecting the tracer');
+    if (!s.connected || s.sheared) return this.note('String not connected — no circulation path');
+    s.tracer = { t0: s.t, ph: 'pipe', z: -CFG.surfVol / this.Ap(), stk0: this.totStrokes(), stkExp: c.stkBit + c.stkBU, tExp: c.tBit + c.tBU, done: false };
+    this._log('MUD', 'Tracer injected at pump suction', 3, 'EVENT'); return { ok: true };
+  }
+  startBottomsUp() {
+    const c = this.s.circ;
+    this.s.bu = { stk0: this.totStrokes(), need: c.stkBU, done: false };
+    this._log('MUD', 'Bottoms-up count started: ' + c.stkBU.toFixed(0) + ' strokes', 3, 'EVENT'); return { ok: true };
+  }
+  _seedCuttings() { // hot start: fill the annulus with the cuttings of the last hour, as in steady drilling
+    const s = this.s, c = s.circ, up = c.va - c.vs; if (up <= 0.01 || s.rop <= 0) return;
+    let zTop = this.cut.length ? Math.min(...this.cut.map(p => p.z)) : this.bitDepth();
+    const v = s.rop / 3600 * PI / 4 * CFG.holeD ** 2 * 5, f = formAt(s.Dh, this.haz), old = [];
+    for (let z = zTop - 5 * up; z > 0; z -= 5 * up) old.push({ id: this.cutId++, z, z0: s.Dh - (zTop - z) / up * s.rop / 3600, v, col: f.col, n: f.n });
+    this.cut = old.reverse().concat(this.cut);
+    if (old.length) { c.lagDepth = old[old.length - 1].z0; c.lagForm = f.n; c.shaker = v / 5; }
   }
 
   /* ---------- sensors (noise + filtering) ---------- */
