@@ -17,4 +17,8 @@ https://github.com/25im0024-lab/waled/commit/be429ce5f3b571389ec05952bc00c307bfe
 
 ## Driller's Console — محاكي لوحة الحفّار
 
-لوحة تحكم تفاعلية لمنصة حفر (auto-driller، top drive، mud pumps، BOP و well control، alarms، trends): [`drillers-console/`](drillers-console/README.md). بعد تفعيل GitHub Pages تُفتح من `https://25im0024-lab.github.io/waled/drillers-console/`
+لوحة تحكم تفاعلية لمنصة حفر (auto-driller، top drive، mud pumps، BOP و well control، alarms، trends).
+
+### ▶ [افتح المحاكي](https://25im0024-lab.github.io/waled/drillers-console/)
+
+الكود والشرح: [`drillers-console/`](drillers-console/README.md).
