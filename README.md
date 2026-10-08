@@ -24,3 +24,6 @@ https://github.com/25im0024-lab/waled/commit/be429ce5f3b571389ec05952bc00c307bfe
 الواجهة بالإنجليزية والعربية (زر English / العربية، أو [النسخة العربية مباشرة](https://25im0024-lab.github.io/waled/drillers-console/?lang=ar)). دليل البارامترات PDF ثنائي اللغة: [`drillers-console/guide/drillers-console-guide.pdf`](drillers-console/guide/drillers-console-guide.pdf).
 
 الكود والشرح: [`drillers-console/`](drillers-console/README.md).
+
+### ▶ [حاسبة الهيدروليكا للبيانات الحقلية](https://25im0024-lab.github.io/waled/drillers-console/hydraulics/)
+تعمل وفق API RP 13D بنموذج Herschel-Bulkley، وتقارن النتائج بالقيم المقاسة. أداة مساعدة هندسية وليست برنامجاً معتمداً.

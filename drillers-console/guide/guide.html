@@ -73,12 +73,14 @@ document.addEventListener('DOMContentLoaded', () => {
     <p><b>The model.</b> Vertical well (MD = TVD), 13⅜" casing shoe at 2000 m, 12¼" open hole, 12¼" PDC bit with 6×14/32" nozzles, 5½" 21.9 ppf drill pipe and 200 m BHA, three triplex pumps (12" stroke). The equations are standard textbook forms, but coefficients are chosen for training and <b>are not calibrated to a real rig</b>. Use the numbers to learn cause and effect, not for well design.</p>
     <p><b>Units.</b> SI in this guide (m, kN, bar, L/min, sg). The simulator switches to oilfield units (ft, klbf, psi, gpm, ppg) with the <i>Field</i> button. Pressure gradient used: <code>P[bar] = 0.0981 × ρ[sg] × TVD[m]</code>.</p>
     <p><b>Language.</b> Use the <i>English / العربية</i> buttons in the toolbar, or open <code>index.html?lang=ar</code>.</p>
+    <p><b>Field data.</b> The simulator is for training. For your own well data use the <i>Field Hydraulics</i> calculator (section 9); every equation of both tools is listed in sections 10–11.</p>
   </div>
   <div class="box ar">
     <p><b>ما هو هذا الدليل.</b> مرجع مختصر لكل بارامتر يظهر في المحاكي: ماذا يقيس، ولماذا يراقبه الحفّار، وكيف تفسّر تغيّره. الإنجليزية على اليسار والعربية على اليمين، مع إبقاء المصطلحات التقنية بالإنجليزية.</p>
     <p><b>النموذج.</b> بئر عمودي (MD = TVD)، الـ casing shoe قطر 13⅜" على عمق 2000 m، open hole قطر 12¼"، بت PDC قطر 12¼" مع 6 nozzles 14/32"، drill pipe 5½" 21.9 ppf و BHA بطول 200 m، وثلاث مضخات triplex (شوط 12"). المعادلات بصيغها المعروفة في الكتب، لكن المعاملات مختارة لأغراض التدريب و<b>غير معايَرة على منصة حقيقية</b>. استخدم الأرقام لفهم السبب والنتيجة، لا لتصميم الآبار.</p>
     <p><b>الوحدات.</b> هذا الدليل بوحدات SI (m، kN، bar، L/min، sg). زر <i>Field</i> في المحاكي يحوّل إلى الوحدات الحقلية (ft، klbf، psi، gpm، ppg). تدرّج الضغط المستخدم: <code>P[bar] = 0.0981 × ρ[sg] × TVD[m]</code>.</p>
     <p><b>اللغة.</b> استخدم زرّي <i>English / العربية</i> في شريط الأدوات، أو افتح <code>index.html?lang=ar</code>.</p>
+    <p><b>البيانات الحقلية.</b> المحاكي للتدريب. لبيانات بئرك استخدم حاسبة <i>Field Hydraulics</i> (القسم 9)، وكل معادلات الأداتين مذكورة في القسمين 10–11.</p>
   </div>
 </div>
 
@@ -281,8 +283,152 @@ document.addEventListener('DOMContentLoaded', () => {
 <tr><td class="k">Geohazards</td><td>Gas sand 3215–3250 m with pore pressure 1.30 sg (prognosis 1.24); vugular limestone 3480–3495 m with losses. With MW 1.20 sg you will take a kick unless you weight up in time.</td><td class="ar">رمل غازي بين 3215–3250 m بضغط مسام 1.30 sg (المتوقع 1.24)؛ حجر جيري كهفي بين 3480–3495 m مع losses. بوزن طين 1.20 sg ستحدث kick ما لم تزد الوزن في الوقت المناسب.</td></tr>
 </tbody></table>
 
-<!-- ======================= 9. REFERENCES ======================= -->
-<h2><span>9. References</span><span class="ar">9. المراجع</span></h2>
+<!-- ======================= 9. FIELD HYDRAULICS ======================= -->
+<h2 class="pb"><span>9. Field Hydraulics calculator (real well data)</span><span class="ar">9. حاسبة الهيدروليكا للبيانات الحقلية</span></h2>
+<div class="cols">
+<div class="box">
+<p><b>What it is.</b> A separate page (<code>hydraulics/</code>, button in the simulator toolbar) that takes <i>your</i> well data and calculates pump pressure, ECD, bit hydraulics and hole cleaning. It uses the Herschel-Bulkley procedure of API RP 13D. Unlike the simulator it has no hidden training coefficients: every result comes from the equations in section 10 and your inputs.</p>
+<p><b>Inputs.</b></p>
+<ul>
+<li>Well: TD and bit depth (MD).</li>
+<li>Casing and liners: ID, top, shoe.</li>
+<li>Open hole: size and washout %.</li>
+<li>Drill string from the bit upwards: OD, ID, length. Leave the last length empty to run it to surface.</li>
+<li>Surface lines: equivalent length and ID.</li>
+<li>Mud: MW, Fann 35 readings (600/300/200/100/6/3 rpm), cuttings size and density, ROP.</li>
+<li>Pumps: liner, stroke, efficiency, SPM per pump, or a direct flow rate.</li>
+<li>Bit: nozzle sizes, Cd, MWD/motor ΔP.</li>
+<li>Limits: maximum pump pressure, fracture gradient at the shoe.</li>
+<li>Survey: MD, inclination, azimuth.</li>
+<li>Measured data: flow rate, SPP, PWD ECD and its depth.</li>
+</ul>
+<p><b>Outputs.</b></p>
+<ul>
+<li>SPP and its breakdown: surface, each string section, bit, MWD/motor, each annulus section.</li>
+<li>ECD at the bit and at the shoe, with and without cuttings.</li>
+<li>Bit ΔP, % of SPP, HSI, jet velocity, impact force.</li>
+<li>Velocity, Reynolds number, flow regime and friction factor in every section.</li>
+<li>Moore slip velocity, Ft and Ca per annular section.</li>
+<li>Surface-to-bit and bottoms-up strokes and times.</li>
+<li>Rheology fit table and rheogram; survey table (TVD, N, E, DLS); ECD and wellpath plots.</li>
+<li>Calculated versus measured, with % error.</li>
+</ul>
+<p><b>How to validate before trusting it.</b></p>
+<ol>
+<li>Record SPP at several flow rates on bottom (and PWD ECD if available), with the mud check of the same tour.</li>
+<li>Enter them as measured rows. You can also enter WELLPLAN or Drillbench results for the same case.</li>
+<li>A <b>constant bias</b> at all rates usually means a missing fixed loss (MWD/motor, surface lines). An error that <b>grows with rate</b> points to rheology (downhole temperature) or nozzle sizes. Tool joints are not modelled; on long strings they add friction.</li>
+<li>Correct the <b>inputs</b> (not the equations) only when there is a physical reason. Keep a record of what you changed.</li>
+</ol>
+<p><b>Not modelled.</b> Tool joints, pipe eccentricity, pipe rotation, temperature and pressure effects on mud density and rheology, deviated-well hole cleaning (cuttings beds), surge/swab, and dynamic events. Treat results as an engineering estimate.</p>
+</div>
+<div class="box ar">
+<p><b>ما هي.</b> صفحة منفصلة (<code>hydraulics/</code>، ولها زر في شريط أدوات المحاكي) تأخذ بيانات بئرك <i>أنت</i> وتحسب ضغط المضخة والـ ECD وهيدروليكا البت وتنظيف البئر. تعتمد إجراء Herschel-Bulkley في API RP 13D. وعلى عكس المحاكي، لا تحتوي على معاملات تدريبية مخفية: كل نتيجة تأتي من معادلات القسم 10 ومن مدخلاتك.</p>
+<p><b>المدخلات.</b></p>
+<ul>
+<li>البئر: العمق الكلي وعمق البت (MD).</li>
+<li>الـ casing والـ liners: ID والقمة والـ shoe.</li>
+<li>الـ open hole: القطر ونسبة الاتساع (washout).</li>
+<li>الـ drill string من البت إلى الأعلى: OD و ID والطول. اترك آخر طول فارغاً ليمتد إلى السطح.</li>
+<li>الخطوط السطحية: الطول المكافئ والقطر الداخلي.</li>
+<li>الطين: MW، وقراءات Fann 35 (600/300/200/100/6/3 rpm)، وحجم الـ cuttings وكثافتها، والـ ROP.</li>
+<li>المضخات: الـ liner والشوط والكفاءة و SPM لكل مضخة، أو معدل تدفق مباشر.</li>
+<li>البت: أقطار الـ nozzles و Cd و ΔP الـ MWD/الـ motor.</li>
+<li>الحدود: أقصى ضغط للمضخة، وتدرّج التكسير عند الـ shoe.</li>
+<li>الـ survey: MD والميل والاتجاه.</li>
+<li>البيانات المقاسة: التدفق و SPP و ECD من PWD وعمق الحساس.</li>
+</ul>
+<p><b>المخرجات.</b></p>
+<ul>
+<li>SPP وتوزيعه: السطح، وكل مقطع من الـ string، والبت، والـ MWD/الـ motor، وكل مقطع حلقي.</li>
+<li>الـ ECD عند البت وعند الـ shoe، مع الـ cuttings وبدونها.</li>
+<li>ΔP البت ونسبته من SPP، و HSI، وسرعة النفث، وقوة الاصطدام.</li>
+<li>لكل مقطع: السرعة ورقم Reynolds ونظام الجريان ومعامل الاحتكاك.</li>
+<li>لكل مقطع حلقي: سرعة انزلاق Moore و Ft و Ca.</li>
+<li>ضربات وزمن السطح ← البت والـ bottoms-up.</li>
+<li>جدول مطابقة الريولوجيا ومنحناها؛ جدول الـ survey (TVD و N و E و DLS)؛ ومنحنيا الـ ECD ومسار البئر.</li>
+<li>المحسوب مقابل المقاس مع نسبة الخطأ.</li>
+</ul>
+<p><b>كيف تتحقق قبل الثقة بها.</b></p>
+<ol>
+<li>سجّل SPP عند عدة معدلات تدفق والبت على القاع (و ECD من PWD إن وُجد)، مع فحص الطين في نفس الوردية.</li>
+<li>أدخلها كصفوف مقاسة. ويمكنك أيضاً إدخال نتائج WELLPLAN أو Drillbench لنفس الحالة.</li>
+<li><b>الانحراف الثابت</b> عند كل المعدلات يعني غالباً فاقداً ثابتاً ناقصاً (الـ MWD/الـ motor أو الخطوط السطحية). أما <b>الخطأ الذي يكبر مع المعدل</b> فيشير إلى الريولوجيا (حرارة البئر) أو أقطار الـ nozzles. الـ tool joints غير مُنمذجة، وفي الـ strings الطويلة تضيف احتكاكاً.</li>
+<li>صحّح <b>المدخلات</b> (لا المعادلات) فقط عند وجود سبب فيزيائي، واحتفظ بسجل لما غيّرته.</li>
+</ol>
+<p><b>غير مُنمذج.</b> الـ tool joints، وعدم تمركز الأنبوب، ودوران الأنبوب، وأثر الحرارة والضغط على كثافة الطين وريولوجيته، وتنظيف الآبار المائلة (cuttings beds)، والـ surge/swab، والأحداث الديناميكية. تعامل مع النتائج كتقدير هندسي.</p>
+</div>
+</div>
+
+<!-- ======================= 10. EQUATIONS — FIELD HYDRAULICS ======================= -->
+<h2><span>10. Equations — Field Hydraulics (oilfield units)</span><span class="ar">10. المعادلات — حاسبة الهيدروليكا (وحدات حقلية)</span></h2>
+<p class="note">Units: ρ ppg · Q gpm · D in · V ft/min · L ft · P psi · τ lbf/100 ft² · μ cP · γ 1/s · TVD ft. · الوحدات كما هو مذكور. <b>Type</b>: <span class="tag">STD</span> standard/textbook form · <span class="tag p2">IMPL</span> implementation choice in this tool.</p>
+<table>
+<colgroup><col style="width:30%"><col style="width:30%"><col style="width:33%"><col style="width:7%"></colgroup>
+<thead><tr><th>Equation</th><th>Meaning</th><th class="ar">المعنى</th><th>Type</th></tr></thead>
+<tbody>
+<tr><td><code>PV = R600 − R300 ; YP = R300 − PV</code></td><td>Bingham plastic viscosity (cP) and yield point; reported for reference.</td><td class="ar">اللزوجة البلاستيكية (cP) ونقطة الخضوع بنموذج Bingham؛ للمرجعية.</td><td><span class="tag">STD</span></td></tr>
+<tr><td><code>τy = 2·R3 − R6</code></td><td>Herschel-Bulkley yield stress (low-shear yield point), estimated from the 3 and 6 rpm readings.</td><td class="ar">إجهاد الخضوع في نموذج Herschel-Bulkley (نقطة الخضوع عند القص المنخفض)، يُقدَّر من قراءتي 3 و 6 rpm.</td><td><span class="tag">STD</span></td></tr>
+<tr><td><code>n = 3.32·log[(R600 − τy)/(R300 − τy)]<br>K = (R300 − τy)/511ⁿ</code></td><td>Flow-behaviour index and consistency (lbf·sⁿ/100 ft²) from the 600/300 readings after removing τy. n &lt; 1 means shear-thinning.</td><td class="ar">مؤشر سلوك الجريان والقوام (lbf·sⁿ/100 ft²) من قراءتي 600/300 بعد طرح τy. n &lt; 1 تعني أن الطين يرقّ مع القص (shear-thinning).</td><td><span class="tag">STD</span></td></tr>
+<tr><td><code>τ = τy + K·γⁿ ; γ = 1.703·RPM</code></td><td>The rheological model. The fit table compares it with all six readings; the dial reading is taken as lbf/100 ft² (1.067 factor neglected).</td><td class="ar">النموذج الريولوجي. جدول المطابقة يقارنه بالقراءات الست؛ وقراءة الجهاز تؤخذ كـ lbf/100 ft² (مع إهمال المعامل 1.067).</td><td><span class="tag">STD</span></td></tr>
+<tr><td><code>V = 24.51·Q / (D2² − D1²)</code></td><td>Mean velocity (ft/min); D1 = 0 inside pipe.</td><td class="ar">متوسط السرعة (ft/min)؛ D1 = 0 داخل الأنبوب.</td><td><span class="tag">STD</span></td></tr>
+<tr><td><code>G = [((3−α)n + 1)/((4−α)n)]·(1 + α/2)</code><br><code>γw = 1.6·G·V / D</code></td><td>Geometry factor and wall shear rate. α = 0 pipe (D = ID), α = 1 annulus (D = D2 − D1). For n = 1, γw becomes 8v/D (pipe) and 12v/(D2−D1) (annulus).</td><td class="ar">معامل الشكل ومعدل القص عند الجدار. α = 0 للأنبوب (D = ID) و α = 1 للحلقي (D = D2 − D1). عند n = 1 يصبح γw مساوياً لـ 8v/D (أنبوب) و 12v/(D2−D1) (حلقي).</td><td><span class="tag">STD</span></td></tr>
+<tr><td><code>τw = [(4−α)/(3−α)]ⁿ·τy + K·γwⁿ</code></td><td>Wall shear stress.</td><td class="ar">إجهاد القص عند الجدار.</td><td><span class="tag">STD</span></td></tr>
+<tr><td><code>NRe = ρ·V² / (19.36·τw)</code></td><td>Generalized Reynolds number. For a Newtonian fluid it equals 928·ρ·v·d/μ.</td><td class="ar">رقم Reynolds المعمّم. للمائع النيوتوني يساوي 928·ρ·v·d/μ.</td><td><span class="tag">STD</span></td></tr>
+<tr><td><code>laminar NRe &lt; 3470 − 1370n<br>turbulent NRe &gt; 4270 − 1370n</code></td><td>Flow-regime limits, which depend on n.</td><td class="ar">حدود أنظمة الجريان، وتعتمد على n.</td><td><span class="tag">STD</span></td></tr>
+<tr><td><code>f_lam = 16/NRe ; f_trans = 16·NRe/(3470−1370n)²<br>f_turb = a/NRe^b ; a = (log n + 3.93)/50 ; b = (1.75 − log n)/7<br>f = [f_lam¹² + (f_trans⁻⁸ + f_turb⁻⁸)^(−3/2)]^(1/12)</code></td><td>Fanning friction factor, blended smoothly across the three regimes. For n = 1, f_turb ≈ Blasius (0.0791/Re^0.25). The transitional part is the least certain.</td><td class="ar">معامل احتكاك Fanning، مدموج بسلاسة عبر الأنظمة الثلاثة. عند n = 1 يقارب f_turb معادلة Blasius (0.0791/Re^0.25). الجزء الانتقالي هو الأقل يقيناً.</td><td><span class="tag">STD</span></td></tr>
+<tr><td><code>dP/dL = 1.076·ρ·V²·f / (10⁵·D)</code></td><td>Frictional pressure gradient (psi/ft). It reduces to Hagen-Poiseuille (pipe) and the slot formula (annulus) for laminar Newtonian flow (checked in the tests).</td><td class="ar">تدرّج ضغط الاحتكاك (psi/ft). يعود إلى Hagen-Poiseuille (أنبوب) ومعادلة الشق (حلقي) للجريان النيوتوني الطبقي (تم التحقق في الاختبارات).</td><td><span class="tag">STD</span></td></tr>
+<tr><td><code>TFA = Σ π/4·(dn/32)²</code><br><code>ΔPbit = 8.311×10⁻⁵·ρ·Q²/(Cd²·TFA²)</code></td><td>Total flow area (in²) and bit pressure drop; Cd ≈ 0.95.</td><td class="ar">مساحة الجريان الكلية (in²) وفاقد ضغط البت؛ Cd ≈ 0.95.</td><td><span class="tag">STD</span></td></tr>
+<tr><td><code>vn = 0.3208·Q/TFA ; HHPb = ΔPbit·Q/1714<br>HSI = HHPb/(π/4·Db²) ; Fj = 0.01823·Cd·Q·√(ρ·ΔPbit)</code></td><td>Jet velocity (ft/s), bit hydraulic horsepower, horsepower per in² of hole, jet impact force (lbf).</td><td class="ar">سرعة النفث (ft/s)، والقدرة الهيدروليكية للبت، والقدرة لكل in² من مساحة البئر، وقوة اصطدام النفث (lbf).</td><td><span class="tag">STD</span></td></tr>
+<tr><td><code>SPP = ΔPsurf + ΣΔPstring + ΔPbit + ΔPMWD/motor + ΣΔPann</code></td><td>Pump pressure as the sum of all circulating losses (same mud in pipe and annulus, so no U-tube term).</td><td class="ar">ضغط المضخة = مجموع كل فواقد التدوير (نفس الطين في الأنبوب والحلقي، فلا يوجد حد U-tube).</td><td><span class="tag">STD</span></td></tr>
+<tr><td><code>ECD(z) = MW + ΣΔPann(0→z) / (0.052·TVD(z))</code></td><td>Equivalent circulating density at depth z; TVD from the survey.</td><td class="ar">الكثافة المكافئة أثناء التدوير عند العمق z؛ والـ TVD من الـ survey.</td><td><span class="tag">STD</span></td></tr>
+<tr><td><code>μa = 478.8·τw/γw</code></td><td>Annular apparent viscosity (cP) from the HB model at the wall shear rate; used in Moore.</td><td class="ar">اللزوجة الظاهرية في الحلقي (cP) من نموذج HB عند معدل القص على الجدار؛ تُستخدم في Moore.</td><td><span class="tag p2">IMPL</span></td></tr>
+<tr><td><code>Moore: vs = 2.90·ds·(ρs−ρf)^0.667/(ρf^0.333·μa^0.333)<br>NRp = 928·ρf·vs·ds/μa ; NRp&gt;300: vs = 1.54·√(ds(ρs−ρf)/ρf)<br>NRp&lt;3: vs = 82.87·ds²(ρs−ρf)/μa</code></td><td>Cuttings slip velocity (ft/s) for near-vertical wells.</td><td class="ar">سرعة انزلاق الـ cuttings (ft/s) للآبار شبه العمودية.</td><td><span class="tag">STD</span></td></tr>
+<tr><td><code>Ft = 1 − vs/va ; Ca = qc/(qc + Q·Ft)<br>qc = ROP·(π/4·Db²/144)·7.48/60</code></td><td>Transport ratio, cuttings concentration (vol. fraction), and drilled-rock rate (gpm).</td><td class="ar">نسبة النقل، وتركيز الـ cuttings (نسبة حجمية)، ومعدل الصخر المحفور (gpm).</td><td><span class="tag">STD</span></td></tr>
+<tr><td><code>ECDcut ≈ ECD + Ca_bit·(ρs − ρ)</code></td><td>Cuttings-loaded ECD, using the concentration of the bottom annular section over the whole column (upper estimate).</td><td class="ar">الـ ECD مع حمل الـ cuttings، باستخدام تركيز المقطع الحلقي السفلي على كامل العمود (تقدير أعلى).</td><td><span class="tag p2">IMPL</span></td></tr>
+<tr><td><code>disp = 0.000243·Dl²·Ls·η</code> (bbl/stk)<br><code>Q = disp·ΣSPM·42</code></td><td>Triplex pump displacement and flow rate.</td><td class="ar">إزاحة مضخة triplex ومعدل التدفق.</td><td><span class="tag">STD</span></td></tr>
+<tr><td><code>Cap = ID²/1029.4 ; Ann = (Dh² − OD²)/1029.4</code> (bbl/ft)<br><code>strokes = volume/disp ; time = volume/(Q/42)</code></td><td>String and annular capacities; surface-to-bit and bottoms-up strokes and times.</td><td class="ar">سعة الـ string والحلقي؛ وضربات وزمن السطح ← البت والـ bottoms-up.</td><td><span class="tag">STD</span></td></tr>
+<tr><td><code>β = acos[cos(I2−I1) − sinI1·sinI2·(1−cos(A2−A1))]<br>RF = (2/β)·tan(β/2)<br>ΔTVD = ΔMD/2·(cosI1 + cosI2)·RF<br>ΔN = ΔMD/2·(sinI1cosA1 + sinI2cosA2)·RF<br>ΔE = ΔMD/2·(sinI1sinA1 + sinI2sinA2)·RF<br>DLS = β·100/ΔMD (°/100 ft)</code></td><td>Minimum-curvature wellpath between survey stations (an exact circular arc between stations).</td><td class="ar">مسار البئر بطريقة minimum curvature بين محطات الـ survey (قوس دائري بين المحطتين).</td><td><span class="tag">STD</span></td></tr>
+</tbody></table>
+
+<!-- ======================= 11. EQUATIONS — SIMULATOR ======================= -->
+<h2><span>11. Equations — Driller's Console simulator (SI units)</span><span class="ar">11. المعادلات — محاكي لوحة الحفّار (وحدات SI)</span></h2>
+<p class="note">ρ kg/m³ (or sg where noted) · Q m³/s · P bar · g = 9.80665 · D, z m. <b>Type</b>: <span class="tag">STD</span> standard form · <span class="tag p3">ADAPT</span> standard idea, simplified · <span class="tag p2">MODEL</span> training-model assumption (hand-tuned, not from a reference). · <b>النوع</b>: <span class="tag">STD</span> صيغة قياسية · <span class="tag p3">ADAPT</span> فكرة قياسية مبسّطة · <span class="tag p2">MODEL</span> افتراض للنموذج التدريبي (معاملات يدوية وليست من مرجع).</p>
+<table>
+<colgroup><col style="width:30%"><col style="width:30%"><col style="width:33%"><col style="width:7%"></colgroup>
+<thead><tr><th>Equation</th><th>Meaning</th><th class="ar">المعنى</th><th>Type</th></tr></thead>
+<tbody>
+<tr><td><code>Vstk = 3·(π/4)·Dl²·Ls·(η − loss) ; Q = Vstk·SPM/60</code></td><td>Triplex flow; a pump-fault scenario reduces η.</td><td class="ar">تدفق مضخة triplex؛ سيناريو عطل المضخة يخفّض η.</td><td><span class="tag">STD</span></td></tr>
+<tr><td><code>PV = 0.025·[1 + 4(ρsg − 1.2)] Pa·s<br>YP = 5.75·[1 + 2(ρsg − 1.2)] Pa</code></td><td>Mud rheology increases with weight.</td><td class="ar">ريولوجيا الطين تزداد مع الوزن.</td><td><span class="tag p2">MODEL</span></td></tr>
+<tr><td><code>μeff = PV + YP·D/(6v) ; Re = ρvD/μeff<br>f_D = max(64/Re, 0.316/Re^0.25) ; ΔP = f_D·(L/D)·ρv²/2</code></td><td>Bingham pipe/annulus friction with a laminar/Blasius Darcy factor (annulus: D = Dh − OD).</td><td class="ar">احتكاك Bingham في الأنبوب والحلقي بمعامل Darcy طبقي أو Blasius (الحلقي: D = Dh − OD).</td><td><span class="tag p3">ADAPT</span></td></tr>
+<tr><td><code>ΔPsurf = 8·(Q/0.0633)^1.86·(ρsg/1.2)</code></td><td>Surface-line loss, 8 bar at 3800 L/min.</td><td class="ar">فاقد الخطوط السطحية، 8 bar عند 3800 L/min.</td><td><span class="tag p2">MODEL</span></td></tr>
+<tr><td><code>ΔPbit = ρ·Qb²/(2·Cd²·A²) ; Cd = 0.95<br>Qb = Q(1 − 0.6·wash) ; A = TFA(1 − 0.55·plug)</code></td><td>Bit nozzle loss; washout bypasses flow and a plugged nozzle reduces area.</td><td class="ar">فاقد nozzles البت؛ الـ washout يحوّل جزءاً من التدفق، والـ nozzle المسدودة تقلّل المساحة.</td><td><span class="tag">STD</span></td></tr>
+<tr><td><code>HSI = ΔPbit·Qb/745.7 / (π/4·Dbit[in]²)</code></td><td>Hydraulic hp per in² of bit area.</td><td class="ar">القدرة الهيدروليكية لكل in² من مساحة البت.</td><td><span class="tag">STD</span></td></tr>
+<tr><td><code>BHP = Pc + ρa·g·D + ΔPann − ΔPgas + Pswab − ρa·g·Δh + ρcut·g·z_bit</code></td><td>Bottom-hole pressure: casing pressure, hydrostatic, annular friction, gas lightening, swab/surge, level drop, and cuttings load.</td><td class="ar">ضغط قاع البئر: ضغط الـ casing، والهيدروستاتيكي، واحتكاك الحلقي، وتخفيف الغاز، والـ swab/surge، وهبوط المستوى، وحمل الـ cuttings.</td><td><span class="tag p3">ADAPT</span></td></tr>
+<tr><td><code>SPP = BHP − ρp·g·D + ΔPbit + ΔPpipe + ΔPsurf + 70·pack</code></td><td>U-tube balance through the string, so SPP reacts to kicks, casing pressure and density differences. The last term is the pack-off restriction (pack = 0–1, model assumption).</td><td class="ar">موازنة U-tube عبر الـ string، فيتأثر SPP بالـ kick وضغط الـ casing وفروق الكثافة. الحد الأخير هو انسداد الـ pack-off (pack = 0–1، افتراض للنموذج).</td><td><span class="tag">STD</span></td></tr>
+<tr><td><code>ECD = BHP/(g·D)</code> (sg) ; <code>OB = BHP − Pp</code></td><td>Equivalent circulating density; overbalance.</td><td class="ar">الكثافة المكافئة أثناء التدوير؛ والـ overbalance.</td><td><span class="tag">STD</span></td></tr>
+<tr><td><code>WOB = (EA/L)·max(0, z_lowered − D) ; EA = 7×10⁸ N</code></td><td>String axial stretch gives WOB, so drill-off tests behave realistically.</td><td class="ar">الاستطالة المحورية للـ string تعطي WOB، فيتصرف اختبار drill-off بشكل واقعي.</td><td><span class="tag p3">ADAPT</span></td></tr>
+<tr><td><code>ROP = kf·(WOB−10)/Dh·RPM^0.6 · 1/(1+(WOB/300)³) · (0.7+0.3·min(HSI/1.5,1)) · clamp(e^(−0.012(OB−30)),0.6,1.6) · (1−0.55·wear^1.5)</code></td><td>The ROP terms are: rock drillability (kf), WOB above a threshold, RPM, founder point, bit hydraulics, overbalance (chip hold-down) and wear. The form is inspired by Bourgoyne-Young; the coefficients are hand-tuned.</td><td class="ar">حدود ROP هي: قابلية الصخر للحفر (kf)، و WOB فوق عتبة، و RPM، والـ founder point، وهيدروليكا البت، والـ overbalance (تثبيت الشظايا)، والتآكل. الشكل مستوحى من Bourgoyne-Young، والمعاملات يدوية.</td><td><span class="tag p2">MODEL</span></td></tr>
+<tr><td><code>d(wear)/dt = abr·(RPM/120)·(0.6 + 0.4·WOB/120)/(120·3600)</code></td><td>Bit wear rate (fraction per second); about 120 h of normal life.</td><td class="ar">معدل تآكل البت (جزء في الثانية)؛ عمر طبيعي يقارب 120 ساعة.</td><td><span class="tag p2">MODEL</span></td></tr>
+<tr><td><code>Tbit = μ·WOB·Dh/3·(1+0.6·wear) ; μ = 0.62<br>Tdrag = (0.6 + 0.0011·z)·(0.5 + 0.5·ω/ω0)·(1 + 1.2·pack)</code></td><td>Bit torque (uniform-wear disc model) plus string friction torque.</td><td class="ar">عزم البت (نموذج قرص بتآكل منتظم) مضافاً إليه عزم احتكاك الـ string.</td><td><span class="tag p3">ADAPT</span></td></tr>
+<tr><td><code>J·dω/dt = Tmotor − Tload</code> (J = 1.5), torque-limited speed loop</td><td>Top-drive dynamics: stall when the torque limit is reached at ω ≈ 0.</td><td class="ar">ديناميكا الـ top drive: الـ stall يحدث عند بلوغ حد العزم و ω ≈ 0.</td><td><span class="tag">STD</span></td></tr>
+<tr><td><code>HL = Wblock + Wair·(1 − ρa/7.85) − WOB ± drag</code></td><td>Hook load with buoyancy; drag rises with block speed and pack-off.</td><td class="ar">حمل الخطاف مع الطفو؛ والـ drag يزداد مع سرعة البلوك ومع الـ pack-off.</td><td><span class="tag">STD</span></td></tr>
+<tr><td><code>Pswab = −sign(v)·3·|v|·(z/1000)·(0.4 if pumping)</code></td><td>Swab (pull) and surge (run in) pressure, proportional to block speed and depth.</td><td class="ar">ضغط الـ swab (السحب) والـ surge (الإنزال)، يتناسب مع سرعة البلوك والعمق.</td><td><span class="tag p2">MODEL</span></td></tr>
+<tr><td><code>qin = PI·(Pp − Pz)</code> ; <code>qloss = k·(Pz − Pp)·LCM</code> ; fracture <code>60·(P − Pf)</code> (L/min)</td><td>Influx from permeable zones, losses to weak zones, induced fractures at the bottom and the shoe.</td><td class="ar">دفق من الطبقات النفّاذة، وفقد إلى الطبقات الضعيفة، وتكسّر مُستحث عند القاع وعند الـ shoe.</td><td><span class="tag p3">ADAPT</span></td></tr>
+<tr><td>Gas: <code>ρg ≈ 0.8·P</code> (kg/m³, P bar) ; <code>h = m/(0.8·P·Aann)</code><br><code>dz/dt = −(va + 0.05 m/s)</code> ; <code>ΔPgas = (ρa − ρg)·g·h</code></td><td>Single-bubble ideal (isothermal) gas: it rises with circulation plus 0.05 m/s migration and expands as P falls. The expansion shows as pit gain and as a rising casing pressure near surface.</td><td class="ar">فقاعة غاز واحدة مثالية (متساوية الحرارة): تصعد مع التدوير مضافاً إليه هجرة 0.05 m/s، وتتمدد كلما انخفض الضغط. يظهر التمدد كزيادة في الحوض وكارتفاع في ضغط الـ casing قرب السطح.</td><td><span class="tag p3">ADAPT</span></td></tr>
+<tr><td><code>dPc/dt = qnet/β ; β = 0.012 + Vgas/P</code> (m³/bar)</td><td>Shut-in pressure build-up; the wellbore has finite compressibility, and gas makes it softer.</td><td class="ar">ارتفاع الضغط بعد الإغلاق؛ للبئر انضغاطية محدودة، والغاز يجعلها أكبر.</td><td><span class="tag p3">ADAPT</span></td></tr>
+<tr><td><code>q = 0.7·Ae·√(2(Pc − 1.5)·10⁵/ρ) ; Ae = 4.5×10⁻³·c²</code></td><td>Choke as an orifice, with an opening c from 0 to 1. The auto-choke adjusts c to hold DPP at the target.</td><td class="ar">الـ choke كفتحة (orifice)، بفتحة c من 0 إلى 1. الـ auto-choke يعدّل c ليثبّت DPP عند الهدف.</td><td><span class="tag p3">ADAPT</span></td></tr>
+<tr><td><code>MAASP = Pf,shoe − ρ·g·z_shoe</code> ; <code>KMW = MW + SIDPP/(0.0981·TVD)</code><br><code>ICP = SIDPP + P_SCR ; FCP = P_SCR·KMW/MW</code></td><td>Well-control quantities.</td><td class="ar">كميات السيطرة على البئر.</td><td><span class="tag">STD</span></td></tr>
+<tr><td><code>MSE = WOB/Ab + 2π·N·T/(Ab·ROP)</code></td><td>Mechanical specific energy (Teale 1965).</td><td class="ar">الطاقة النوعية الميكانيكية (Teale 1965).</td><td><span class="tag">STD</span></td></tr>
+<tr><td><code>d = log(R/60N)/log(12W/10⁶D) ; dxc = d·1.03/ECD</code></td><td>Corrected d-exponent (Jorden &amp; Shirley 1966; Rehm &amp; McClendon 1971).</td><td class="ar">الـ d-exponent المصحَّح (Jorden &amp; Shirley 1966؛ Rehm &amp; McClendon 1971).</td><td><span class="tag">STD</span></td></tr>
+<tr><td><code>gas units = 6 + 90·e^(−OB/8) + 1500·(1 − z_gas/400) + 800·[gas at surface]</code></td><td>Gas-detector indication: background gas rising as overbalance falls, plus a kick-gas peak near surface.</td><td class="ar">قراءة كاشف الغاز: background يرتفع مع تناقص الـ overbalance، مع قمة لغاز الـ kick قرب السطح.</td><td><span class="tag p2">MODEL</span></td></tr>
+<tr><td>Moore slip velocity, Ft, Ca, lag (section 2); <code>ρcut = ROP·Ab/(Q·Ft)·(ρs − ρa)</code></td><td>Cuttings transport and its ECD contribution, with Bingham μa = PV + 5·YP·(Dh−Dp)/va in field units.</td><td class="ar">نقل الـ cuttings وإسهامها في الـ ECD، مع μa لنموذج Bingham = PV + 5·YP·(Dh−Dp)/va بوحدات حقلية.</td><td><span class="tag">STD</span></td></tr>
+<tr><td>Mud transport: plug-flow parcels (FIFO) through the string (volume Ap·z_bit + 4 m³) and the annulus</td><td>New mud or kill mud reaches the bit after the string volume and returns after the annular volume.</td><td class="ar">الطين الجديد أو طين القتل يصل إلى البت بعد حجم الـ string، ويعود إلى السطح بعد الحجم الحلقي.</td><td><span class="tag">STD</span></td></tr>
+<tr><td>Sensors: <code>y ← y + (x + noise − y)·(1 − e^(−dt/τ))</code></td><td>First-order lag and noise on every reading, as on a real rig display.</td><td class="ar">تأخر من الدرجة الأولى مع ضجيج على كل قراءة، كما في شاشات المنصات الحقيقية.</td><td><span class="tag p3">ADAPT</span></td></tr>
+</tbody></table>
+
+<!-- ======================= 12. REFERENCES ======================= -->
+<h2><span>12. References</span><span class="ar">12. المراجع</span></h2>
 <ol class="ref">
 <li>Bourgoyne, A.T. Jr., Millheim, K.K., Chenevert, M.E., Young, F.S. Jr. (1986). <i>Applied Drilling Engineering</i>. SPE Textbook Series, Vol. 2. Society of Petroleum Engineers. — Bingham hydraulics, bit hydraulics, Moore slip-velocity correlation, cuttings transport, kick control.</li>
 <li>Moore, P.L. (1974). <i>Drilling Practices Manual</i>. PennWell, Tulsa. — Original source of the slip-velocity correlation.</li>
@@ -290,6 +436,8 @@ document.addEventListener('DOMContentLoaded', () => {
 <li>Jorden, J.R., Shirley, O.J. (1966). Application of drilling performance data to overpressure detection. <i>Journal of Petroleum Technology</i>, 18(11), 1387–1394. doi:10.2118/1407-PA</li>
 <li>Rehm, B., McClendon, R. (1971). Measurement of formation pressure from drilling data. SPE 3601, SPE Annual Fall Meeting. doi:10.2118/3601-MS</li>
 <li>Bourgoyne, A.T. Jr., Young, F.S. Jr. (1974). A multiple regression approach to optimal drilling and abnormal pressure detection. <i>SPE Journal</i>, 14(4), 371–384. doi:10.2118/4238-PA — basis for the form of the ROP model (coefficients here are hand-tuned, not regressed).</li>
+<li>American Petroleum Institute. <i>API RP 13D — Rheology and Hydraulics of Oil-well Drilling Fluids</i> (Herschel-Bulkley procedure introduced in the 2006 edition; later editions follow). — Source of the Field Hydraulics equations; verify against the edition you use.</li>
+<li>Sawaryn, S.J., Thorogood, J.L. (2005). A compendium of directional calculations based on the minimum curvature method. <i>SPE Drilling &amp; Completion</i>, 20(1), 24–36. doi:10.2118/84246-PA</li>
 </ol>
 <p class="note">Simulator values come from a simplified training model and are not calibrated to any specific rig, bit or formation. · قيم المحاكي من نموذج تدريبي مبسّط وغير معايَرة على منصة أو بت أو تكوين محدد.</p>
 </body>

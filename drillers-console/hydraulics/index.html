@@ -1,0 +1,870 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Field Hydraulics</title>
+<meta name="description" content="Drilling hydraulics calculator for field data: wellpath (minimum curvature), Herschel-Bulkley rheology from Fann readings, pipe/annulus/bit pressure losses, ECD and hole cleaning per API RP 13D, with comparison to measured SPP/ECD.">
+<link rel="icon" href="../icon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#0b2340">
+<style>
+:root{color-scheme:dark;
+  --bg:#040b15;--panel:#0a1a2f;--panel2:#0d223d;--line:#1e4f7d;--line2:#15385b;--text:#dcecff;--muted:#7f9dbd;--dim:#4f6c8a;
+  --cyan:#36c8ff;--green:#2bd66f;--amber:#ffb627;--red:#ff4545;
+  --num:"Bahnschrift","DIN Alternate","Roboto Condensed","Arial Narrow",ui-sans-serif,system-ui,sans-serif;--mono:ui-monospace,"Cascadia Mono",Consolas,monospace}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg) radial-gradient(1200px 600px at 50% -10%,#0b2340 0,var(--bg) 60%) fixed;color:var(--text);font:13px/1.4 var(--num)}
+button,select,input,textarea{font:inherit;color:inherit}
+.app{padding:10px 16px;max-width:1800px;margin:0 auto}
+.hdr{background:linear-gradient(90deg,#0e2a4d,#081627 70%);border:1px solid var(--line);border-radius:4px;padding:8px 14px;margin-bottom:8px}
+.title{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.title h1{margin:0;font-size:22px;letter-spacing:.04em;text-transform:uppercase}.title h1 span{color:var(--cyan);font-size:15px}
+.toolbar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px}
+.lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;display:inline-flex;gap:4px;align-items:center}
+.warnbox{margin:8px 0 0;font-size:12px;color:#ffe3a6;background:#3a2900;border:1px solid #7a5a00;border-radius:3px;padding:5px 9px}
+.grid{display:grid;grid-template-columns:minmax(360px,0.9fr) minmax(0,1.4fr);gap:8px;align-items:start}
+.inputs,.results{display:flex;flex-direction:column;gap:8px;min-width:0}
+@media (max-width:1100px){.grid{grid-template-columns:1fr}}
+.card{background:linear-gradient(180deg,var(--panel2),var(--panel) 40%);border:1px solid var(--line);border-radius:4px;min-width:0}
+.card>h2{margin:0;padding:6px 10px;font-size:13.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;border-bottom:1px solid var(--line2);background:linear-gradient(90deg,#123259,transparent);display:flex;align-items:center;gap:8px;justify-content:space-between;flex-wrap:wrap}
+.card>h2 small{font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;font-size:11px;flex:1}
+.body{padding:8px 10px}
+.form{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px 10px}
+.form label,.tbl label{display:flex;flex-direction:column;gap:2px;font-size:11.5px;color:#bcd3ea}
+input,select,textarea{background:#081830;border:1px solid var(--line);border-radius:3px;padding:4px 6px;min-width:0}
+input[type=number]{text-align:right}
+input:focus,select:focus,textarea:focus{outline:1px solid var(--cyan)}
+textarea{width:100%;font:12px var(--mono);resize:vertical}
+.btn{background:linear-gradient(#173556,#0f2440);border:1px solid #2b5f90;border-radius:3px;padding:4px 9px;cursor:pointer;font-weight:600;font-size:11.5px;color:#cfe3f7;text-transform:uppercase;letter-spacing:.03em;text-decoration:none;display:inline-flex;align-items:center;min-height:26px}
+.btn:hover{border-color:var(--cyan)}.btn.on{background:linear-gradient(#25b45f,#0f7a3b);border-color:#5df59a;color:#fff}.btn.cy{background:linear-gradient(#167fb0,#0b4868);border-color:#7fdcff;color:#fff}
+.btn.x{padding:2px 7px;min-height:22px;color:#ff9b9b}
+.seg{display:inline-flex;gap:3px}
+.tbl{width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed}
+.tbl th:last-child,.tbl td:last-child{width:30px}
+.tbl th{color:var(--muted);font-weight:500;text-align:left;font-size:11px;padding:2px 4px;border-bottom:1px solid var(--line2);overflow-wrap:anywhere;vertical-align:bottom}
+.tbl td{padding:2px 3px;border-bottom:1px solid #10294466;vertical-align:middle}
+.tbl input{width:100%;min-width:0;padding:3px 4px}
+.tw{overflow-x:auto}
+.res{width:100%;border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums}
+.res th{color:var(--muted);font-weight:500;font-size:11px;text-align:right;padding:3px 5px;border-bottom:1px solid var(--line2);white-space:nowrap}
+.res th:first-child,.res td:first-child{text-align:left}
+.res td{padding:3px 5px;border-bottom:1px solid #10294466;text-align:right;white-space:nowrap}
+.res tr.tot td{font-weight:700;color:#fff;border-top:1px solid var(--line)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px}
+.kpi{background:#081830;border:1px solid var(--line2);border-radius:3px;padding:5px 8px}
+.kpi span{display:block;font-size:11px;color:var(--muted)}.kpi b{font:700 19px var(--num);color:var(--green)}.kpi b.c{color:var(--cyan)}.kpi b.a{color:var(--amber)}.kpi b.r{color:var(--red)}.kpi b.w{color:#fff}
+.kpi small{display:block;color:var(--muted);font-size:10.5px}
+.wn{margin-top:6px;font-size:12px;border-radius:3px;padding:5px 9px;border:1px solid}
+.wn.a{background:#3a2900;border-color:#7a5a00;color:#ffe3a6}.wn.r{background:#3a0808;border-color:#a33;color:#ffd0d0}.wn.i{background:#08283d;border-color:#1e5f8d;color:#cfe9ff}
+.g{color:var(--green)}.a{color:var(--amber)}.r{color:var(--red)}.c{color:var(--cyan)}
+.note{font-size:11.5px;color:var(--muted);line-height:1.5}.note ul{margin:0;padding-inline-start:18px}
+canvas{display:block;width:100%}
+#cBreak{height:230px}#cRheo{height:230px}#cEcd,#cPath{height:330px}
+.rheo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:10px;align-items:start}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:700px){.rheo,.two{grid-template-columns:1fr}.title h1{font-size:17px}}
+#toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);display:flex;flex-direction:column;gap:6px;z-index:50;pointer-events:none;width:min(520px,92vw)}
+#toast div{background:#2a1d00;border:1px solid var(--amber);color:#ffe5a8;padding:8px 12px;border-radius:4px;font-size:13px;animation:fade 4s forwards}
+@keyframes fade{0%,85%{opacity:1}100%{opacity:0}}
+/* RTL */
+[dir=rtl] body,[dir=rtl] button,[dir=rtl] select,[dir=rtl] input{font-family:"Noto Sans Arabic","Segoe UI",Tahoma,var(--num)}
+[dir=rtl] .title h1,[dir=rtl] .card>h2,[dir=rtl] .btn,[dir=rtl] .lbl{letter-spacing:0}
+[dir=rtl] .tbl th,[dir=rtl] .res th:first-child,[dir=rtl] .res td:first-child{text-align:right}
+[dir=rtl] .res th,[dir=rtl] .res td{text-align:left}
+[dir=rtl] .kpi b,[dir=rtl] .res td,[dir=rtl] .kpi small{unicode-bidi:plaintext}
+canvas,textarea{direction:ltr}
+/* print */
+@media print{
+  :root{color-scheme:light}html,body{background:#fff;color:#000}
+  .toolbar,.btn,#toast{display:none!important}
+  .grid{grid-template-columns:1fr}.card{background:#fff;border-color:#999;break-inside:avoid}.card>h2{background:#e8eef5;color:#000}
+  input,select,textarea{background:#fff;color:#000;border-color:#999}.kpi{background:#fff;border-color:#999}.kpi b{color:#000!important}
+  .res td,.res th,.tbl td,.tbl th{color:#000}.warnbox{color:#000;background:#fff3cf}.note{color:#333}
+}
+</style>
+</head>
+<body>
+<div class="app">
+<header class="hdr">
+  <div class="title">
+    <h1>Field Hydraulics <span>— API RP 13D · Herschel-Bulkley</span></h1>
+    <div class="toolbar">
+      <label class="lbl">Depth <select data-unit="len"><option value="m">m</option><option value="ft">ft</option></select></label>
+      <label class="lbl">Density <select data-unit="dens"><option value="sg">sg</option><option value="ppg">ppg</option></select></label>
+      <label class="lbl">Flow <select data-unit="flow"><option value="lpm">L/min</option><option value="gpm">gpm</option></select></label>
+      <label class="lbl">Pressure <select data-unit="press"><option value="bar">bar</option><option value="psi">psi</option><option value="kPa">kPa</option></select></label>
+      <span class="seg" data-i18n-skip><button class="btn sm on" data-lang="en">English</button><button class="btn sm" data-lang="ar">العربية</button></span>
+    </div>
+  </div>
+  <div class="toolbar">
+    <button class="btn sm cy" id="exBtn">Load example</button>
+    <button class="btn sm" id="clrBtn">New well</button>
+    <button class="btn sm" id="expBtn">Export JSON</button>
+    <label class="btn sm">Import JSON<input type="file" id="impFile" accept=".json,application/json" hidden></label>
+    <button class="btn sm" id="prtBtn">Print / PDF report</button>
+    <a class="btn sm" href="../index.html">Driller's Console</a>
+    <a class="btn sm" href="../guide/drillers-console-guide.pdf" target="_blank" rel="noopener">Guide</a>
+  </div>
+  <p class="warnbox">Engineering aid, not validated software. Results depend on the inputs and on the model assumptions listed below. Compare them with measured SPP / ECD (PWD) or with a commercial program before using them for decisions.</p>
+</header>
+
+<main class="grid">
+  <section class="inputs">
+    <div class="card"><h2>Well</h2><div class="body form" id="fWell"></div></div>
+    <div class="card"><h2>Casing / liner <button class="btn sm" data-add="casing">+ Row</button></h2><div class="body" id="fCasing"></div></div>
+    <div class="card"><h2>Open hole</h2><div class="body form" id="fHole"></div></div>
+    <div class="card"><h2>Drill string <small>from the bit upwards · empty length = to surface</small> <button class="btn sm" data-add="string">+ Row</button></h2><div class="body" id="fString"></div></div>
+    <div class="card"><h2>Surface lines</h2><div class="body form" id="fSurf"></div></div>
+    <div class="card"><h2>Mud &amp; cuttings <small>Fann 35 dial readings</small></h2><div class="body form" id="fMud"></div></div>
+    <div class="card"><h2>Pumps</h2><div class="body form" id="fPumps"></div></div>
+    <div class="card"><h2>Bit &amp; BHA</h2><div class="body form" id="fBit"></div></div>
+    <div class="card"><h2>Limits</h2><div class="body form" id="fOps"></div></div>
+    <div class="card"><h2>Survey <small>MD, Inc (°), Azi (°) — one station per line; paste from Excel</small></h2>
+      <div class="body"><textarea id="survey" rows="7" spellcheck="false" dir="ltr"></textarea><p class="note" id="survNote"></p></div></div>
+    <div class="card"><h2>Measured data <small>SPP, PWD ECD, or another program's results</small> <button class="btn sm" data-add="measured">+ Row</button></h2><div class="body" id="fMeas"></div></div>
+  </section>
+
+  <section class="results">
+    <div class="card"><h2>Results <small id="resQ"></small></h2><div class="body"><div class="kpis" id="kpis"></div><div id="warns"></div></div></div>
+    <div class="card"><h2>Pressure breakdown</h2><div class="body"><canvas id="cBreak" dir="ltr"></canvas></div></div>
+    <div class="card"><h2>Comparison with measured data</h2><div class="body tw" id="cmp"></div></div>
+    <div class="card"><h2>Rheology — Herschel-Bulkley fit</h2><div class="body rheo"><div id="rheoTab" class="tw"></div><canvas id="cRheo" dir="ltr"></canvas></div></div>
+    <div class="card"><h2>Drill string (inside)</h2><div class="body tw" id="pipeTab"></div></div>
+    <div class="card"><h2>Annulus</h2><div class="body tw" id="annTab"></div></div>
+    <div class="card"><h2>ECD profile &amp; wellpath</h2><div class="body two"><canvas id="cEcd" dir="ltr"></canvas><canvas id="cPath" dir="ltr"></canvas></div></div>
+    <div class="card"><h2>Survey stations (minimum curvature)</h2><div class="body tw" id="survTab"></div></div>
+    <div class="card"><h2>Method &amp; assumptions</h2><div class="body note">
+      <ul>
+        <li>Rheology: Herschel-Bulkley, τ = τy + K·γⁿ with τy = 2R3 − R6, n = 3.32·log[(R600 − τy)/(R300 − τy)], K = (R300 − τy)/511ⁿ. Dial readings taken as lbf/100 ft².</li>
+        <li>Pressure losses: generalized Reynolds number and friction factor of API RP 13D for pipe and concentric annulus. Not included: tool joints, eccentricity, pipe rotation, and temperature/pressure effects on rheology and density.</li>
+        <li>Bit: ΔP = 8.311×10⁻⁵·ρ·Q²/(Cd²·TFA²). MWD/motor losses are a user input.</li>
+        <li>ECD = MW + Σ annular ΔP / (0.052·TVD); TVD from the survey (minimum curvature). The cuttings effect uses Moore's slip velocity with the HB apparent viscosity at the annular wall. This is valid only for near-vertical sections (inclination &lt; 30°).</li>
+        <li>Full equations and their meaning: see the guide (PDF), sections 10–11.</li>
+      </ul></div></div>
+  </section>
+</main>
+</div>
+<div id="toast"></div>
+<script>
+/* Driller's Console — language layer (English / Arabic). English is the source text; AR maps it to Arabic.
+   Technical terms (WOB, ROP, SPP, ECD, BOP, SIDPP ...) are kept in English on purpose.
+   I18N.t(s)        -> translated string (exact match, then regex patterns for messages carrying numbers)
+   I18N.f(tpl, vars)-> translated template with {placeholders}
+   I18N.setLang(l)  -> switches <html lang/dir> and the static text of the page */
+(function (root) {
+'use strict';
+const AR = {
+  // header / toolbar
+  "Driller's Console": 'لوحة تحكم الحفّار', '— Drilling Rig Control': '— Driller\'s Console', Sim: 'المحاكاة', Units: 'الوحدات', SI: 'SI', Field: 'Field',
+  Pause: 'إيقاف مؤقت', 'Alarm horn': 'صفارة الإنذار', '🔇 Horn': '🔇 الصفارة', '🔊 Horn': '🔊 الصفارة', 'Instructor / Setup': 'المدرّب / الإعداد',
+  Language: 'اللغة', Guide: 'الدليل (PDF)', 'Field Hydraulics': 'حاسبة البيانات الحقلية', 'Hydraulics calculator for real well data (API RP 13D)': 'حاسبة هيدروليكا لبيانات الآبار الحقيقية (API RP 13D)', 'Parameter guide (PDF, Arabic + English)': 'دليل البارامترات (PDF، عربي + إنجليزي)',
+  'Rig ID': 'رقم المنصة', Well: 'البئر', 'Well status': 'حالة البئر', ESD: 'ESD', Comms: 'الاتصال', Rig: 'المنصة', TVD: 'TVD', Sat: 'القمر',
+  Online: 'متصل', Offline: 'غير متصل', Paused: 'متوقف', 'Bit / Formation': 'البت / التكوين', 'Click to acknowledge': 'اضغط للإقرار',
+  'No active alarms': 'لا توجد إنذارات', 'All systems normal': 'كل الأنظمة طبيعية', READY: 'جاهز', 'CONFIRM?': 'تأكيد؟', 'ACTIVE — RESET': 'مفعّل — إعادة ضبط',
+  'SI units': 'وحدات SI', 'Oilfield units': 'وحدات حقلية',
+  // well status
+  'ESD ACTIVE': 'ESD مفعّل', 'E-STOP': 'E-STOP', 'WELL CONTROL LOST': 'فقدان السيطرة على البئر', 'SHEARED / SECURED': 'قُطع الأنبوب / البئر مؤمَّن',
+  'KILL CIRCULATION': 'تدوير القتل (Kill)', 'SHUT-IN': 'البئر مغلق', CONNECTION: 'وصلة (Connection)', 'IN SLIPS': 'على الـ Slips', DRILLING: 'حفر',
+  'TRIPPING OUT': 'سحب الأنابيب (POOH)', 'TRIPPING IN': 'إنزال الأنابيب (RIH)', 'CIRCULATE & ROTATE': 'تدوير ودوران', CIRCULATING: 'تدوير', IDLE: 'خامل',
+  // cards
+  'Primary Parameters': 'البارامترات الأساسية', 'Rig & Well Schematic': 'مخطط المنصة والبئر', live: 'مباشر', 'Mud in': 'طين داخل', Returns: 'الراجع',
+  'Choke line': 'خط الـ Choke', Gas: 'غاز', 'Drilling Control Loop': 'حلقة التحكم بالحفر', 'Formation / Bit Interaction': 'تفاعل التكوين / البت',
+  'WOB / Torque / ROP Measurement': 'قياس WOB / العزم / ROP', 'Drilling Controller / Auto-Driller': 'المتحكم / Auto-Driller',
+  'Drawworks / Top Drive Command': 'أوامر Drawworks / Top Drive', 'Bit Response': 'استجابة البت', 'Stable Drilling': 'حفر مستقر',
+  'Unsafe — check alarms': 'غير آمن — راجع الإنذارات', 'Manual Control': 'تحكم يدوي',
+  'Drilling Control': 'التحكم بالحفر', 'Out (DW cmd)': 'المخرج (أمر DW)', Mode: 'الوضع', Auto: 'آلي', Manual: 'يدوي', 'Control variable': 'المتغير المتحكَّم به',
+  'ROP cap (WOB mode)': 'سقف ROP (وضع WOB)', On: 'تشغيل', Off: 'إيقاف', 'WOB setpoint': 'WOB المطلوب', 'ROP target': 'ROP المستهدف', 'WOB limit': 'حد WOB',
+  'Torque limit': 'حد العزم', 'RPM limit': 'حد RPM', 'Auto connection at stand end': 'وصلة آلية عند نهاية الـ stand',
+  'Top Drive': 'Top Drive', Torque: 'العزم', 'FWD / OFF / REV': 'أمامي / إيقاف / عكسي', Drill: 'حفر', Spin: 'لفّ', Fwd: 'أمامي', Rev: 'عكسي',
+  'RPM setpoint': 'RPM المطلوب', 'Torque setpoint': 'العزم المطلوب', 'Motor status': 'حالة المحرك', 'Motor temperature': 'حرارة المحرك',
+  'Hydraulic pressure': 'الضغط الهيدروليكي', Lubrication: 'التزييت', OK: 'سليم', Cooling: 'التبريد', VFD: 'VFD', FAULT: 'عطل',
+  TRIPPED: 'فصل (Trip)', RUNNING: 'يعمل', STOPPED: 'متوقف', 'TORQUE LIMIT': 'حد العزم', sequence: 'تسلسل آلي',
+  Drawworks: 'Drawworks', 'Hoist / Lower': 'رفع / إنزال', '(hold)': '(اضغط باستمرار)', Hoist: 'رفع', Lower: 'إنزال', 'Block position': 'موضع البلوك',
+  'Hook load': 'حمل الخطاف', 'Block speed': 'سرعة البلوك', 'Drum RPM': 'دوران الطبلة', 'Brake status': 'حالة الفرامل', 'Motor load': 'حمل المحرك',
+  'Brake mode': 'وضع الفرامل', Set: 'تثبيت', Release: 'تحرير', SET: 'مثبّتة', RELEASED: 'محرّرة', 'Jog speed': 'سرعة التحريك',
+  'Keyboard: hold': 'لوحة المفاتيح: اضغط', 'hoist,': 'للرفع،', 'lower,': 'للإنزال،', 'stop block,': 'لإيقاف البلوك،', 'pause.': 'للإيقاف المؤقت.',
+  MANUAL: 'يدوي', STOP: 'إيقاف', 'AUTO-DRILLER': 'Auto-Driller', SEQUENCE: 'تسلسل آلي',
+  'Mud Pumps 1 / 2 / 3': 'مضخات الطين 1 / 2 / 3', 'All On': 'تشغيل الكل', 'All Off': 'إيقاف الكل', 'Master SPM': 'SPM للكل', PUMP: 'مضخة',
+  liner: 'liner', 'Liner size': 'قطر الـ liner', Pressure: 'الضغط', Stroke: 'الشوط', Flow: 'التدفق', Strokes: 'الضربات', Status: 'الحالة', Alarm: 'إنذار',
+  RUN: 'يعمل', RELIEF: 'Relief',
+  'BOP / Well Control': 'BOP / السيطرة على البئر', 'Choke manifold': 'Choke manifold', 'Choke position': 'فتحة الـ Choke', 'Auto (hold DPP)': 'آلي (تثبيت DPP)',
+  'Auto-choke holds drill-pipe pressure at the target (constant BHP method)': 'الـ Auto-choke يثبّت ضغط الـ drill pipe عند الهدف (طريقة BHP الثابت)',
+  'DPP target': 'هدف DPP', 'Choke (casing) pressure': 'ضغط الـ Choke (casing)', 'Drill-pipe pressure': 'ضغط الـ drill pipe', 'Accumulator pressure': 'ضغط الـ Accumulator',
+  'MAASP (shoe @ 2000 m)': 'MAASP (الـ shoe عند 2000 m)', 'BHP / Pore pressure': 'BHP / ضغط المسام', 'Annular BOP': 'Annular BOP', 'Pipe rams': 'Pipe rams',
+  'Blind / shear rams': 'Blind / shear rams', 'HCR (choke line)': 'HCR (خط الـ choke)', 'Kill line': 'Kill line', Open: 'فتح', Close: 'إغلاق', Arm: 'تسليح', Disarm: 'إلغاء التسليح',
+  Fire: 'إطلاق', Confirm: 'تأكيد', OPEN: 'مفتوح', CLOSED: 'مغلق', MOVING: 'يتحرك', ARMED: 'مسلّح',
+  'returns via choke': 'الراجع عبر الـ choke', 'well shut in': 'البئر مغلق', 'returns via flowline': 'الراجع عبر الـ flowline',
+  'Kill Sheet & Mud': 'Kill sheet والطين', "Driller's / Wait-&-Weight": "Driller's / Wait-&-Weight", 'Pit gain at shut-in': 'زيادة الحوض عند الإغلاق',
+  'Kill mud weight': 'وزن طين القتل (KMW)', 'SCR (slow circ. rate)': 'SCR (معدل التدوير البطيء)', 'ICP (initial circ.)': 'ICP (ضغط التدوير الأولي)',
+  'FCP (final circ.)': 'FCP (ضغط التدوير النهائي)', 'Strokes surface→bit': 'ضربات السطح ← البت', 'Record SCR': 'سجّل SCR', 'DPP target = ICP': 'هدف DPP = ICP',
+  'Mix KMW': 'اخلط KMW', 'Active mud system': 'نظام الطين الفعّال', 'MW setpoint (mixing)': 'MW المطلوب (الخلط)', 'MW in / out': 'MW داخل / خارج',
+  'Pit volume / Δ': 'حجم الحوض / Δ', 'Trip tank': 'Trip tank', 'PV / YP': 'PV / YP', 'ECD @ bit': 'ECD عند البت', Mixing: 'الخلط', 'Hole fill': 'ملء البئر',
+  'Zero pit Δ': 'تصفير Δ الحوض', 'LCM pill': 'LCM pill', 'not recorded': 'غير مسجّل',
+  "Pipe Handling & Driller's Panel": 'مناولة الأنابيب ولوحة الحفّار', 'Auto Connection': 'وصلة آلية', Abort: 'إلغاء', 'Set slips': 'ضع الـ slips',
+  'Pull slips': 'ارفع الـ slips', 'Break out': 'فكّ الوصلة', 'Pick stand': 'التقط stand', 'Rack stand': 'أعد الـ stand', 'Make up': 'اربط الوصلة',
+  "Driller's panel": 'لوحة الحفّار', '▲ Block up': '▲ البلوك لأعلى', '▼ Block down': '▼ البلوك لأسفل', 'PWR ON': 'الطاقة', ALARM: 'إنذار',
+  'Reset E-STOP / power': 'إعادة ضبط E-STOP / الطاقة', 'Acknowledge alarms': 'الإقرار بالإنذارات', 'Emergency stop: top drive, drawworks, pumps': 'إيقاف طوارئ: top drive و drawworks والمضخات',
+  Connected: 'متصل', 'In slips': 'على الـ slips', 'Stand on TD': 'Stand على الـ TD', 'Joint @ floor': 'وصلة عند الأرضية', 'On bottom': 'على القاع',
+  'Real-Time Trends': 'المنحنيات اللحظية', 'Alarm / Safety': 'الإنذارات / السلامة', 'Ack all': 'إقرار الكل', Time: 'الوقت', 'Event log': 'سجل الأحداث',
+  ACTIVE: 'نشط', CLEAR: 'زال', CLEARED: 'زال', Ack: 'إقرار', 'No alarms': 'لا إنذارات', acknowledged: 'مُقَرّ', unacknowledged: 'غير مُقَرّ',
+  'Pressure Window & Lithology': 'نافذة الضغط والطبقات', 'EMW (sg) vs depth — pore (prognosis dashed), fracture, MW, ECD': 'EMW (sg) مقابل العمق — المسام (المتوقع متقطع)، التكسير، MW، ECD',
+  'Hydraulics & Bit': 'الهيدروليكا والبت', 'Bit ΔP / HSI': 'ΔP البت / HSI', 'Annular friction': 'احتكاك الحلقي', 'SPP expected (clean)': 'SPP المتوقع (نظيف)',
+  'Hole depth / bit': 'عمق البئر / البت', 'Bit hours / wear (IADC)': 'ساعات البت / التآكل (IADC)', MSE: 'MSE', 'd-exponent (dxc)': 'd-exponent (dxc)',
+  'Pore / Frac @ bottom': 'المسام / التكسير عند القاع', Overbalance: 'Overbalance', 'Stands added / racked': 'Stands مضافة / مُعادة',
+  '12¼" PDC, 6×14/32" nozzles · 5½" 21.9 ppf DP + 200 m BHA · 13⅜" shoe 2000 m · vertical well (MD = TVD). Values are a simplified training model, not calibrated to a specific rig.':
+    'بت PDC قطر 12¼"، 6 nozzles 14/32" · DP 5½" 21.9 ppf + BHA بطول 200 m · shoe 13⅜" عند 2000 m · بئر عمودي (MD = TVD). القيم من نموذج تدريبي مبسّط وغير معايَر على منصة محددة.',
+  // primary parameters
+  'Hole Depth': 'عمق البئر', 'Bit Depth': 'عمق البت', 'Block Position': 'موضع البلوك', 'Block Speed': 'سرعة البلوك', 'Hook Load': 'حمل الخطاف',
+  WOB: 'WOB', ROP: 'ROP', 'Top Drive RPM': 'RPM الـ Top Drive', 'Top Drive Torque': 'عزم الـ Top Drive', 'Standpipe Pressure': 'ضغط الـ Standpipe (SPP)',
+  'Casing Pressure': 'ضغط الـ Casing', 'Pump Strokes': 'ضربات المضخات', 'Pump Pressure': 'ضغط المضخة', 'Mud Flow In': 'تدفق الطين الداخل',
+  'Mud Flow Out': 'تدفق الطين الخارج', 'Mud Pit Volume': 'حجم أحواض الطين', 'Pit Gain / Loss': 'زيادة / نقص الحوض', 'Differential Pressure': 'الضغط التفاضلي',
+  'Rotary Torque': 'عزم الدوران',
+  // trends / pressure window
+  'Block pos': 'موضع البلوك', 'Casing P': 'ضغط الـ Casing', 'Flow in': 'تدفق داخل', 'Flow out': 'تدفق خارج', 'Pit Δ': 'Δ الحوض',
+  'Pore (prognosis)': 'المسام (المتوقع)', 'Pore (actual, drilled)': 'المسام (الفعلي المحفور)', Fracture: 'التكسير', 'MW in hole': 'MW في البئر',
+  'ECD @ bottom': 'ECD عند القاع', 'Hole depth': 'عمق البئر', shoe: 'shoe',
+  // formations
+  'Clay / Silt': 'طين / غرين', 'Sand / Shale': 'رمل / طفل', Claystone: 'حجر طيني', Shale: 'طفل (Shale)', 'Silty sandstone': 'حجر رملي غريني',
+  'Limestone stringer': 'شريط حجر جيري', 'Shale (transition)': 'طفل (منطقة انتقالية)', 'Gas sand': 'رمل غازي', 'Vugular limestone': 'حجر جيري كهفي',
+  'Sandstone / Shale': 'حجر رملي / طفل', Sandstone: 'حجر رملي', Limestone: 'حجر جيري', GAS: 'غاز', LOSS: 'فقد',
+  // auto-driller states
+  OFF: 'إيقاف', 'HOLD (CONNECTION)': 'انتظار (وصلة)', STANDBY: 'استعداد', 'STAND END': 'نهاية الـ stand', 'SEEK BOTTOM': 'البحث عن القاع',
+  'SEEK': 'البحث عن القاع', CONTROL: 'تحكم', 'ROP LIMIT': 'حد ROP',
+  // floor operations / connection steps
+  'SET SLIPS': 'وضع الـ slips', 'PULL SLIPS': 'رفع الـ slips', 'BREAK OUT': 'فكّ الوصلة', 'PICK UP STAND': 'التقاط stand', 'RACK BACK STAND': 'إعادة الـ stand',
+  'SPIN-IN & TORQUE UP': 'لفّ وشدّ الوصلة', 'Stop rotation, pick up off bottom': 'أوقف الدوران وارفع عن القاع', 'Stop mud pumps (flow-check)': 'أوقف المضخات (flow-check)',
+  'Set slips': 'ضع الـ slips', 'Break out top-drive connection': 'فكّ وصلة الـ top drive', 'Raise top drive to racking board': 'ارفع الـ top drive إلى الـ racking board',
+  'Latch new stand': 'التقط stand جديد', 'Stab, spin-in and torque up': 'أدخل الوصلة ولفّها وشدّها', 'Take string weight': 'احمل وزن الـ string',
+  'Pull slips': 'ارفع الـ slips', 'Restart pumps (staged)': 'أعد تشغيل المضخات تدريجياً', 'Start rotation': 'ابدأ الدوران', 'Run to bottom': 'انزل إلى القاع',
+  // alarms
+  'EMERGENCY SHUTDOWN ACTIVE': 'إيقاف الطوارئ ESD مفعّل', 'DRILLER E-STOP ACTIVE': 'E-STOP الحفّار مفعّل', 'WELL CONTROL LOST — WELLHEAD PRESSURE EXCEEDED': 'فقدان السيطرة — تجاوز ضغط رأس البئر',
+  'FLOW OUT > FLOW IN — POSSIBLE KICK': 'التدفق الخارج > الداخل — kick محتمل', 'WELL FLOWING WITH PUMPS OFF': 'البئر يتدفق والمضخات متوقفة', 'PIT GAIN': 'زيادة في الحوض',
+  'HIGH CASING PRESSURE (> % MAASP)': 'ضغط casing مرتفع (> % من MAASP)', 'CROWN-O-MATIC — BLOCK AT UPPER LIMIT': 'Crown-o-matic — البلوك عند الحد العلوي',
+  'HIGH STANDPIPE PRESSURE': 'ضغط standpipe مرتفع', 'LOW STANDPIPE PRESSURE — POSSIBLE WASHOUT': 'ضغط standpipe منخفض — washout محتمل', 'HIGH TORQUE': 'عزم مرتفع',
+  'TOP DRIVE STALLED': 'توقف الـ Top Drive (stall)', 'HIGH HOOK LOAD': 'حمل خطاف مرتفع', 'OVERPULL — EXCESS DRAG': 'Overpull — سحب زائد', 'HIGH WOB': 'WOB مرتفع',
+  'HIGH RPM': 'RPM مرتفع', 'LOW MUD FLOW — FLOW OUT < FLOW IN': 'تدفق منخفض — الخارج < الداخل', 'PIT LOSS': 'نقص في الحوض', 'HIGH GAS': 'غاز مرتفع',
+  'LOW ACCUMULATOR PRESSURE': 'ضغط accumulator منخفض', 'HIGH BLOCK SPEED': 'سرعة بلوك مرتفعة', 'TOP DRIVE MOTOR HIGH TEMPERATURE': 'حرارة محرك الـ Top Drive مرتفعة',
+  'MUD PUMP RELIEF / TRIP': 'Relief / فصل مضخة الطين', 'MUD PUMP FAULT — LOW VOLUMETRIC EFFICIENCY': 'عطل مضخة — كفاءة حجمية منخفضة',
+  'STAND DRILLED DOWN — CONNECTION REQUIRED': 'انتهى الـ stand — يلزم connection', 'BIT WORN — CONSIDER TRIP': 'البت متآكل — فكّر في الـ trip',
+  'ROTATING / MOVING WITH BOP CLOSED': 'دوران / حركة والـ BOP مغلق', 'POOR HOLE CLEANING — HIGH CUTTINGS LOAD': 'تنظيف بئر ضعيف — حمل cuttings مرتفع',
+  // events / notes
+  'E-STOP pressed': 'ضُغط E-STOP', 'ESD activated': 'تفعيل ESD', 'E-STOP reset, power restored': 'إعادة ضبط E-STOP وعودة الطاقة', 'ESD reset': 'إعادة ضبط ESD', 'Reset ESD first': 'أعد ضبط ESD أولاً',
+  'Auto connection started': 'بدأت الوصلة الآلية', 'BLIND/SHEAR RAMS FIRED': 'أُطلقت الـ BLIND/SHEAR RAMS', 'WELLHEAD/BOP FAILURE — LOSS OF CONTAINMENT': 'فشل رأس البئر/BOP — فقدان الاحتواء',
+  'LCM pill pumped (8 m³)': 'ضُخّت LCM pill (8 m³)', 'Another floor operation is in progress': 'هناك عملية أخرى جارية على الأرضية', 'Slips already set': 'الـ slips موضوعة مسبقاً',
+  'String not on the top drive': 'الـ string غير متصل بالـ top drive', 'Stop the block before setting slips': 'أوقف البلوك قبل وضع الـ slips',
+  'Pick up off bottom before setting slips': 'ارفع عن القاع قبل وضع الـ slips', 'No tool joint at slip height — position the block (saver sub 1.5 m above floor ± stand length)': 'لا توجد tool joint عند ارتفاع الـ slips — حرّك البلوك (الـ saver sub 1.5 m فوق الأرضية ± طول الـ stand)',
+  'Slips are not set': 'الـ slips غير موضوعة', 'Make up the top drive to the string first': 'اربط الـ top drive بالـ string أولاً', 'Take string weight on the hook before pulling slips': 'احمل وزن الـ string على الخطاف قبل رفع الـ slips',
+  'Break-out needs the string in slips and connected': 'فكّ الوصلة يتطلب الـ string على الـ slips ومتصلاً', 'Stop top drive rotation first': 'أوقف دوران الـ top drive أولاً',
+  'Stop the mud pumps first': 'أوقف مضخات الطين أولاً', 'Top drive must be empty and disconnected': 'يجب أن يكون الـ top drive فارغاً وغير متصل', 'No free stand on the top drive': 'لا يوجد stand حر على الـ top drive',
+  'Already connected': 'متصل مسبقاً', 'String must be in slips': 'يجب أن يكون الـ string على الـ slips', 'Connection already running': 'الوصلة جارية مسبقاً',
+  'String must be connected and out of slips': 'يجب أن يكون الـ string متصلاً وخارج الـ slips', 'Drill the stand down first (saver sub ≤ 3 m above floor)': 'احفر الـ stand حتى نهايته أولاً (الـ saver sub ≤ 3 m فوق الأرضية)',
+  'Arm the blind/shear rams first': 'سلّح الـ blind/shear rams أولاً', 'Click again to reset ESD': 'اضغط مرة أخرى لإعادة ضبط ESD', 'Click again to activate ESD': 'اضغط مرة أخرى لتفعيل ESD',
+  'Click Fire again within 3 s — the drill pipe will be cut': 'اضغط إطلاق مرة أخرى خلال 3 ثوانٍ — سيُقطع الـ drill pipe',
+  'Run a pump at slow rate first (e.g. 30–40 spm, one pump)': 'شغّل مضخة بمعدل بطيء أولاً (مثلاً 30–40 spm، مضخة واحدة)', 'Need shut-in pressures and an SCR first': 'تحتاج ضغوط الإغلاق و SCR أولاً',
+  'No shut-in data yet': 'لا توجد بيانات إغلاق بعد', 'Reset: drilling ahead at 3125 m': 'إعادة ضبط: حفر عند 3125 m', 'Reset: rig idle, bit 0.5 m off bottom': 'إعادة ضبط: المنصة خاملة، البت 0.5 m فوق القاع',
+  'Tracer injected at pump suction': 'حُقن الـ tracer عند سحب المضخة', 'Start the mud pumps before injecting the tracer': 'شغّل مضخات الطين قبل حقن الـ tracer',
+  'String not connected — no circulation path': 'الـ string غير متصل — لا يوجد مسار تدوير',
+  // kill hints
+  'Well is shut in — wait for pressures to stabilise, then read SIDPP / SICP.': 'البئر مغلق — انتظر استقرار الضغوط ثم اقرأ SIDPP / SICP.',
+  'Record an SCR (slow-circulation rate) before the kill, or use a pre-recorded value: ICP = SIDPP + SCR pressure.': 'سجّل SCR (معدل التدوير البطيء) قبل القتل أو استخدم قيمة مسجّلة مسبقاً: ICP = SIDPP + ضغط SCR.',
+  "Driller's method: 1st circulation with current mud — bring pump to {spm} spm holding casing pressure constant, then hold DPP at ICP {icp} (Auto-choke). 2nd circulation with KMW {kmw}: DPP falls from ICP to FCP {fcp} over {stk} strokes.":
+    "Driller's method: التدوير الأول بالطين الحالي — ارفع المضخة إلى {spm} spm مع تثبيت ضغط الـ casing، ثم ثبّت DPP عند ICP {icp} (Auto-choke). التدوير الثاني بـ KMW {kmw}: ينخفض DPP من ICP إلى FCP {fcp} خلال {stk} ضربة.",
+  'Kick response: stop rotating, pick up to space out, stop pumps, flow-check, close annular (hard shut-in), open HCR, read pressures.': 'الاستجابة للـ kick: أوقف الدوران، ارفع للـ space-out، أوقف المضخات، flow-check، أغلق الـ annular (hard shut-in)، افتح HCR، اقرأ الضغوط.',
+  // templates
+  '{n} in list — click to ack': '{n} في القائمة — اضغط للإقرار', 'Total {q} · {spm} spm': 'الإجمالي {q} · {spm} spm', 'Connection {i}/{n}': 'الوصلة {i}/{n}',
+  'on bottom · MSE {v}': 'على القاع · MSE {v}', 'off bottom {v}': 'فوق القاع {v}', 'Scenario: {n}': 'سيناريو: {n}', 'Geohazards: {s}': 'المخاطر الجيولوجية: {s}', ON: 'تشغيل',
+  'Mixing kill mud {v}': 'خلط طين القتل {v}',
+  // instructor
+  'INSTRUCTOR / SETUP': 'المدرّب / الإعداد', 'Scenarios (fault injection)': 'السيناريوهات (حقن الأعطال)', 'Kick (overpressured pocket)': 'Kick (جيب عالي الضغط)',
+  'Lost circulation': 'فقدان التدوير (Losses)', 'Pack-off': 'Pack-off', 'String washout': 'Washout في الـ string', 'Plugged nozzle': 'Nozzle مسدودة',
+  'Pump 2 valve/liner failure': 'عطل صمام/liner المضخة 2', 'TD cooling failure': 'عطل تبريد الـ TD', 'Accumulator leak': 'تسريب الـ Accumulator',
+  'Accelerated bit wear': 'تآكل بت متسارع', 'Clear all faults': 'إزالة كل الأعطال', 'Well / simulation': 'البئر / المحاكاة', 'Reset — drilling (hot start)': 'إعادة — حفر (hot start)',
+  'Reset — rig idle (cold start)': 'إعادة — منصة خاملة (cold start)', 'Alarm set-points': 'حدود الإنذارات', 'What is modelled': 'ما الذي يُحاكى',
+  'High SPP': 'SPP مرتفع', 'Low SPP (fraction of expected)': 'SPP منخفض (نسبة من المتوقع)', 'High hook load': 'حمل خطاف مرتفع', Overpull: 'Overpull',
+  'Flow deviation': 'انحراف التدفق', 'Flow deviation (% of in)': 'انحراف التدفق (% من الداخل)', 'Flow-check (pumps off)': 'Flow-check (المضخات متوقفة)',
+  'Pit gain': 'زيادة الحوض', 'Pit loss': 'نقص الحوض', 'Casing P (% of MAASP)': 'ضغط الـ casing (% من MAASP)', 'Low accumulator': 'Accumulator منخفض',
+  'High gas (units)': 'غاز مرتفع (وحدات)', 'High block speed': 'سرعة بلوك مرتفعة', 'TD motor temperature': 'حرارة محرك الـ TD',
+  // circulation card
+  'Mud Circulation': 'دورة سائل الحفر (Mud Circulation)', 'Flow in / out': 'التدفق داخل / خارج', 'Pipe velocity (vp)': 'سرعة الطين في الأنبوب (vp)',
+  'Annular velocity (va)': 'السرعة الحلقية (va)', 'Nozzle jet velocity (vn)': 'سرعة نفث الـ nozzles (vn)', 'Cuttings slip velocity (vs, Moore)': 'سرعة انزلاق الـ cuttings (vs، Moore)',
+  'Transport ratio (Ft)': 'نسبة النقل (Ft)', 'Cuttings concentration (Ca)': 'تركيز الـ cuttings (Ca)', 'Surface → bit': 'السطح ← البت', 'Bottoms-up': 'Bottoms-up',
+  'Full circulation': 'دورة كاملة', 'Cuttings lag time': 'زمن تأخر الـ cuttings', 'Lag depth (cuttings at shaker)': 'Lag depth (cuttings عند الـ shaker)',
+  'Cuttings over shakers': 'Cuttings على الـ shakers', 'Cuttings in annulus': 'Cuttings في الحلقي', 'Apparent viscosity (annulus)': 'اللزوجة الظاهرية (الحلقي)',
+  'Lag test & bottoms-up': 'اختبار الـ lag و bottoms-up', 'Inject tracer': 'احقن tracer', 'Count bottoms-up': 'عُدّ bottoms-up', Tracer: 'Tracer',
+  'Bottoms-up count': 'عداد bottoms-up', 'Hole cleaning': 'تنظيف البئر', GOOD: 'جيد', MARGINAL: 'حدّي', POOR: 'ضعيف', 'NO CIRCULATION': 'لا تدوير',
+  'in surface lines': 'في الخطوط السطحية', 'in string': 'داخل الـ string', 'in annulus': 'في الحلقي', 'at shakers': 'عند الـ shakers', 'not injected': 'لم يُحقن',
+  'done': 'اكتمل', 'not started': 'لم يبدأ',
+  'Active pit': 'الحوض الفعّال', 'Mud pump': 'مضخة الطين', Standpipe: 'Standpipe', Flowline: 'Flowline', 'Shale shaker': 'Shale shaker', 'Return tanks': 'أحواض الراجع',
+  'lag depth': 'lag depth', 'Bit close-up': 'البت عن قرب (PDC)', 'side view': 'منظر جانبي', 'face view': 'منظر الوجه (من الأسفل)', 'on bottom': 'على القاع', 'off bottom': 'فوق القاع', 'bit jets': 'نفث البت', 'MW scale': 'مقياس MW', 'rising': 'صاعد',
+  'Radial scale exaggerated. Mud fronts, gas, cuttings and tracer are drawn at their true depth; flow arrows show relative speed. Use 20×–60× to watch transport.':
+    'المقياس العرضي مكبَّر. جبهات الطين والغاز والـ cuttings والـ tracer مرسومة على عمقها الحقيقي؛ أسهم التدفق تبيّن السرعة النسبية. استخدم 20×–60× لمشاهدة النقل.',
+  'Ft {ft} < 0.5': 'Ft {ft} < 0.5', 'Ca {ca} > 5 %': 'Ca {ca} > 5 %', 'Ca {ca} > 3 %': 'Ca {ca} > 3 %', 'Ft {ft} < 0.7': 'Ft {ft} < 0.7',
+  'Tracer at shakers after {min} min / {stk} strokes (calculated {exp} strokes)': 'وصل الـ tracer إلى الـ shakers بعد {min} دقيقة / {stk} ضربة (المحسوب {exp} ضربة)',
+};
+// messages coming from the physics core with numbers inside
+const PAT = [
+  [/^Raise the block to the racking board \(≥ (.+) m\)$/, 'ارفع البلوك إلى الـ racking board (≥ $1 m)'],
+  [/^Position block at (.+) m to stab$/, 'ضع البلوك عند $1 m لإدخال الوصلة'],
+  [/^Connection step timed out: (.+)$/, (m, a) => 'انتهت مهلة خطوة الوصلة: ' + t(a)],
+  [/^Auto connection aborted at step (\d+)$/, 'أُلغيت الوصلة الآلية عند الخطوة $1'],
+  [/^Connection complete — stand #(\d+)$/, 'اكتملت الوصلة — stand رقم $1'],
+  [/^Instructor: (.+)$/, 'المدرّب: $1'],
+  [/^([A-Z]+) → (OPEN|CLOSED)$/, (m, a, b) => a + ' ← ' + t(b)],
+  [/^SCR recorded: (.+)$/, 'سُجّل SCR: $1'],
+  [/^Pump (\d) pop-off relief opened @ (.+)$/, 'فُتح pop-off relief للمضخة $1 عند $2'],
+  [/^Added (.+)$/, 'أُضيف $1'], [/^Transferred out (.+)$/, 'نُقل خارجاً $1'],
+  [/^Tracer at shakers after (.+) min \/ (.+) strokes \(calculated (.+) strokes\)$/, 'وصل الـ tracer إلى الـ shakers بعد $1 دقيقة / $2 ضربة (المحسوب $3 ضربة)'],
+  [/^Bottoms-up count started: (.+) strokes$/, 'بدأ عدّ bottoms-up: $1 ضربة'],
+  [/^Bottoms-up complete \((.+) strokes\)$/, 'اكتمل bottoms-up ($1 ضربة)'],
+];
+let lang = 'en';
+function t(s) {
+  if (lang !== 'ar' || s === undefined || s === null) return s;
+  const k = String(s); if (Object.prototype.hasOwnProperty.call(AR, k)) return AR[k];
+  for (const [re, r] of PAT) if (re.test(k)) return k.replace(re, r);
+  return k;
+}
+function f(tpl, v) { const s = lang === 'ar' && AR[tpl] ? AR[tpl] : tpl; return s.replace(/\{(\w+)\}/g, (m, key) => v[key] === undefined ? m : v[key]); }
+// static page text: translate text nodes / titles; keep the English originals to switch back
+const orig = new WeakMap();
+function applyStatic(rootEl) {
+  const w = document.createTreeWalker(rootEl, NodeFilter.SHOW_TEXT, { acceptNode: n => n.parentElement && n.parentElement.closest('script,style,svg,[data-i18n-skip]') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT });
+  const nodes = []; while (w.nextNode()) nodes.push(w.currentNode);
+  for (const n of nodes) {
+    let en = orig.get(n); if (en === undefined) { en = n.data; orig.set(n, en); }
+    const k = en.trim(); if (!k) continue;
+    const tr = lang === 'ar' && Object.prototype.hasOwnProperty.call(AR, k) ? en.replace(k, AR[k]) : en;
+    if (n.data !== tr) n.data = tr;
+  }
+  rootEl.querySelectorAll('[title]').forEach(el => { if (el.closest('[data-i18n-skip]')) return; if (!el.dataset.enTitle) el.dataset.enTitle = el.title; el.title = t(el.dataset.enTitle); });
+}
+function setLang(l) {
+  lang = l === 'ar' ? 'ar' : 'en';
+  const h = document.documentElement; h.lang = lang; h.dir = lang === 'ar' ? 'rtl' : 'ltr';
+  applyStatic(document.body);
+  try { localStorage.setItem('dc-lang', lang); } catch (e) { /* storage unavailable */ }
+}
+function init() {
+  let l = 'en';
+  try { const q = new URLSearchParams(location.search).get('lang'); l = q || localStorage.getItem('dc-lang') || 'en'; } catch (e) { /* default */ }
+  setLang(l);
+}
+// other pages (e.g. hydraulics/) add their own strings and message patterns
+function add(dict, pats) { Object.assign(AR, dict || {}); if (pats) PAT.push(...pats); }
+root.I18N = { t, f, setLang, init, add, get lang() { return lang; }, AR };
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+<script>
+/* Field Hydraulics — Arabic strings (added to the shared I18N layer of the Driller's Console). */
+(function () {
+'use strict';
+if (!window.I18N || !window.I18N.add) return;
+window.I18N.add({
+  // header / toolbar
+  'Field Hydraulics': 'هيدروليكا الحفر — بيانات حقلية', '— API RP 13D · Herschel-Bulkley': '— API RP 13D · Herschel-Bulkley',
+  Depth: 'العمق', Density: 'الكثافة', Flow: 'التدفق', Pressure: 'الضغط',
+  'Load example': 'تحميل مثال', 'New well': 'بئر جديد', 'Export JSON': 'تصدير JSON', 'Import JSON': 'استيراد JSON', 'Print / PDF report': 'طباعة / تقرير PDF',
+  "Driller's Console": 'محاكي الحفّار', Guide: 'الدليل (PDF)',
+  'Engineering aid, not validated software. Results depend on the inputs and on the model assumptions listed below. Compare them with measured SPP / ECD (PWD) or with a commercial program before using them for decisions.':
+    'أداة مساعدة هندسية وليست برنامجاً معتمداً. النتائج تعتمد على المدخلات وعلى افتراضات النموذج المذكورة في الأسفل. قارنها بـ SPP و ECD مقاسة (PWD) أو ببرنامج تجاري قبل استخدامها في اتخاذ القرار.',
+  // input cards
+  Well: 'البئر', 'Casing / liner': 'الـ Casing / الـ liner', '+ Row': '+ صف', 'Open hole': 'الـ Open hole', 'Drill string': 'الـ Drill string',
+  'from the bit upwards · empty length = to surface': 'من البت إلى الأعلى · الطول الفارغ = حتى السطح', 'Surface lines': 'الخطوط السطحية',
+  'Mud & cuttings': 'الطين والـ cuttings', 'Fann 35 dial readings': 'قراءات جهاز Fann 35', Pumps: 'المضخات', 'Bit & BHA': 'البت والـ BHA', Limits: 'الحدود',
+  Survey: 'الـ Survey', 'MD, Inc (°), Azi (°) — one station per line; paste from Excel': 'MD، Inc (°)، Azi (°) — محطة في كل سطر؛ يمكن اللصق من Excel',
+  'Measured data': 'بيانات مقاسة', "SPP, PWD ECD, or another program's results": 'SPP، أو ECD من PWD، أو نتائج برنامج آخر',
+  'Well name': 'اسم البئر', 'Total depth (MD)': 'العمق الكلي (MD)', 'Bit depth (MD), 0 = at TD': 'عمق البت (MD)، 0 = عند القاع',
+  'Hole / bit size': 'قطر البئر / البت', 'Open-hole washout (% of diameter)': 'اتساع الـ open hole (% من القطر)', 'Equivalent length': 'الطول المكافئ', 'Inside diameter': 'القطر الداخلي',
+  'Mud weight': 'وزن الطين', 'Cutting size': 'حجم الـ cutting', 'Cutting density (sg)': 'كثافة الـ cutting (sg)', 'ROP (for cuttings load)': 'ROP (لحساب حمل الـ cuttings)',
+  Liner: 'الـ Liner', Stroke: 'الشوط', 'Volumetric efficiency (%)': 'الكفاءة الحجمية (%)', 'Pump 1 SPM': 'SPM المضخة 1', 'Pump 2 SPM': 'SPM المضخة 2', 'Pump 3 SPM': 'SPM المضخة 3',
+  'Flow rate override (0 = from pumps)': 'معدل تدفق يدوي (0 = من المضخات)', 'Nozzles (1/32 in, comma-separated)': 'الـ Nozzles (بوحدة 1/32 in، مفصولة بفواصل)',
+  'Discharge coefficient Cd': 'معامل التصريف Cd', 'MWD / motor ΔP at this flow': 'ΔP الـ MWD / الـ motor عند هذا التدفق',
+  'Max. pump pressure (liner rating)': 'أقصى ضغط للمضخة (rating الـ liner)', 'Fracture gradient at shoe (EMW)': 'تدرّج التكسير عند الـ shoe (EMW)',
+  Name: 'الاسم', ID: 'ID', 'Top (MD)': 'القمة (MD)', 'Shoe (MD)': 'الـ Shoe (MD)', Component: 'المكوّن', OD: 'OD', Length: 'الطول', Source: 'المصدر',
+  'Flow rate': 'معدل التدفق', SPP: 'SPP', 'ECD (PWD)': 'ECD (PWD)', 'PWD depth (MD)': 'عمق حساس PWD (MD)', 'Delete row': 'حذف الصف', 'No rows.': 'لا توجد صفوف.',
+  // results
+  Results: 'النتائج', 'Pressure breakdown': 'توزيع فواقد الضغط', 'Comparison with measured data': 'المقارنة مع البيانات المقاسة', 'Rheology — Herschel-Bulkley fit': 'الريولوجيا — مطابقة Herschel-Bulkley',
+  'Drill string (inside)': 'داخل الـ Drill string', Annulus: 'الحلقي', 'ECD profile & wellpath': 'منحنى الـ ECD ومسار البئر', 'Survey stations (minimum curvature)': 'محطات الـ Survey (minimum curvature)',
+  'Method & assumptions': 'الطريقة والافتراضات', 'bit at': 'البت عند',
+  'Standpipe pressure (calc.)': 'ضغط الـ standpipe (محسوب)', 'ECD at bit': 'ECD عند البت', 'ECD at shoe': 'ECD عند الـ shoe', 'Bit ΔP': 'ΔP البت', HSI: 'HSI',
+  'Jet impact force': 'قوة اصطدام النفث', 'Annular velocity': 'السرعة الحلقية', 'Surface → bit': 'السطح ← البت', 'Bottoms-up': 'Bottoms-up', 'Annular friction': 'احتكاك الحلقي', Rheology: 'الريولوجيا',
+  'pump HHP {h}': 'HHP المضخة {h}', 'with cuttings {v}': 'مع الـ cuttings {v}', 'FG {v}': 'FG {v}', '{p} % of SPP': '{p} % من SPP', 'jet {v} · TFA {a} in²': 'النفث {v} · TFA {a} in²',
+  'min – max over sections': 'أدنى – أعلى قيمة بين المقاطع', 'string {s} · surface {f}': 'الـ string {s} · السطح {f}',
+  'Rheology fit failed — check the Fann readings (R600 > R300 > R200 > R100 > R6 > R3).': 'فشلت مطابقة الريولوجيا — تحقق من قراءات Fann (R600 > R300 > R200 > R100 > R6 > R3).',
+  'Maximum inclination {i}° > 30°: the Moore slip velocity and the Ft / Ca hole-cleaning indicators are for near-vertical wells only. Use a deviated-well hole-cleaning model.':
+    'أقصى ميل {i}° > 30°: سرعة انزلاق Moore ومؤشرا Ft / Ca لتنظيف البئر صالحة للآبار شبه العمودية فقط. استخدم نموذج تنظيف للآبار المائلة.',
+  'Transport ratio below 0.5 in at least one annular section.': 'نسبة النقل أقل من 0.5 في مقطع حلقي واحد على الأقل.', 'Calculated SPP exceeds the maximum pump pressure.': 'الـ SPP المحسوب يتجاوز أقصى ضغط للمضخة.',
+  'ECD at the shoe exceeds the fracture gradient.': 'الـ ECD عند الـ shoe يتجاوز تدرّج التكسير.',
+  'Some sections are in transitional flow: the friction factor there is an interpolation and is the least certain part of the result.': 'بعض المقاطع في جريان انتقالي: معامل الاحتكاك هناك محسوب بالاستيفاء، وهو أقل أجزاء النتيجة يقيناً.',
+  'Calculation error — check the inputs.': 'خطأ في الحساب — تحقق من المدخلات.',
+  Section: 'المقطع', Interval: 'المدى', Velocity: 'السرعة', Regime: 'نظام الجريان', laminar: 'طبقي (laminar)', turbulent: 'مضطرب (turbulent)', transitional: 'انتقالي', none: '—',
+  'Bit nozzles': 'nozzles البت', 'MWD / motor': 'الـ MWD / الـ motor', 'Total string + bit': 'مجموع الـ string + البت', 'Total annulus': 'مجموع الحلقي', cased: 'مبطّن (cased)', 'open hole': 'open hole',
+  Measured: 'المقاس', 'Power law (600/300) for reference': 'Power law (600/300) للمرجعية', Error: 'الخطأ', 'meas.': 'مقاس', 'calc.': 'محسوب',
+  'Add measured rows (flow rate + SPP, and PWD ECD if available) in “Measured data”. You can also enter another program’s results (e.g. WELLPLAN, Drillbench) to compare the two calculations.':
+    'أضف صفوفاً مقاسة (معدل التدفق + SPP، و ECD من PWD إن وُجد) في "بيانات مقاسة". ويمكنك أيضاً إدخال نتائج برنامج آخر (مثل WELLPLAN أو Drillbench) للمقارنة بين الحسابين.',
+  'Colours (±5 % green, ±15 % amber) are only a visual aid, not an acceptance criterion. A consistent bias usually points to an input: rheology at downhole temperature, MWD/motor losses, nozzle sizes, surface-line equivalent length, or tool joints (not modelled).':
+    'الألوان (±5 % أخضر، ±15 % برتقالي) مساعدة بصرية فقط وليست معيار قبول. الانحراف الثابت يشير عادةً إلى أحد المدخلات: الريولوجيا عند حرارة البئر، أو فواقد الـ MWD/الـ motor، أو أقطار الـ nozzles، أو الطول المكافئ للخطوط السطحية، أو الـ tool joints (غير مُنمذجة).',
+  'shear rate γ (1/s)': 'معدل القص γ (1/s)', 'HB model': 'نموذج HB', 'Fann readings': 'قراءات Fann', 'FG at shoe': 'FG عند الـ shoe', 'Horizontal displacement': 'الإزاحة الأفقية',
+  '{n} stations · TVD at bit {t} · max inclination {i}° · max DLS {d}': '{n} محطة · TVD عند البت {t} · أقصى ميل {i}° · أقصى DLS {d}',
+  'Example loaded (training well, not field data).': 'تم تحميل المثال (بئر تدريبي وليس بيانات حقلية).', 'Blank well: enter your data.': 'بئر فارغ: أدخل بياناتك.',
+  'Data imported.': 'تم استيراد البيانات.', 'Could not read this file (expected a JSON export from this page).': 'تعذّرت قراءة الملف (المتوقع ملف JSON مُصدَّر من هذه الصفحة).',
+  // method list
+  'Rheology: Herschel-Bulkley, τ = τy + K·γⁿ with τy = 2R3 − R6, n = 3.32·log[(R600 − τy)/(R300 − τy)], K = (R300 − τy)/511ⁿ. Dial readings taken as lbf/100 ft².':
+    'الريولوجيا: Herschel-Bulkley، τ = τy + K·γⁿ حيث τy = 2R3 − R6، و n = 3.32·log[(R600 − τy)/(R300 − τy)]، و K = (R300 − τy)/511ⁿ. قراءات الجهاز تؤخذ كـ lbf/100 ft².',
+  'Pressure losses: generalized Reynolds number and friction factor of API RP 13D for pipe and concentric annulus. Not included: tool joints, eccentricity, pipe rotation, and temperature/pressure effects on rheology and density.':
+    'فواقد الضغط: رقم Reynolds المعمّم ومعامل الاحتكاك وفق API RP 13D للأنبوب وللحلقي المتمركز. غير مشمول: الـ tool joints، وعدم التمركز، ودوران الأنبوب، وأثر الحرارة والضغط على الريولوجيا والكثافة.',
+  'Bit: ΔP = 8.311×10⁻⁵·ρ·Q²/(Cd²·TFA²). MWD/motor losses are a user input.': 'البت: ΔP = 8.311×10⁻⁵·ρ·Q²/(Cd²·TFA²). فواقد الـ MWD/الـ motor يدخلها المستخدم.',
+  "ECD = MW + Σ annular ΔP / (0.052·TVD); TVD from the survey (minimum curvature). The cuttings effect uses Moore's slip velocity with the HB apparent viscosity at the annular wall. This is valid only for near-vertical sections (inclination < 30°).":
+    'ECD = MW + Σ ΔP الحلقي / (0.052·TVD)؛ والـ TVD من الـ survey (minimum curvature). أثر الـ cuttings يعتمد سرعة انزلاق Moore مع اللزوجة الظاهرية HB عند جدار الحلقي، وهو صالح فقط للمقاطع شبه العمودية (ميل < 30°).',
+  'Full equations and their meaning: see the guide (PDF), sections 10–11.': 'المعادلات الكاملة ومعانيها: راجع الدليل (PDF)، القسمين 10–11.',
+});
+})();
+</script>
+<script>
+/* Field Hydraulics — calculation core (no DOM). Runs in the browser (window.FH) and in Node (module.exports).
+   Oilfield units internally: ft, in, ppg, gpm, psi, lbf/100ft2, cP, ft/min.
+   Rheology and pressure losses follow the Herschel-Bulkley procedure of API RP 13D (2006 and later editions);
+   wellpath by the minimum-curvature method; cuttings slip velocity by Moore's correlation. */
+(function (root) {
+'use strict';
+const PI = Math.PI, log10 = Math.log10, rad = d => d * PI / 180, deg = r => r * 180 / PI;
+const clamp = (x, a, b) => x < a ? a : x > b ? b : x;
+
+/* ---------- unit conversions (to / from the internal oilfield units) ---------- */
+const U = {
+  len: { m: 0.3048, ft: 1 },               // display per ft
+  dens: { sg: 1 / 8.3454, ppg: 1 },        // display per ppg
+  flow: { lpm: 3.785412, gpm: 1 },         // display per gpm
+  press: { bar: 0.0689476, psi: 1, kPa: 6.89476 },
+  vel: { 'm/min': 0.3048, 'ft/min': 1 },   // annular / pipe velocity display per ft/min
+  vol: { m3: 0.158987, bbl: 1 },
+};
+const toDisp = (q, unit, v) => v * U[q][unit];
+const toInt = (q, unit, v) => v / U[q][unit];
+
+/* ---------- rheology: Herschel-Bulkley from Fann 35 readings (API RP 13D) ----------
+   Dial readings are used as lbf/100ft2 (the 1.067 dial factor is neglected, as in the PV/YP convention).
+   ty = 2·R3 − R6 ; n = 3.32·log10[(R600 − ty)/(R300 − ty)] ; K = (R300 − ty)/511^n */
+const RPM = [600, 300, 200, 100, 6, 3];
+function rheology(m) {
+  const R = { 600: +m.r600, 300: +m.r300, 200: +m.r200, 100: +m.r100, 6: +m.r6, 3: +m.r3 };
+  const PV = R[600] - R[300], YP = R[300] - PV;
+  let ty = 2 * R[3] - R[6];
+  ty = clamp(isFinite(ty) ? ty : 0, 0, Math.max(0, R[300] * 0.99));
+  const n = 3.32 * log10((R[600] - ty) / (R[300] - ty));
+  const K = (R[300] - ty) / Math.pow(511, n);                  // lbf·s^n/100ft2
+  const model = rpm => ty + K * Math.pow(1.703 * rpm, n);     // shear rate 1.703·rpm (1/s)
+  const fit = RPM.filter(r => isFinite(R[r])).map(r => ({ rpm: r, meas: R[r], model: model(r) }));
+  const mean = fit.reduce((a, p) => a + p.meas, 0) / fit.length;
+  const ssr = fit.reduce((a, p) => a + (p.meas - p.model) ** 2, 0), sst = fit.reduce((a, p) => a + (p.meas - mean) ** 2, 0);
+  // Power law (two-point, 600/300) and Bingham, for reference
+  const nPL = 3.32 * log10(R[600] / R[300]), KPL = R[300] / Math.pow(511, nPL);
+  const ok = isFinite(n) && n > 0.05 && n <= 1.5 && K > 0;
+  return { R, PV, YP, ty, n, K, model, fit, r2: sst > 0 ? 1 - ssr / sst : 1, nPL, KPL, ok };
+}
+
+/* ---------- wellpath: minimum curvature ----------
+   β = acos[cos(I2−I1) − sinI1·sinI2·(1 − cos(A2−A1))] ; RF = (2/β)·tan(β/2)
+   ΔTVD = ΔMD/2·(cosI1 + cosI2)·RF ; ΔN = ΔMD/2·(sinI1cosA1 + sinI2cosA2)·RF ; ΔE = ΔMD/2·(sinI1sinA1 + sinI2sinA2)·RF */
+function survey(rows) {
+  const st = (rows || []).map(r => ({ md: +r[0], inc: +r[1] || 0, azi: +r[2] || 0 })).filter(r => isFinite(r.md)).sort((a, b) => a.md - b.md);
+  if (!st.length || st[0].md > 0) st.unshift({ md: 0, inc: 0, azi: st.length ? st[0].azi : 0 });
+  st[0].tvd = 0; st[0].n = 0; st[0].e = 0; st[0].dls = 0;
+  for (let i = 1; i < st.length; i++) {
+    const a = st[i - 1], b = st[i], dmd = b.md - a.md, I1 = rad(a.inc), I2 = rad(b.inc), A1 = rad(a.azi), A2 = rad(b.azi);
+    const cb = Math.cos(I2 - I1) - Math.sin(I1) * Math.sin(I2) * (1 - Math.cos(A2 - A1)), beta = Math.acos(clamp(cb, -1, 1));
+    const rf = beta > 1e-9 ? 2 / beta * Math.tan(beta / 2) : 1;
+    b.tvd = a.tvd + dmd / 2 * (Math.cos(I1) + Math.cos(I2)) * rf;
+    b.n = a.n + dmd / 2 * (Math.sin(I1) * Math.cos(A1) + Math.sin(I2) * Math.cos(A2)) * rf;
+    b.e = a.e + dmd / 2 * (Math.sin(I1) * Math.sin(A1) + Math.sin(I2) * Math.sin(A2)) * rf;
+    b.dls = dmd > 0 ? deg(beta) * 100 / dmd : 0;                // deg/100 ft
+  }
+  // interpolation along MD (linear in the curvature-corrected values; extrapolate the last tangent)
+  const at = (md, key) => {
+    if (md <= st[0].md) return st[0][key] + (key === 'tvd' ? md - st[0].md : 0);
+    for (let i = 1; i < st.length; i++) if (md <= st[i].md) { const a = st[i - 1], b = st[i], u = (md - a.md) / (b.md - a.md || 1); return a[key] + u * (b[key] - a[key]); }
+    const l = st[st.length - 1]; if (key === 'tvd') return l.tvd + (md - l.md) * Math.cos(rad(l.inc)); return l[key];
+  };
+  return { st, tvd: md => at(md, 'tvd'), inc: md => at(md, 'inc') };
+}
+
+/* ---------- friction factor and flow in one section (API RP 13D, Herschel-Bulkley) ----------
+   α = 0 pipe, 1 annulus ; G = [((3−α)n + 1)/((4−α)n)]·(1 + α/2)
+   γw = 1.6·G·V/D  (1/s; V ft/min, D in — D = pipe ID or D2 − D1)
+   τw = [(4−α)/(3−α)]^n·τy + K·γw^n   (lbf/100ft2)
+   NRe = ρ·V² / (19.36·τw)  (ρ ppg)
+   laminar NRe < 3470 − 1370n ; turbulent NRe > 4270 − 1370n
+   f_lam = 16/NRe ; f_trans = 16·NRe/(3470 − 1370n)² ; f_turb = a/NRe^b, a = (log n + 3.93)/50, b = (1.75 − log n)/7
+   f = [f_lam^12 + (f_trans^−8 + f_turb^−8)^(−3/2)]^(1/12)
+   dP/dL = 1.076·ρ·V²·f / (10^5·D)  (psi/ft) */
+function friction(NRe, n) {
+  const fl = 16 / NRe, ft = 16 * NRe / (3470 - 1370 * n) ** 2, a = (log10(n) + 3.93) / 50, b = (1.75 - log10(n)) / 7, fturb = a / Math.pow(NRe, b);
+  const f = Math.pow(fl ** 12 + Math.pow(ft ** -8 + fturb ** -8, -1.5), 1 / 12);
+  const regime = NRe < 3470 - 1370 * n ? 'laminar' : NRe > 4270 - 1370 * n ? 'turbulent' : 'transitional';
+  return { f, regime, fl, ft, fturb };
+}
+function flow(Q, Dout, Din, L, rho, rh) { // Din = 0 for pipe flow
+  const ann = Din > 0, alpha = ann ? 1 : 0, D = ann ? Dout - Din : Dout;
+  const area = PI / 4 * (Dout * Dout - Din * Din);                 // in2
+  const V = 24.51 * Q / (Dout * Dout - Din * Din);                 // ft/min (Q gpm, D in)
+  if (Q <= 0 || L <= 0 || D <= 0) return { V: 0, gw: 0, tw: 0, NRe: 0, regime: 'none', f: 0, dP: 0, D, area, mua: 0 };
+  const n = rh.n, G = ((3 - alpha) * n + 1) / ((4 - alpha) * n) * (1 + alpha / 2);
+  const gw = 1.6 * G * V / D;
+  const tw = Math.pow((4 - alpha) / (3 - alpha), n) * rh.ty + rh.K * Math.pow(gw, n);
+  const NRe = rho * V * V / (19.36 * tw);
+  const fr = friction(NRe, n);
+  const dPdL = 1.076 * rho * V * V * fr.f / (1e5 * D);
+  return { V, G, gw, tw, NRe, regime: fr.regime, f: fr.f, dPdL, dP: dPdL * L, D, area, mua: 478.8 * tw / gw };
+}
+
+/* ---------- bit hydraulics ----------
+   TFA = Σ π/4·(dn/32)² ; ΔPbit = 8.311e-5·ρ·Q² / (Cd²·TFA²) (psi) ; vn = 0.3208·Q/TFA (ft/s)
+   HHPb = ΔPbit·Q/1714 ; HSI = HHPb / (π/4·Db²) ; Fj = 0.01823·Cd·Q·√(ρ·ΔPbit) (lbf) */
+function bit(Q, rho, nozzles, cd, Db) {
+  const tfa = nozzles.reduce((a, d) => a + PI / 4 * (d / 32) ** 2, 0);
+  if (!(tfa > 0) || Q <= 0) return { tfa, dP: 0, vn: 0, hhp: 0, hsi: 0, fj: 0 };
+  const dP = 8.311e-5 * rho * Q * Q / (cd * cd * tfa * tfa), vn = 0.3208 * Q / tfa, hhp = dP * Q / 1714;
+  return { tfa, dP, vn, hhp, hsi: hhp / (PI / 4 * Db * Db), fj: 0.01823 * cd * Q * Math.sqrt(rho * dP) };
+}
+
+/* ---------- cuttings slip velocity: Moore (field units; vs ft/s, ds in, ρ ppg, μa cP) ----------
+   intermediate: vs = 2.90·ds·(ρs−ρf)^0.667 / (ρf^0.333·μa^0.333) ; NRp = 928·ρf·vs·ds/μa
+   NRp > 300: vs = 1.54·√(ds·(ρs−ρf)/ρf) ; NRp < 3: vs = 82.87·ds²·(ρs−ρf)/μa */
+function moore(rf, rs, ds, mua) {
+  if (!(mua > 0) || rs <= rf) return { vs: 0, nrp: 0, regime: '—' };
+  let vs = 2.90 * ds * Math.pow(rs - rf, 0.667) / (Math.pow(rf, 0.333) * Math.pow(mua, 0.333)), regime = 'intermediate';
+  const nrp = 928 * rf * vs * ds / mua;
+  if (nrp > 300) { vs = 1.54 * Math.sqrt(ds * (rs - rf) / rf); regime = 'turbulent'; }
+  else if (nrp < 3) { vs = 82.87 * ds * ds * (rs - rf) / mua; regime = 'laminar'; }
+  return { vs, nrp: 928 * rf * vs * ds / mua, regime };
+}
+
+/* ---------- pumps: triplex displacement bbl/stk = 0.000243·Dl²·Ls·η (Dl, Ls in) ---------- */
+function pumps(p) {
+  const disp = 0.000243 * p.liner * p.liner * p.stroke * (p.eff / 100);   // bbl/stk
+  const spm = (p.spm || []).reduce((a, s) => a + (+s || 0), 0);
+  const Q = p.qOverride > 0 ? p.qOverride : disp * spm * 42;               // gpm
+  return { disp, spm, Q };
+}
+
+/* ---------- geometry: pipe and annulus sections between all depth breakpoints ---------- */
+function geometry(inp) {
+  const B = inp.well.bitDepth > 0 ? Math.min(inp.well.bitDepth, inp.well.td) : inp.well.td;
+  // drill string from the bit upwards; a component with len ≤ 0 fills to surface
+  const comps = []; let z = B;
+  for (const c of inp.string) {
+    const len = c.len > 0 ? Math.min(c.len, z) : z; if (len <= 0) break;
+    comps.push({ name: c.name, od: +c.od, id: +c.id, top: z - len, bot: z }); z -= len;
+  }
+  if (z > 1e-6 && comps.length) comps[comps.length - 1].top = 0;              // extend the last component to surface
+  const ohId = inp.hole.id * (1 + (inp.hole.washout || 0) / 100);
+  const cas = (inp.casing || []).filter(c => c.id > 0 && c.shoe > (c.top || 0));
+  const holeAt = zm => { let d = null; for (const c of cas) if (zm >= (c.top || 0) && zm <= c.shoe) d = d === null ? c.id : Math.min(d, c.id); return d === null ? { id: ohId, cased: false } : { id: d, cased: true }; };
+  const pipeAt = zm => comps.find(c => zm >= c.top && zm <= c.bot) || comps[comps.length - 1];
+  const bp = new Set([0, B]); comps.forEach(c => { bp.add(c.top); bp.add(c.bot); }); cas.forEach(c => { if (c.shoe < B) bp.add(c.shoe); if (c.top > 0 && c.top < B) bp.add(c.top); });
+  const pts = [...bp].filter(v => v >= 0 && v <= B).sort((a, b) => a - b);
+  const ann = [];
+  for (let i = 1; i < pts.length; i++) {
+    const z0 = pts[i - 1], z1 = pts[i]; if (z1 - z0 < 1e-6) continue; const zm = (z0 + z1) / 2, h = holeAt(zm), p = pipeAt(zm);
+    ann.push({ top: z0, bot: z1, len: z1 - z0, dh: h.id, cased: h.cased, od: p.od, name: p.name });
+  }
+  return { B, comps, ann, ohId };
+}
+
+/* ---------- full calculation at one flow rate ---------- */
+function calc(inp, Qover) {
+  const rh = rheology(inp.mud), sv = survey(inp.survey), g = geometry(inp), pm = pumps(inp.pumps);
+  const Q = Qover > 0 ? Qover : pm.Q, rho = +inp.mud.mw;
+  const warn = [];
+  if (!rh.ok) warn.push('rheology');
+  const surf = flow(Q, inp.surface.id, 0, inp.surface.len, rho, rh);
+  const pipe = g.comps.map(c => Object.assign({ name: c.name, top: c.top, bot: c.bot, od: c.od, id: c.id, len: c.bot - c.top }, flow(Q, c.id, 0, c.bot - c.top, rho, rh)));
+  const b = bit(Q, rho, inp.bit.nozzles, inp.bit.cd || 0.95, inp.hole.id);
+  // annulus, from surface down; cuttings load from ROP (optional)
+  const Ab = PI / 4 * inp.hole.id ** 2, rop = +inp.ops.rop || 0, ds = +inp.mud.ds || 0.25, rs = (+inp.mud.rhos || 2.6) * 8.3454;
+  const qc = rop * Ab / 144 * 7.4805 / 60;                                       // gpm of drilled rock
+  let cum = 0;
+  const ann = g.ann.map(s => {
+    const fl = flow(Q, s.dh, s.od, s.len, rho, rh), inc = sv.inc((s.top + s.bot) / 2);
+    const mo = moore(rho, rs, ds, fl.mua), va = fl.V / 60;                        // ft/s
+    const Ft = va > 0 ? clamp(1 - mo.vs / va, 0, 1) : 0, Ca = qc > 0 && Q > 0 ? qc / (qc + Q * Math.max(Ft, 0.05)) : 0;
+    cum += fl.dP;
+    const tvdB = sv.tvd(s.bot);
+    return Object.assign({}, s, fl, { inc, vs: mo.vs * 60, moore: mo.regime, Ft, Ca, cumDP: cum, tvdBot: tvdB, ecdBot: rho + cum / (0.052 * Math.max(tvdB, 1)) });
+  });
+  const annDP = cum, pipeDP = pipe.reduce((a, p) => a + p.dP, 0), extra = +inp.bit.extra || 0;
+  const spp = surf.dP + pipeDP + b.dP + extra + annDP;
+  const tvdBit = sv.tvd(g.B);
+  // cuttings load adds to the annulus density (volume-weighted with the bit-region Ca)
+  const caBit = ann.length ? ann[ann.length - 1].Ca : 0, rhoCut = rho * (1 - caBit) + rs * caBit;
+  const ecd = rho + annDP / (0.052 * Math.max(tvdBit, 1)), ecdCut = ecd + (rhoCut - rho);
+  const shoe = (inp.casing || []).reduce((a, c) => Math.max(a, c.shoe < g.B ? c.shoe : 0), 0);
+  let ecdShoe = null; if (shoe > 0) { let c2 = 0; for (const s of ann) { if (s.bot <= shoe + 1e-6) c2 = s.cumDP; } ecdShoe = rho + c2 / (0.052 * Math.max(sv.tvd(shoe), 1)); }
+  // volumes (bbl), strokes, times
+  const capP = pipe.reduce((a, p) => a + p.id * p.id / 1029.4 * p.len, 0) + inp.surface.id ** 2 / 1029.4 * inp.surface.len;
+  const capA = ann.reduce((a, s) => a + (s.dh * s.dh - s.od * s.od) / 1029.4 * s.len, 0);
+  const qbpm = Q / 42;
+  const maxInc = Math.max(...sv.st.map(s => s.inc));
+  if (maxInc > 30) warn.push('deviated');
+  if (ann.some(s => s.Ft < 0.5)) warn.push('lowFt');
+  if (inp.ops.maxSpp > 0 && spp > inp.ops.maxSpp) warn.push('spp');
+  if (inp.ops.fgShoe > 0 && ecdShoe !== null && ecdShoe > inp.ops.fgShoe) warn.push('frac');
+  return {
+    Q, rho, rh, sv, g, pm, surf, pipe, bit: b, ann, extra, annDP, pipeDP, spp, ecd, ecdCut, ecdShoe, shoe, tvdBit,
+    pctBit: spp > 0 ? b.dP / spp : 0, hhpPump: spp * Q / 1714, capP, capA,
+    stkBit: pm.disp > 0 ? capP / pm.disp : 0, stkBU: pm.disp > 0 ? capA / pm.disp : 0,
+    tBit: qbpm > 0 ? capP / qbpm : 0, tBU: qbpm > 0 ? capA / qbpm : 0, warn, maxInc,
+  };
+}
+
+/* ---------- comparison with measured data ---------- */
+function compare(inp) {
+  return (inp.measured || []).filter(m => m.q > 0).map(m => {
+    const r = calc(inp, m.q); let ecdC = null;
+    if (m.ecd > 0) { const z = m.ecdDepth > 0 ? Math.min(m.ecdDepth, r.g.B) : r.g.B; let c = 0; for (const s of r.ann) { if (s.top < z) c += s.dP * clamp((z - s.top) / s.len, 0, 1); } ecdC = r.rho + c / (0.052 * Math.max(r.sv.tvd(z), 1)); }
+    return { src: m.src || '', q: m.q, sppM: m.spp, sppC: r.spp, eSpp: m.spp > 0 ? (r.spp - m.spp) / m.spp : null, ecdM: m.ecd || null, ecdC, eEcd: m.ecd > 0 ? (ecdC - m.ecd) / m.ecd : null };
+  });
+}
+
+/* ---------- example: the Driller's Console training well (not field data) ---------- */
+const EXAMPLE = {
+  units: { len: 'm', dens: 'sg', flow: 'lpm', press: 'bar' },
+  well: { name: "Example — Driller's Console training well (not field data)", td: 3115 / 0.3048, bitDepth: 0 },
+  casing: [{ name: '13 3/8" 72 ppf', id: 12.347, top: 0, shoe: 2000 / 0.3048 }],
+  hole: { id: 12.25, washout: 0 },
+  string: [{ name: '8" drill collars (BHA)', od: 8.0, id: 2.8125, len: 200 / 0.3048 }, { name: '5 1/2" DP 21.9 ppf', od: 5.5, id: 4.778, len: 0 }],
+  surface: { id: 3.826, len: 100 / 0.3048 },
+  mud: { mw: 1.20 * 8.3454, r600: 62, r300: 37, r200: 28, r100: 18, r6: 7, r3: 6, ds: 0.25, rhos: 2.6 },
+  pumps: { liner: 5.5, stroke: 12, eff: 95, spm: [95, 95, 95], qOverride: 0 },
+  bit: { nozzles: [14, 14, 14, 14, 14, 14], cd: 0.95, extra: 0 },
+  ops: { rop: 20 / 0.3048, fgShoe: 1.78 * 8.3454, maxSpp: 5000 },
+  survey: [[0, 0, 0], [3115 / 0.3048, 0, 0]],
+  measured: [],
+};
+
+const api = { U, toDisp, toInt, rheology, survey, friction, flow, bit, moore, pumps, geometry, calc, compare, EXAMPLE };
+if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.FH = api;
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+<script>
+/* Field Hydraulics — UI: input forms (stored in oilfield units), results tables and charts. */
+(function () {
+'use strict';
+const H = window.FH, $ = id => document.getElementById(id);
+const I = window.I18N || { t: x => x, f: (x, v) => x.replace(/\{(\w+)\}/g, (m, k) => v[k]), lang: 'en' };
+const T = x => I.t(x), F = (x, v) => I.f(x, v);
+const clone = o => JSON.parse(JSON.stringify(o));
+const KEY = 'fh-state-v1';
+let S = load() || clone(H.EXAMPLE);
+
+/* ---------------- units ---------------- */
+const UL = { len: { m: 'm', ft: 'ft' }, dens: { sg: 'sg', ppg: 'ppg' }, flow: { lpm: 'L/min', gpm: 'gpm' }, press: { bar: 'bar', psi: 'psi', kPa: 'kPa' } };
+const u = q => S.units[q];
+const lab = q => q === 'rop' ? UL.len[u('len')] + '/h' : q === 'in' ? 'in' : UL[q] ? UL[q][u(q)] : '';
+const disp = (q, v) => (q === 'rop' ? H.toDisp('len', u('len'), v) : UL[q] ? H.toDisp(q, u(q), v) : v);
+const intl = (q, x) => (q === 'rop' ? H.toInt('len', u('len'), x) : UL[q] ? H.toInt(q, u(q), x) : x);
+const DEC = { len: 2, dens: 3, flow: 1, press: 1, rop: 2, in: 4, num: 4 };
+const nf = (x, d) => (x === null || x === undefined || !isFinite(x)) ? '—' : (+x).toFixed(d);
+const fq = (q, v, d) => nf(disp(q, v), d === undefined ? DEC[q] : d);
+const fu = (q, v, d) => fq(q, v, d) + ' ' + lab(q);
+const SI = () => u('len') === 'm';
+const vel = vFtMin => SI() ? nf(vFtMin * 0.3048, 1) + ' m/min' : nf(vFtMin, 0) + ' ft/min';
+const vol = bbl => SI() ? nf(bbl * 0.158987, 1) + ' m³' : nf(bbl, 0) + ' bbl';
+
+/* ---------------- state helpers ---------------- */
+const get = (o, p) => p.split('.').reduce((a, k) => a == null ? a : a[k], o);
+function set(o, p, v) { const ks = p.split('.'); let a = o; for (let i = 0; i < ks.length - 1; i++) a = a[ks[i]]; a[ks[ks.length - 1]] = v; }
+function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* storage unavailable */ } }
+function load() { try { const s = JSON.parse(localStorage.getItem(KEY)); return s && s.well && s.units ? s : null; } catch (e) { return null; } }
+function toast(t) { const e = document.createElement('div'); e.textContent = T(t); $('toast').appendChild(e); setTimeout(() => e.remove(), 4200); }
+
+/* ---------------- forms ---------------- */
+const FIELDS = {
+  fWell: [['well.name', 'Well name', 'text'], ['well.td', 'Total depth (MD)', 'len'], ['well.bitDepth', 'Bit depth (MD), 0 = at TD', 'len']],
+  fHole: [['hole.id', 'Hole / bit size', 'in'], ['hole.washout', 'Open-hole washout (% of diameter)', 'num']],
+  fSurf: [['surface.len', 'Equivalent length', 'len'], ['surface.id', 'Inside diameter', 'in']],
+  fMud: [['mud.mw', 'Mud weight', 'dens'], ['mud.r600', 'R600', 'num'], ['mud.r300', 'R300', 'num'], ['mud.r200', 'R200', 'num'], ['mud.r100', 'R100', 'num'], ['mud.r6', 'R6', 'num'], ['mud.r3', 'R3', 'num'],
+    ['mud.ds', 'Cutting size', 'in'], ['mud.rhos', 'Cutting density (sg)', 'num'], ['ops.rop', 'ROP (for cuttings load)', 'rop']],
+  fPumps: [['pumps.liner', 'Liner', 'in'], ['pumps.stroke', 'Stroke', 'in'], ['pumps.eff', 'Volumetric efficiency (%)', 'num'], ['pumps.spm.0', 'Pump 1 SPM', 'num'], ['pumps.spm.1', 'Pump 2 SPM', 'num'], ['pumps.spm.2', 'Pump 3 SPM', 'num'], ['pumps.qOverride', 'Flow rate override (0 = from pumps)', 'flow']],
+  fBit: [['bit.nozzles', 'Nozzles (1/32 in, comma-separated)', 'list'], ['bit.cd', 'Discharge coefficient Cd', 'num'], ['bit.extra', 'MWD / motor ΔP at this flow', 'press']],
+  fOps: [['ops.maxSpp', 'Max. pump pressure (liner rating)', 'press'], ['ops.fgShoe', 'Fracture gradient at shoe (EMW)', 'dens']],
+};
+const TABLES = {
+  casing: { el: 'fCasing', cols: [['name', 'Name', 'text'], ['id', 'ID', 'in'], ['top', 'Top (MD)', 'len'], ['shoe', 'Shoe (MD)', 'len']], blank: () => ({ name: '', id: 0, top: 0, shoe: 0 }) },
+  string: { el: 'fString', cols: [['name', 'Component', 'text'], ['od', 'OD', 'in'], ['id', 'ID', 'in'], ['len', 'Length', 'len']], blank: () => ({ name: '', od: 0, id: 0, len: 0 }) },
+  measured: { el: 'fMeas', cols: [['src', 'Source', 'text'], ['q', 'Flow rate', 'flow'], ['spp', 'SPP', 'press'], ['ecd', 'ECD (PWD)', 'dens'], ['ecdDepth', 'PWD depth (MD)', 'len']], blank: () => ({ src: '', q: 0, spp: 0, ecd: 0, ecdDepth: 0 }) },
+};
+function inputHtml(path, q, v) {
+  if (q === 'text') return `<input type="text" data-k="${path}" data-q="text" value="${String(v || '').replace(/"/g, '&quot;')}">`;
+  if (q === 'list') return `<input type="text" dir="ltr" data-k="${path}" data-q="list" value="${(v || []).join(', ')}">`;
+  return `<input type="number" step="any" data-k="${path}" data-q="${q}" value="${v === undefined || v === null || v === '' ? '' : +(+disp(q, +v)).toFixed(DEC[q] + 2)}">`;
+}
+function renderForms() {
+  for (const [el, fs] of Object.entries(FIELDS)) $(el).innerHTML = fs.map(([p, l, q]) => `<label>${T(l)}${lab(q) && q !== 'num' ? ' <em>(' + lab(q) + ')</em>' : ''}${inputHtml(p, q, get(S, p))}</label>`).join('');
+  for (const [k, t] of Object.entries(TABLES)) {
+    const rows = S[k] || [];
+    $(t.el).innerHTML = `<table class="tbl"><thead><tr>${t.cols.map(([, l, q]) => `<th>${T(l)}${lab(q) && q !== 'text' ? ' (' + lab(q) + ')' : ''}</th>`).join('')}<th></th></tr></thead><tbody>${rows.map((r, i) =>
+      `<tr>${t.cols.map(([c, , q]) => `<td>${inputHtml(`${k}.${i}.${c}`, q, r[c])}</td>`).join('')}<td><button class="btn x" data-del="${k}.${i}" title="${T('Delete row')}">✕</button></td></tr>`).join('')}</tbody></table>${rows.length ? '' : `<p class="note">${T('No rows.')}</p>`}`;
+  }
+  $('survey').value = (S.survey || []).map(r => [+(+disp('len', r[0])).toFixed(2), r[1], r[2]].join('\t')).join('\n');
+  document.querySelectorAll('[data-unit]').forEach(s => { s.value = S.units[s.dataset.unit]; });
+}
+function onInput(e) {
+  const el = e.target, p = el.dataset.k; if (!p) return;
+  const q = el.dataset.q; let v;
+  if (q === 'text') v = el.value; else if (q === 'list') v = el.value.split(/[,;\s]+/).map(Number).filter(x => x > 0);
+  else { const x = parseFloat(el.value); v = isFinite(x) ? intl(q, x) : 0; }
+  set(S, p, v); schedule();
+}
+function parseSurvey(txt) {
+  const rows = [];
+  for (const line of txt.split(/\r?\n/)) {
+    const nums = line.replace(/,(?=\d{3}\b)/g, '').split(/[\s,;\t]+/).map(Number).filter(x => isFinite(x));
+    if (nums.length >= 2 && line.trim() && !/^[a-z]/i.test(line.trim())) rows.push([intl('len', nums[0]), nums[1], nums[2] || 0]);
+  }
+  return rows;
+}
+
+/* ---------------- results ---------------- */
+let timer = 0; function schedule() { clearTimeout(timer); timer = setTimeout(() => { save(); calc(); }, 150); }
+function kpi(label, value, sub, cls) { return `<div class="kpi"><span>${T(label)}</span><b class="${cls || ''}">${value}</b>${sub ? `<small>${sub}</small>` : ''}</div>`; }
+function calc() {
+  let r; try { r = H.calc(S); } catch (e) { $('kpis').innerHTML = `<div class="wn r">${T('Calculation error — check the inputs.')} (${e.message})</div>`; return; }
+  const sppCls = S.ops.maxSpp > 0 && r.spp > S.ops.maxSpp ? 'r' : 'g';
+  const shoeTxt = r.ecdShoe === null ? '—' : fu('dens', r.ecdShoe), fgCls = !(S.ops.fgShoe > 0) || r.ecdShoe === null ? 'c' : r.ecdShoe > S.ops.fgShoe ? 'r' : r.ecdShoe > S.ops.fgShoe * 0.98 ? 'a' : 'g';
+  const va = r.ann.map(s => s.V), jet = SI() ? nf(r.bit.vn * 0.3048, 0) + ' m/s' : nf(r.bit.vn, 0) + ' ft/s';
+  $('resQ').textContent = `${fu('flow', r.Q)} · MW ${fu('dens', r.rho)} · ${T('bit at')} ${fu('len', r.g.B, 1)}`;
+  $('kpis').innerHTML = [
+    kpi('Flow rate', fu('flow', r.Q), `${nf(r.pm.spm, 0)} spm · ${SI() ? nf(r.pm.disp * 158.987, 2) + ' L/stk' : nf(r.pm.disp, 4) + ' bbl/stk'}`, 'c'),
+    kpi('Standpipe pressure (calc.)', fu('press', r.spp), F('pump HHP {h}', { h: nf(r.hhpPump, 0) + ' hp' }), sppCls),
+    kpi('ECD at bit', fu('dens', r.ecd), F('with cuttings {v}', { v: fu('dens', r.ecdCut) }), 'c'),
+    kpi('ECD at shoe', shoeTxt, S.ops.fgShoe > 0 ? F('FG {v}', { v: fu('dens', S.ops.fgShoe) }) : '', fgCls),
+    kpi('Bit ΔP', fu('press', r.bit.dP), F('{p} % of SPP', { p: nf(r.pctBit * 100, 0) }), 'w'),
+    kpi('HSI', nf(r.bit.hsi, 2) + ' hp/in²', F('jet {v} · TFA {a} in²', { v: jet, a: nf(r.bit.tfa, 3) }), 'w'),
+    kpi('Jet impact force', SI() ? nf(r.bit.fj * 4.44822e-3, 2) + ' kN' : nf(r.bit.fj, 0) + ' lbf', '', 'w'),
+    kpi('Annular velocity', va.length ? `${vel(Math.min(...va))} – ${vel(Math.max(...va))}` : '—', T('min – max over sections'), 'c'),
+    kpi('Surface → bit', `${nf(r.stkBit, 0)} stk`, `${nf(r.tBit, 1)} min · ${vol(r.capP)}`, 'w'),
+    kpi('Bottoms-up', `${nf(r.stkBU, 0)} stk`, `${nf(r.tBU, 1)} min · ${vol(r.capA)}`, 'w'),
+    kpi('Annular friction', fu('press', r.annDP), F('string {s} · surface {f}', { s: fu('press', r.pipeDP, 0), f: fu('press', r.surf.dP, 0) }), 'w'),
+    kpi('Rheology', `n ${nf(r.rh.n, 3)} · τy ${nf(r.rh.ty, 1)}`, `K ${nf(r.rh.K, 4)} lbf·sⁿ/100ft² · R² ${nf(r.rh.r2, 4)}`, r.rh.ok ? 'w' : 'r'),
+  ].join('');
+  const W = { rheology: ['r', 'Rheology fit failed — check the Fann readings (R600 > R300 > R200 > R100 > R6 > R3).'],
+    deviated: ['a', F('Maximum inclination {i}° > 30°: the Moore slip velocity and the Ft / Ca hole-cleaning indicators are for near-vertical wells only. Use a deviated-well hole-cleaning model.', { i: nf(r.maxInc, 1) })],
+    lowFt: ['a', 'Transport ratio below 0.5 in at least one annular section.'], spp: ['r', 'Calculated SPP exceeds the maximum pump pressure.'], frac: ['r', 'ECD at the shoe exceeds the fracture gradient.'] };
+  $('warns').innerHTML = r.warn.map(w => `<div class="wn ${W[w][0]}">${T(W[w][1])}</div>`).join('') + (r.ann.some(s => s.regime === 'transitional') ? `<div class="wn i">${T('Some sections are in transitional flow: the friction factor there is an interpolation and is the least certain part of the result.')}</div>` : '');
+  renderPipe(r); renderAnn(r); renderRheo(r); renderSurvey(r); renderCmp(); drawBreak(r); drawRheo(r); drawEcd(r); drawPath(r);
+  const sv = r.sv.st; $('survNote').textContent = F('{n} stations · TVD at bit {t} · max inclination {i}° · max DLS {d}', { n: sv.length, t: fu('len', r.tvdBit, 1), i: nf(r.maxInc, 1), d: nf(Math.max(...sv.map(s => s.dls)) * (SI() ? 30 / 30.48 : 1), 2) + (SI() ? '°/30 m' : '°/100 ft') });
+}
+const regime = x => `<span class="${x === 'laminar' ? 'c' : x === 'turbulent' ? 'a' : 'r'}">${T(x)}</span>`;
+function renderPipe(r) {
+  const rows = [{ name: T('Surface lines'), top: null, ...r.surf, id: S.surface.id, len: S.surface.len }].concat(r.pipe);
+  $('pipeTab').innerHTML = `<table class="res"><thead><tr><th>${T('Section')}</th><th>${T('Interval')} (${lab('len')})</th><th>ID (in)</th><th>${T('Velocity')}</th><th>γw (1/s)</th><th>τw (lbf/100ft²)</th><th>NRe</th><th>${T('Regime')}</th><th>f</th><th>ΔP (${lab('press')})</th></tr></thead><tbody>${rows.map(s =>
+    `<tr><td>${s.name}</td><td>${s.top === null ? fq('len', s.len, 0) : fq('len', s.top, 0) + '–' + fq('len', s.bot, 0)}</td><td>${nf(s.id, 3)}</td><td>${vel(s.V)}</td><td>${nf(s.gw, 0)}</td><td>${nf(s.tw, 1)}</td><td>${nf(s.NRe, 0)}</td><td>${regime(s.regime)}</td><td>${nf(s.f, 5)}</td><td>${fq('press', s.dP, 1)}</td></tr>`).join('')}
+    <tr><td>${T('Bit nozzles')}</td><td colspan="8">TFA ${nf(r.bit.tfa, 3)} in² · ${(S.bit.nozzles || []).join('/')} /32"</td><td>${fq('press', r.bit.dP, 1)}</td></tr>
+    ${r.extra ? `<tr><td>${T('MWD / motor')}</td><td colspan="8"></td><td>${fq('press', r.extra, 1)}</td></tr>` : ''}
+    <tr class="tot"><td>${T('Total string + bit')}</td><td colspan="8"></td><td>${fq('press', r.surf.dP + r.pipeDP + r.bit.dP + r.extra, 1)}</td></tr></tbody></table>`;
+}
+function renderAnn(r) {
+  $('annTab').innerHTML = `<table class="res"><thead><tr><th>${T('Section')}</th><th>${T('Interval')} (${lab('len')})</th><th>Dh × OD (in)</th><th>Inc (°)</th><th>${T('Velocity')}</th><th>NRe</th><th>${T('Regime')}</th><th>ΔP (${lab('press')})</th><th>vs (Moore)</th><th>Ft</th><th>Ca</th><th>ECD (${lab('dens')})</th></tr></thead><tbody>${r.ann.map(s =>
+    `<tr><td>${s.name} · ${T(s.cased ? 'cased' : 'open hole')}</td><td>${fq('len', s.top, 0)}–${fq('len', s.bot, 0)}</td><td>${nf(s.dh, 3)} × ${nf(s.od, 3)}</td><td>${nf(s.inc, 1)}</td><td>${vel(s.V)}</td><td>${nf(s.NRe, 0)}</td><td>${regime(s.regime)}</td><td>${fq('press', s.dP, 1)}</td><td>${vel(s.vs)}</td><td class="${s.Ft < 0.5 ? 'r' : s.Ft < 0.7 ? 'a' : 'g'}">${nf(s.Ft * 100, 0)} %</td><td>${nf(s.Ca * 100, 2)} %</td><td>${fq('dens', s.ecdBot)}</td></tr>`).join('')}
+    <tr class="tot"><td>${T('Total annulus')}</td><td colspan="6"></td><td>${fq('press', r.annDP, 1)}</td><td colspan="3"></td><td>${fq('dens', r.ecd)}</td></tr></tbody></table>`;
+}
+function renderRheo(r) {
+  const h = r.rh;
+  $('rheoTab').innerHTML = `<table class="res"><thead><tr><th>RPM</th><th>γ (1/s)</th><th>${T('Measured')}</th><th>HB</th><th>Δ</th></tr></thead><tbody>${h.fit.map(p =>
+    `<tr><td>${p.rpm}</td><td>${nf(1.703 * p.rpm, 1)}</td><td>${nf(p.meas, 1)}</td><td>${nf(p.model, 1)}</td><td class="${Math.abs(p.model - p.meas) > Math.max(1, 0.1 * p.meas) ? 'a' : ''}">${nf(p.model - p.meas, 1)}</td></tr>`).join('')}</tbody></table>
+    <p class="note">PV ${nf(h.PV, 0)} cP · YP ${nf(h.YP, 0)} lbf/100ft² · τy ${nf(h.ty, 1)} · n ${nf(h.n, 3)} · K ${nf(h.K, 4)} lbf·sⁿ/100ft² · R² ${nf(h.r2, 4)}<br>${T('Power law (600/300) for reference')}: n ${nf(h.nPL, 3)} · K ${nf(h.KPL, 4)}</p>`;
+}
+function renderSurvey(r) {
+  const k = SI() ? 30 / 30.48 : 1;
+  $('survTab').innerHTML = `<table class="res"><thead><tr><th>MD (${lab('len')})</th><th>Inc (°)</th><th>Azi (°)</th><th>TVD (${lab('len')})</th><th>N (${lab('len')})</th><th>E (${lab('len')})</th><th>DLS (${SI() ? '°/30 m' : '°/100 ft'})</th></tr></thead><tbody>${r.sv.st.map(s =>
+    `<tr><td>${fq('len', s.md, 1)}</td><td>${nf(s.inc, 2)}</td><td>${nf(s.azi, 2)}</td><td>${fq('len', s.tvd, 1)}</td><td>${fq('len', s.n, 1)}</td><td>${fq('len', s.e, 1)}</td><td>${nf(s.dls * k, 2)}</td></tr>`).join('')}</tbody></table>`;
+}
+function renderCmp() {
+  const c = H.compare(S);
+  if (!c.length) { $('cmp').innerHTML = `<p class="note">${T('Add measured rows (flow rate + SPP, and PWD ECD if available) in “Measured data”. You can also enter another program’s results (e.g. WELLPLAN, Drillbench) to compare the two calculations.')}</p>`; return; }
+  const cl = e => e === null ? '' : Math.abs(e) <= 0.05 ? 'g' : Math.abs(e) <= 0.15 ? 'a' : 'r';
+  const pc = e => e === null ? '—' : (e > 0 ? '+' : '') + nf(e * 100, 1) + ' %';
+  $('cmp').innerHTML = `<table class="res"><thead><tr><th>${T('Source')}</th><th>${T('Flow rate')} (${lab('flow')})</th><th>SPP ${T('meas.')}</th><th>SPP ${T('calc.')}</th><th>${T('Error')}</th><th>ECD ${T('meas.')}</th><th>ECD ${T('calc.')}</th><th>${T('Error')}</th></tr></thead><tbody>${c.map(x =>
+    `<tr><td>${x.src.replace(/</g, '&lt;') || '—'}</td><td>${fq('flow', x.q)}</td><td>${x.sppM ? fq('press', x.sppM) : '—'}</td><td>${fq('press', x.sppC)}</td><td class="${cl(x.eSpp)}">${pc(x.eSpp)}</td><td>${x.ecdM ? fq('dens', x.ecdM) : '—'}</td><td>${x.ecdC === null ? '—' : fq('dens', x.ecdC)}</td><td class="${cl(x.eEcd)}">${pc(x.eEcd)}</td></tr>`).join('')}</tbody></table>
+    <p class="note">${T('Colours (±5 % green, ±15 % amber) are only a visual aid, not an acceptance criterion. A consistent bias usually points to an input: rheology at downhole temperature, MWD/motor losses, nozzle sizes, surface-line equivalent length, or tool joints (not modelled).')}</p>`;
+}
+
+/* ---------------- charts ---------------- */
+function ctx(id) {
+  const cv = $(id), dpr = window.devicePixelRatio || 1, W = cv.clientWidth, Hh = cv.clientHeight;
+  if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(Hh * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(Hh * dpr); }
+  const c = cv.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, W, Hh); c.font = '11px system-ui,sans-serif'; return [c, W, Hh];
+}
+const dark = () => !window.matchMedia || !window.matchMedia('print').matches;
+function drawBreak(r) {
+  const [c, W, Hh] = ctx('cBreak');
+  const items = [[T('Surface lines'), r.surf.dP, '#7fdcff']].concat(r.pipe.map(p => [p.name, p.dP, '#4f8dff']), [[T('Bit nozzles'), r.bit.dP, '#ffb627']], r.extra ? [[T('MWD / motor'), r.extra, '#b689ff']] : [], r.ann.map(s => [T('Annulus') + ': ' + s.name, s.dP, '#2bd66f']));
+  const L = Math.min(230, W * 0.42), R = 70, rowH = Math.min(26, (Hh - 10) / items.length), mx = Math.max(...items.map(i => i[1]), 1);
+  items.forEach(([n, v, col], i) => {
+    const y = 6 + i * rowH; c.fillStyle = '#bcd3ea'; c.textAlign = 'right'; c.fillText(n.length > 34 ? n.slice(0, 33) + '…' : n, L - 6, y + rowH * 0.62);
+    c.fillStyle = col; c.fillRect(L, y + 3, (W - L - R) * v / mx, rowH - 7);
+    c.fillStyle = '#dcecff'; c.textAlign = 'left'; c.fillText(`${fq('press', v, 0)} · ${nf(v / r.spp * 100, 0)}%`, L + (W - L - R) * v / mx + 4, y + rowH * 0.62);
+  });
+}
+function axes(c, W, Hh, x0, x1, y0, y1, L, B, xl, yl, nx, ny, fx, fy) {
+  const X = v => L + (v - x0) / (x1 - x0) * (W - L - 10), Y = v => 8 + (v - y0) / (y1 - y0) * (Hh - 8 - B);
+  c.strokeStyle = '#163a5e'; c.fillStyle = '#7f9dbd'; c.lineWidth = 1; c.beginPath();
+  for (let i = 0; i <= nx; i++) { const v = x0 + (x1 - x0) * i / nx; c.moveTo(X(v), 8); c.lineTo(X(v), Hh - B); c.textAlign = 'center'; c.fillText(fx(v), X(v), Hh - B + 13); }
+  for (let i = 0; i <= ny; i++) { const v = y0 + (y1 - y0) * i / ny; c.moveTo(L, Y(v)); c.lineTo(W - 10, Y(v)); c.textAlign = 'right'; c.fillText(fy(v), L - 4, Y(v) + 4); }
+  c.stroke(); c.textAlign = 'center'; c.fillText(xl, L + (W - L) / 2, Hh - 3); c.save(); c.translate(11, 8 + (Hh - B) / 2); c.rotate(-Math.PI / 2); c.fillText(yl, 0, 0); c.restore();
+  return [X, Y];
+}
+function drawRheo(r) {
+  const [c, W, Hh] = ctx('cRheo'), h = r.rh, gm = 1022;
+  const ym = Math.max(...h.fit.map(p => p.meas), h.model(600)) * 1.1;
+  const [X, Y] = axes(c, W, Hh, 0, gm, ym, 0, 46, 32, T('shear rate γ (1/s)'), 'τ (lbf/100ft²)', 5, 4, v => nf(v, 0), v => nf(v, 0));
+  c.strokeStyle = '#36c8ff'; c.lineWidth = 2; c.beginPath(); for (let g = 0; g <= gm; g += 4) { const t = h.ty + h.K * Math.pow(g, h.n); g ? c.lineTo(X(g), Y(t)) : c.moveTo(X(g), Y(t)); } c.stroke();
+  c.fillStyle = '#ffb627'; for (const p of h.fit) { c.beginPath(); c.arc(X(1.703 * p.rpm), Y(p.meas), 4, 0, 7); c.fill(); }
+  c.textAlign = 'left'; c.fillStyle = '#36c8ff'; c.fillText(T('HB model'), 56, 22); c.fillStyle = '#ffb627'; c.fillText(T('Fann readings'), 56, 36);
+}
+function drawEcd(r) {
+  const [c, W, Hh] = ctx('cEcd');
+  const pts = [[r.rho, 0]].concat(r.ann.map(s => [s.ecdBot, s.tvdBot]));
+  const e0 = Math.min(r.rho, ...pts.map(p => p[0])) * 0.99, e1 = Math.max(...pts.map(p => p[0]), S.ops.fgShoe || 0) * 1.01, z1 = Math.max(r.tvdBit, 1);
+  const [X, Y] = axes(c, W, Hh, disp('dens', e0), disp('dens', e1), 0, disp('len', z1), 54, 32, `${T('Density')} (${lab('dens')})`, `TVD (${lab('len')})`, 4, 5, v => nf(v, u('dens') === 'sg' ? 3 : 2), v => nf(v, 0));
+  c.strokeStyle = '#2bd66f88'; c.setLineDash([4, 4]); c.beginPath(); c.moveTo(X(disp('dens', r.rho)), Y(0)); c.lineTo(X(disp('dens', r.rho)), Y(disp('len', z1))); c.stroke(); c.setLineDash([]);
+  c.strokeStyle = '#36c8ff'; c.lineWidth = 2; c.beginPath(); pts.forEach((p, i) => { const x = X(disp('dens', p[0])), y = Y(disp('len', p[1])); i ? c.lineTo(x, y) : c.moveTo(x, y); }); c.stroke();
+  if (S.ops.fgShoe > 0 && r.shoe > 0) { const x = X(disp('dens', S.ops.fgShoe)), y = Y(disp('len', r.sv.tvd(r.shoe))); c.fillStyle = '#ff4545'; c.beginPath(); c.moveTo(x, y); c.lineTo(x - 6, y - 5); c.lineTo(x - 6, y + 5); c.fill(); c.textAlign = 'right'; c.fillText(T('FG at shoe'), x - 9, y + 4); }
+  c.textAlign = 'left'; c.fillStyle = '#36c8ff'; c.fillText('ECD', 62, 22); c.fillStyle = '#2bd66f'; c.fillText('MW', 62, 36);
+}
+function drawPath(r) {
+  const [c, W, Hh] = ctx('cPath'), st = r.sv.st, hd = st.map(s => Math.hypot(s.n, s.e));
+  const z1 = Math.max(...st.map(s => s.tvd), r.tvdBit, 1), h1 = Math.max(...hd, z1 * 0.05);
+  const [X, Y] = axes(c, W, Hh, 0, disp('len', h1), 0, disp('len', z1), 54, 32, `${T('Horizontal displacement')} (${lab('len')})`, `TVD (${lab('len')})`, 4, 5, v => nf(v, 0), v => nf(v, 0));
+  c.strokeStyle = '#ffb627'; c.lineWidth = 2; c.beginPath(); st.forEach((s, i) => { const x = X(disp('len', hd[i])), y = Y(disp('len', s.tvd)); i ? c.lineTo(x, y) : c.moveTo(x, y); }); c.stroke();
+  c.fillStyle = '#ffb627'; st.forEach((s, i) => { c.beginPath(); c.arc(X(disp('len', hd[i])), Y(disp('len', s.tvd)), 2.5, 0, 7); c.fill(); });
+}
+
+/* ---------------- events ---------------- */
+function bind() {
+  document.querySelector('.inputs').addEventListener('input', onInput);
+  document.querySelector('.inputs').addEventListener('click', e => {
+    const a = e.target.closest('[data-add]'), d = e.target.closest('[data-del]');
+    if (a) { const k = a.dataset.add; (S[k] = S[k] || []).push(TABLES[k].blank()); renderForms(); schedule(); }
+    if (d) { const [k, i] = d.dataset.del.split('.'); S[k].splice(+i, 1); renderForms(); schedule(); }
+  });
+  $('survey').addEventListener('input', e => { S.survey = parseSurvey(e.target.value); schedule(); });
+  document.querySelectorAll('[data-unit]').forEach(s => s.addEventListener('change', () => { S.units[s.dataset.unit] = s.value; renderForms(); schedule(); }));
+  $('exBtn').onclick = () => { S = clone(H.EXAMPLE); renderForms(); schedule(); toast('Example loaded (training well, not field data).'); };
+  $('clrBtn').onclick = () => { const units = S.units; S = clone(H.EXAMPLE); S.units = units; S.well.name = ''; S.measured = []; S.survey = [[0, 0, 0]]; S.casing = []; S.string = [TABLES.string.blank()]; renderForms(); schedule(); toast('Blank well: enter your data.'); };
+  $('expBtn').onclick = () => { const b = new Blob([JSON.stringify(S, null, 1)], { type: 'application/json' }), a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = (S.well.name || 'well').replace(/[^\w.-]+/g, '_') + '-hydraulics.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); };
+  $('impFile').addEventListener('change', e => { const f = e.target.files[0]; if (!f) return; f.text().then(t => { const o = JSON.parse(t); if (!o.well || !o.mud || !o.string) throw new Error('format'); S = Object.assign(clone(H.EXAMPLE), o); renderForms(); schedule(); toast('Data imported.'); }).catch(() => toast('Could not read this file (expected a JSON export from this page).')); e.target.value = ''; });
+  $('prtBtn').onclick = () => window.print();
+  document.querySelectorAll('[data-lang]').forEach(b => b.addEventListener('click', () => setLang(b.dataset.lang)));
+  window.addEventListener('resize', () => calc());
+}
+function setLang(l) { if (I.setLang) I.setLang(l); document.querySelectorAll('[data-lang]').forEach(b => b.classList.toggle('on', b.dataset.lang === I.lang)); renderForms(); calc(); }
+
+if (I.init) I.init();
+bind(); setLang(I.lang);
+window.__fh = () => S;
+})();
+</script>
+</body>
+</html>
