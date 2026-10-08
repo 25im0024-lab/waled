@@ -6,9 +6,10 @@ const fs = require('fs'), path = require('path');
 const src = f => fs.readFileSync(path.join(__dirname, 'src', f), 'utf8');
 let html = src('page.html')
   .replace('<link rel="stylesheet" href="style.css">', () => '<style>\n' + src('style.css') + '</style>')
+  .replace('<script src="i18n.js"></script>', () => '<script>\n' + src('i18n.js') + '</script>')
   .replace('<script src="sim.js"></script>', () => '<script>\n' + src('sim.js') + '</script>')
   .replace('<script src="ui.js"></script>', () => '<script>\n' + src('ui.js') + '</script>');
-if (/(href|src)="(style\.css|sim\.js|ui\.js)"/.test(html)) throw new Error('unresolved asset reference');
+if (/(href|src)="(style\.css|i18n\.js|sim\.js|ui\.js)"/.test(html)) throw new Error('unresolved asset reference');
 const i = process.argv.indexOf('--fragment');
 if (i > 0) {
   const frag = html.replace(/<!doctype html>\s*/i, '').replace(/<html[^>]*>\s*/i, '').replace(/<\/?head>\s*/gi, '')

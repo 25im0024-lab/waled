@@ -29,6 +29,9 @@
       <span class="lbl">Units</span>
       <span class="seg"><button class="btn sm on" data-units="si">SI</button><button class="btn sm" data-units="fd">Field</button></span>
       <button class="btn sm" id="soundBtn" title="Alarm horn">🔇 Horn</button>
+      <span class="lbl">Language</span>
+      <span class="seg" data-i18n-skip><button class="btn sm on" data-lang="en">English</button><button class="btn sm" data-lang="ar">العربية</button></span>
+      <a class="btn sm" id="guideBtn" href="guide/drillers-console-guide.pdf" target="_blank" rel="noopener" title="Parameter guide (PDF, Arabic + English)">Guide</a>
       <button class="btn sm cy" id="instrBtn">Instructor / Setup</button>
     </div>
   </div>
@@ -53,7 +56,7 @@
 
   <section class="card c6 scene-card">
     <h2>Rig &amp; Well Schematic <small id="sceneNote">live</small></h2>
-    <div class="body"><svg id="scene" viewBox="0 0 760 860" aria-label="Animated rig and wellbore schematic"></svg>
+    <div class="body"><svg id="scene" dir="ltr" viewBox="0 0 760 860" aria-label="Animated rig and wellbore schematic"></svg>
       <div class="scene-legend"><span><i style="background:#3fb0ff"></i>Mud in</span><span><i style="background:#c9925a"></i>Returns</span><span><i style="background:#ff5a5a"></i>Choke line</span><span><i style="background:#ffe14d"></i>Gas</span></div>
     </div>
   </section>
@@ -139,6 +142,39 @@
     </div>
   </section>
 
+  <!-- ROW 2b: mud circulation -->
+  <section class="card c12">
+    <h2>Mud Circulation <small id="circNote"></small></h2>
+    <div class="body circ">
+      <canvas id="circ" dir="ltr" aria-label="Mud circulation path: pits, pumps, standpipe, drill string, bit, annulus, shakers"></canvas>
+      <div class="circ-side">
+        <div class="hc" id="hcBadge"><span class="lbl">Hole cleaning</span><b id="hcTxt">—</b><small id="hcWhy"></small></div>
+        <div class="kvt">
+          <span>Flow in / out</span><b id="cQ">—</b>
+          <span>Pipe velocity (vp)</span><b id="cVp">—</b>
+          <span>Annular velocity (va)</span><b id="cVa" class="c">—</b>
+          <span>Nozzle jet velocity (vn)</span><b id="cVn">—</b>
+          <span>Cuttings slip velocity (vs, Moore)</span><b id="cVs">—</b>
+          <span>Apparent viscosity (annulus)</span><b id="cMua" class="w">—</b>
+          <span>Transport ratio (Ft)</span><b id="cFt" class="c">—</b>
+          <span>Cuttings concentration (Ca)</span><b id="cCa">—</b>
+          <span>Surface → bit</span><b id="cBit" class="w">—</b>
+          <span>Bottoms-up</span><b id="cBU" class="w">—</b>
+          <span>Full circulation</span><b id="cFull" class="w">—</b>
+          <span>Cuttings lag time</span><b id="cLagT" class="w">—</b>
+          <span>Lag depth (cuttings at shaker)</span><b id="cLag" class="a">—</b>
+          <span>Cuttings over shakers</span><b id="cSh">—</b>
+          <span>Cuttings in annulus</span><b id="cIn" class="w">—</b>
+        </div>
+        <div class="sub-h">Lag test &amp; bottoms-up</div>
+        <div class="row"><button class="btn sm cy" id="tracerBtn">Inject tracer</button><button class="btn sm" id="buBtn">Count bottoms-up</button></div>
+        <div class="kvt" style="margin-top:4px"><span>Tracer</span><b id="cTr" class="w">—</b><span>Bottoms-up count</span><b id="cBuc" class="w">—</b></div>
+        <div class="prog"><i id="buProg"></i></div>
+        <p class="note">Radial scale exaggerated. Mud fronts, gas, cuttings and tracer are drawn at their true depth; flow arrows show relative speed. Use 20×–60× to watch transport.</p>
+      </div>
+    </div>
+  </section>
+
   <!-- ROW 3 -->
   <section class="card c4">
     <h2>BOP / Well Control <small id="bopNote"></small></h2>
@@ -210,7 +246,7 @@
   <section class="card c8">
     <h2>Real-Time Trends <small id="trendWin"></small>
       <span class="seg"><button class="btn sm" data-win="900">15 min</button><button class="btn sm on" data-win="3600">1 h</button><button class="btn sm" data-win="7200">2 h</button><button class="btn sm" data-win="21600">6 h</button></span></h2>
-    <div class="body trend-wrap"><div class="legend" id="legend"></div><canvas id="trend"></canvas></div>
+    <div class="body trend-wrap"><div class="legend" id="legend"></div><canvas id="trend" dir="ltr"></canvas></div>
   </section>
 
   <section class="card c4">
@@ -225,7 +261,7 @@
   <!-- ROW 5 -->
   <section class="card c8">
     <h2>Pressure Window &amp; Lithology <small>EMW (sg) vs depth — pore (prognosis dashed), fracture, MW, ECD</small></h2>
-    <div class="body"><canvas id="pwin"></canvas></div>
+    <div class="body"><canvas id="pwin" dir="ltr"></canvas></div>
   </section>
 
   <section class="card c4">
@@ -281,6 +317,7 @@
   </div>
 </dialog>
 
+<script src="i18n.js"></script>
 <script src="sim.js"></script>
 <script src="ui.js"></script>
 <script>if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(() => {});</script>

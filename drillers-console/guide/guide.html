@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Driller's Console — Parameter Guide</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;700&family=Noto+Sans:wght@400;600;700&display=swap">
+<style>
+@page{size:A4 landscape;margin:11mm 11mm 13mm}
+*{box-sizing:border-box}
+body{margin:0;font:8.7pt/1.36 "Noto Sans",system-ui,sans-serif;color:#14202e}
+.ar,[lang=ar]{font-family:"Noto Naskh Arabic","Noto Sans",serif;font-size:9.8pt;line-height:1.5;direction:rtl;text-align:right}
+h1{font-size:21pt;margin:0 0 2mm;color:#0b2340}
+h1 .ar{display:block;font-size:19pt;text-align:left;direction:rtl;unicode-bidi:plaintext;font-weight:700}
+h2{font-size:12.5pt;margin:5mm 0 2mm;padding:1.6mm 3mm;background:#0b2340;color:#fff;border-radius:2px;display:flex;justify-content:space-between;align-items:baseline;break-after:avoid}
+h2 .ar{font-size:12.5pt;font-weight:700}
+h3{font-size:10.5pt;margin:3mm 0 1mm;color:#0b2340;display:flex;justify-content:space-between;break-after:avoid}
+h3 .ar{font-size:11pt;font-weight:700}
+table{width:100%;border-collapse:collapse;table-layout:fixed;margin-bottom:2mm}
+th{background:#dfe9f4;color:#0b2340;font-size:8.6pt;text-align:left;padding:1.2mm 2mm;border:1px solid #b9c9da}
+th.ar{text-align:right;font-size:9.6pt}
+td{vertical-align:top;padding:1.3mm 2mm;border:1px solid #c9d6e3}
+tr{break-inside:avoid}
+tbody tr:nth-child(even) td{background:#f6f9fc}
+td.k{font-weight:700;color:#0b2340}
+td.k small{display:block;font-weight:400;color:#4f6c8a;font-size:7.8pt}
+code,.f{font-family:"Noto Sans Mono",ui-monospace,Consolas,monospace;font-size:8.3pt;background:#eef3f8;padding:0 1mm;border-radius:1px;direction:ltr;unicode-bidi:isolate}
+.ar code,.ar .f{font-size:8.3pt}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:6mm}
+.box{border:1px solid #b9c9da;border-radius:2px;padding:2.5mm 3.5mm;background:#f8fbfe;break-inside:avoid}
+.flow .box{break-inside:auto}
+p{orphans:2;widows:2}
+.note{font-size:8.2pt;color:#4f6c8a}
+.cover{display:grid;grid-template-columns:1.2fr 1fr;gap:8mm;align-items:start}
+ul,ol{margin:1mm 0;padding-inline-start:5mm}
+li{margin:.6mm 0}
+.ref li{margin:1.2mm 0;font-size:8.6pt}
+.tag{display:inline-block;font-size:7.6pt;padding:0 1.5mm;border-radius:2px;background:#e5eef7;color:#0b2340;border:1px solid #b9c9da}
+.p1{background:#ffe1e1;border-color:#e5a0a0}.p2{background:#fff0d0;border-color:#e0c080}.p3{background:#dff3ff;border-color:#9fc9e0}
+.pb{break-before:page}
+bdi.l{direction:ltr;unicode-bidi:isolate}
+</style>
+<script>
+// In Arabic text, isolate each run of Latin letters / numbers / units as left-to-right so mixed
+// Arabic + technical-term sentences keep the right order (e.g. 5½" liner, 3800 L/min, (MD = TVD)).
+document.addEventListener('DOMContentLoaded', () => {
+  const RUN = /[A-Za-z0-9≈±(α-ωΔ][A-Za-z0-9 .,:;·×\/²³½¼¾⅜"'≈≥≤<>=+\-−–()%°α-ωΔ_^&]*[A-Za-z0-9"%)²³°α-ωΔ]|[A-Za-z0-9α-ωΔ]/g;
+  const cnt = (x, c) => x.split(c).length - 1;
+  for (const root of document.querySelectorAll('.ar')) {
+    const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, { acceptNode: n => n.parentElement.closest('code,.f,bdi') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT });
+    const nodes = []; while (w.nextNode()) nodes.push(w.currentNode);
+    for (const n of nodes) {
+      const t = n.data; if (!/[A-Za-z0-9]/.test(t)) continue;
+      const frag = document.createDocumentFragment(); let last = 0;
+      t.replace(RUN, (m, i) => {
+        // leave unbalanced brackets outside the run so the RTL paragraph mirrors them
+        while (m.startsWith('(') && cnt(m, '(') > cnt(m, ')')) { m = m.slice(1); i++; }
+        while (m.endsWith(')') && cnt(m, ')') > cnt(m, '(')) m = m.slice(0, -1);
+        if (!m) return '';
+        if (i > last) frag.append(t.slice(last, i)); const b = document.createElement('bdi'); b.className = 'l'; b.textContent = m; frag.append(b); last = i + m.length; return m; });
+      if (last < t.length) frag.append(t.slice(last)); n.replaceWith(frag);
+    }
+  }
+});
+</script>
+</head>
+<body>
+
+<!-- ======================= COVER ======================= -->
+<h1>Driller's Console — Parameter Guide<span class="ar">دليل بارامترات محاكي لوحة تحكم الحفّار</span></h1>
+<div class="cover">
+  <div class="box">
+    <p><b>What this guide is.</b> A short reference for every parameter shown in the simulator: what it measures, why the driller watches it, and how to read a change. English on the left, Arabic on the right; technical terms are kept in English in both.</p>
+    <p><b>The model.</b> Vertical well (MD = TVD), 13⅜" casing shoe at 2000 m, 12¼" open hole, 12¼" PDC bit with 6×14/32" nozzles, 5½" 21.9 ppf drill pipe and 200 m BHA, three triplex pumps (12" stroke). The equations are standard textbook forms, but coefficients are chosen for training and <b>are not calibrated to a real rig</b>. Use the numbers to learn cause and effect, not for well design.</p>
+    <p><b>Units.</b> SI in this guide (m, kN, bar, L/min, sg). The simulator switches to oilfield units (ft, klbf, psi, gpm, ppg) with the <i>Field</i> button. Pressure gradient used: <code>P[bar] = 0.0981 × ρ[sg] × TVD[m]</code>.</p>
+    <p><b>Language.</b> Use the <i>English / العربية</i> buttons in the toolbar, or open <code>index.html?lang=ar</code>.</p>
+  </div>
+  <div class="box ar">
+    <p><b>ما هو هذا الدليل.</b> مرجع مختصر لكل بارامتر يظهر في المحاكي: ماذا يقيس، ولماذا يراقبه الحفّار، وكيف تفسّر تغيّره. الإنجليزية على اليسار والعربية على اليمين، مع إبقاء المصطلحات التقنية بالإنجليزية.</p>
+    <p><b>النموذج.</b> بئر عمودي (MD = TVD)، الـ casing shoe قطر 13⅜" على عمق 2000 m، open hole قطر 12¼"، بت PDC قطر 12¼" مع 6 nozzles 14/32"، drill pipe 5½" 21.9 ppf و BHA بطول 200 m، وثلاث مضخات triplex (شوط 12"). المعادلات بصيغها المعروفة في الكتب، لكن المعاملات مختارة لأغراض التدريب و<b>غير معايَرة على منصة حقيقية</b>. استخدم الأرقام لفهم السبب والنتيجة، لا لتصميم الآبار.</p>
+    <p><b>الوحدات.</b> هذا الدليل بوحدات SI (m، kN، bar، L/min، sg). زر <i>Field</i> في المحاكي يحوّل إلى الوحدات الحقلية (ft، klbf، psi، gpm، ppg). تدرّج الضغط المستخدم: <code>P[bar] = 0.0981 × ρ[sg] × TVD[m]</code>.</p>
+    <p><b>اللغة.</b> استخدم زرّي <i>English / العربية</i> في شريط الأدوات، أو افتح <code>index.html?lang=ar</code>.</p>
+  </div>
+</div>
+
+<!-- ======================= 1. PRIMARY ======================= -->
+<h2><span>1. Primary parameters</span><span class="ar">1. البارامترات الأساسية</span></h2>
+<table>
+<colgroup><col style="width:15%"><col style="width:42.5%"><col style="width:42.5%"></colgroup>
+<thead><tr><th>Parameter</th><th>Role · how to read it</th><th class="ar">المهمة · التفسير</th></tr></thead>
+<tbody>
+<tr><td class="k">Hole Depth<small>m · MD</small></td><td>Deepest point drilled. Increases only while drilling on bottom.</td><td class="ar">أعمق نقطة تم حفرها. يزيد فقط أثناء الحفر والبت على القاع.</td></tr>
+<tr><td class="k">Bit Depth<small>m</small></td><td>Current bit position. Less than Hole Depth = bit off bottom (the difference is the gap). Changes during tripping and connections.</td><td class="ar">موضع البت الحالي. إذا كان أقل من عمق البئر فالبت فوق القاع والفرق هو المسافة. يتغيّر أثناء الـ tripping والوصلات.</td></tr>
+<tr><td class="k">Block Position<small>m above floor</small></td><td>Height of the travelling block. Falls while drilling a stand; at ≈6.9 m the stand is drilled down and a connection is due. Crown-o-matic stops the block near 42.5 m.</td><td class="ar">ارتفاع الـ travelling block. ينخفض أثناء حفر الـ stand؛ عند ≈6.9 m ينتهي الـ stand ويلزم connection. الـ Crown-o-matic يوقف البلوك قرب 42.5 m.</td></tr>
+<tr><td class="k">Block Speed<small>m/min · ▲ up ▼ down</small></td><td>Hoisting fast causes <b>swab</b> (lower BHP → possible kick); lowering fast causes <b>surge</b> (higher BHP → possible losses). Swab/surge grows with speed and depth.</td><td class="ar">الرفع السريع يسبب <b>swab</b> (انخفاض BHP ← احتمال kick)، والإنزال السريع يسبب <b>surge</b> (ارتفاع BHP ← احتمال losses). يزداد الأثر مع السرعة والعمق.</td></tr>
+<tr><td class="k">Hook Load<small>kN</small></td><td><code>HL = W_block + W_string·BF − WOB ± drag</code>, BF = 1 − ρ_mud/7.85. Drop while drilling = more WOB. Extra load when pulling = overpull/drag (pack-off, tight hole). Sudden unexplained loss of weight may mean part of the string is lost.</td><td class="ar"><code>HL = W_block + W_string·BF − WOB ± drag</code> حيث BF = 1 − ρ_mud/7.85. انخفاضه أثناء الحفر = زيادة WOB. زيادة عند السحب = overpull/drag (pack-off أو تضيّق). فقدان مفاجئ للوزن قد يعني انفصال جزء من الـ string.</td></tr>
+<tr><td class="k">WOB<small>kN · weight on bit</small></td><td>Modelled from string compression: <code>WOB = (EA/L)·(lowered − drilled)</code>, so a drill-off test works. More WOB → higher ROP up to the founder point (≈300 kN here), more torque and faster wear.</td><td class="ar">يُحسب من انضغاط الـ string: <code>WOB = (EA/L)·(المُنزَل − المحفور)</code> لذلك يعمل اختبار drill-off. زيادته ترفع ROP حتى الـ founder point (≈300 kN هنا)، وترفع العزم والتآكل.</td></tr>
+<tr><td class="k">ROP<small>m/h · rate of penetration</small></td><td>Depends on WOB, RPM, bit hydraulics (HSI), overbalance, bit wear and rock drillability. A sudden increase (<b>drilling break</b>) with falling overbalance is an early sign of a higher-pressure zone: stop and flow-check.</td><td class="ar">يعتمد على WOB و RPM وهيدروليكا البت (HSI) والـ overbalance وتآكل البت وقابلية الصخر للحفر. الزيادة المفاجئة (<b>drilling break</b>) مع تناقص الـ overbalance علامة مبكرة على طبقة ضغطها أعلى: أوقف واعمل flow-check.</td></tr>
+<tr><td class="k">Top Drive RPM<small>rpm</small></td><td>String rotation speed. Raises ROP (exponent 0.6 in the model). RPM falling while torque climbs = stick-slip or a stall at the torque limit.</td><td class="ar">سرعة دوران الـ string. ترفع ROP (أس 0.6 في النموذج). انخفاض RPM مع ارتفاع العزم = stick-slip أو stall عند حد العزم.</td></tr>
+<tr><td class="k">Top Drive Torque<small>kN·m</small></td><td>Torque delivered by the motor (bit torque + wall friction). Gradual rise = bit wear or more WOB; sharp erratic rise = pack-off or a hard stringer. At the torque limit rotation stops (stall alarm).</td><td class="ar">العزم الذي يبذله المحرك (عزم البت + احتكاك الجدار). ارتفاع تدريجي = تآكل البت أو زيادة WOB؛ ارتفاع حاد ومتذبذب = pack-off أو طبقة صلبة. عند حد العزم يتوقف الدوران (إنذار stall).</td></tr>
+<tr><td class="k">Standpipe Pressure (SPP)<small>bar</small></td><td>Pump pressure at the standpipe = surface + pipe + bit-nozzle + annular friction (+ any hydrostatic imbalance). Rise = plugged nozzle, pack-off or heavier mud in the string. Slow fall = string washout, pump problem, or gas/kick lightening the annulus.</td><td class="ar">ضغط المضخة عند الـ standpipe = فواقد الاحتكاك (السطح + الأنابيب + nozzles البت + الحلقي) + أي فرق hydrostatic. ارتفاعه = nozzle مسدودة أو pack-off أو طين أثقل داخل الأنبوب. انخفاض تدريجي = washout في الـ string أو مشكلة مضخة أو غاز/kick يخفّف الحلقي.</td></tr>
+<tr><td class="k">Casing Pressure<small>bar · choke pressure</small></td><td>Annulus pressure at surface. Zero while drilling with the well open. After shut-in it is SICP. Must stay below MAASP.</td><td class="ar">ضغط الحلقي عند السطح. صفر أثناء الحفر والبئر مفتوح. بعد إغلاق البئر يساوي SICP. يجب أن يبقى أقل من MAASP.</td></tr>
+<tr><td class="k">Pump Strokes<small>spm (total)</small></td><td>Sum of strokes per minute of the running pumps. Sets the flow: <code>Q = SPM × displacement</code>.</td><td class="ar">مجموع ضربات المضخات العاملة في الدقيقة. يحدد التدفق: <code>Q = SPM × الإزاحة لكل ضربة</code>.</td></tr>
+<tr><td class="k">Pump Pressure<small>bar</small></td><td>Discharge pressure ≈ SPP plus a short line loss. If it exceeds the liner rating (5"/5½": 345 bar, 6": 310, 6½": 262) the pop-off relief opens and the pump trips.</td><td class="ar">ضغط التفريغ ≈ SPP + فاقد خط قصير. إذا تجاوز rating الـ liner (5"/5½": 345 bar، 6": 310، 6½": 262) يفتح الـ pop-off relief وتتوقف المضخة.</td></tr>
+<tr><td class="k">Mud Flow In<small>L/min</small></td><td>Flow pumped into the string, from strokes × displacement × volumetric efficiency.</td><td class="ar">التدفق المضخوخ داخل الـ string = الضربات × الإزاحة × الكفاءة الحجمية.</td></tr>
+<tr><td class="k">Mud Flow Out<small>L/min · flowline sensor</small></td><td>Return flow. <b>Flow out &gt; flow in is the first and most important kick sign.</b> Flow out &lt; flow in = losses. Flow with pumps off = well flowing.</td><td class="ar">تدفق الراجع. <b>التدفق الخارج &gt; الداخل هو أول وأهم علامة kick.</b> الخارج &lt; الداخل = losses. تدفق والمضخات متوقفة = البئر يتدفق.</td></tr>
+<tr><td class="k">Mud Pit Volume<small>m³</small></td><td>Active-system volume at surface.</td><td class="ar">حجم نظام الطين الفعّال على السطح.</td></tr>
+<tr><td class="k">Pit Gain / Loss<small>m³ since last zero</small></td><td>Gain (+) = influx (kick) unless mud was added; loss (−) = losses or transfers. Together with flow out, the key kick indicator. Zero it after any planned transfer.</td><td class="ar">الزيادة (+) = تدفق من التكوين (kick) ما لم يُضف طين؛ النقص (−) = losses أو نقل. مع التدفق الخارج هو المؤشر الرئيسي للـ kick. صفّره بعد أي نقل مخطط.</td></tr>
+<tr><td class="k">Differential Pressure<small>bar · model definition</small></td><td>Here: measured SPP minus the expected clean-hole SPP. Positive = restriction (pack-off, plugged nozzle); negative = washout or gas in the annulus. (On rigs with a mud motor, “differential” usually means motor ΔP; there is no motor in this model.)</td><td class="ar">هنا: SPP المقاس ناقص SPP المتوقع لبئر نظيف. موجب = انسداد (pack-off، nozzle مسدودة)؛ سالب = washout أو غاز في الحلقي. (في المنصات التي تستخدم mud motor يُقصد به عادةً ΔP المحرك؛ لا يوجد motor في هذا النموذج.)</td></tr>
+<tr><td class="k">Rotary Torque<small>kN·m</small></td><td>Torque transmitted to the string (bit + drag), slightly below the motor torque.</td><td class="ar">العزم المنقول إلى الـ string (البت + الاحتكاك)، أقل قليلاً من عزم المحرك.</td></tr>
+<tr><td class="k">ECD @ bit<small>sg</small></td><td>Equivalent circulating density: <code>ECD = BHP / (0.0981·TVD)</code> = MW + annular friction + cuttings load. Must stay inside the pressure window: above pore pressure, below fracture gradient.</td><td class="ar">الكثافة المكافئة أثناء التدوير: <code>ECD = BHP / (0.0981·TVD)</code> = MW + احتكاك الحلقي + حمل الـ cuttings. يجب أن تبقى داخل نافذة الضغط: فوق ضغط المسام وتحت تدرّج التكسير.</td></tr>
+<tr><td class="k">Gas<small>units (relative)</small></td><td>Gas detector reading on the returns. Background gas, connection gas and trip gas are normal peaks; a steady rise means underbalance or gas approaching surface.</td><td class="ar">قراءة كاشف الغاز في الطين الراجع. الـ background وconnection gas وtrip gas قمم طبيعية؛ الارتفاع المستمر يعني underbalance أو اقتراب الغاز من السطح.</td></tr>
+</tbody></table>
+
+<!-- ======================= 2. CIRCULATION ======================= -->
+<h2><span>2. Mud circulation &amp; hole cleaning</span><span class="ar">2. دورة سائل الحفر وتنظيف البئر</span></h2>
+<div class="cols" style="margin-bottom:2mm">
+<div class="box">Path: active pit → pump suction → triplex pumps → standpipe → top drive → <b>inside the string</b> (down) → <b>bit nozzles</b> (jets) → <b>annulus</b> (up, carrying cuttings) → flowline → shale shakers → return tanks → active pit. In the view, mud colour shows density (light = 1.0 sg, dark = 2.0 sg), so a kill-mud front is visible travelling down the string and up the annulus. Fronts, gas, cuttings and the tracer are drawn at their true depth; the radial scale is exaggerated.</div>
+<div class="box ar">المسار: الحوض الفعّال ← سحب المضخة ← مضخات triplex ← الـ standpipe ← الـ top drive ← <b>داخل الـ string</b> (نزولاً) ← <b>nozzles البت</b> (نفث) ← <b>الحلقي</b> (صعوداً مع الـ cuttings) ← الـ flowline ← الـ shale shakers ← أحواض الراجع ← الحوض الفعّال. لون الطين في المخطط يبيّن الكثافة (فاتح = 1.0 sg، داكن = 2.0 sg) فتظهر جبهة طين القتل وهي تنزل في الـ string ثم تصعد في الحلقي. الجبهات والغاز والـ cuttings والـ tracer مرسومة على عمقها الحقيقي، والمقياس العرضي مكبَّر.</div>
+</div>
+<table>
+<colgroup><col style="width:15%"><col style="width:42.5%"><col style="width:42.5%"></colgroup>
+<thead><tr><th>Parameter</th><th>Role · how to read it</th><th class="ar">المهمة · التفسير</th></tr></thead>
+<tbody>
+<tr><td class="k">Pump displacement<small>L/stroke</small></td><td>Triplex: <code>V = 3·(π/4)·D²·L·η</code>. 5½" liner, 12" stroke, η = 0.95 → 13.3 L/stk. A bigger liner gives more flow per stroke but a lower pressure rating.</td><td class="ar">مضخة triplex: <code>V = 3·(π/4)·D²·L·η</code>. liner 5½" وشوط 12" و η = 0.95 ← 13.3 L/ضربة. الـ liner الأكبر يعطي تدفقاً أكبر لكل ضربة لكن rating ضغط أقل.</td></tr>
+<tr><td class="k">Pipe velocity (vp)<small>m/s</small></td><td><code>vp = Q / A_pipe</code>. Fast (≈5.5 m/s at 3800 L/min). Sets the surface-to-bit time and the pipe friction; it does not clean the hole.</td><td class="ar"><code>vp = Q / A_pipe</code>. سريعة (≈5.5 m/s عند 3800 L/min). تحدد زمن الوصول من السطح إلى البت واحتكاك الأنبوب، ولا تنظّف البئر.</td></tr>
+<tr><td class="k">Annular velocity (va)<small>m/min</small></td><td><code>va = Q / [(π/4)(D_hole² − D_pipe²)]</code>. The main driver of cuttings transport. Judge it against the slip velocity through the transport ratio, not alone.</td><td class="ar"><code>va = Q / [(π/4)(D_hole² − D_pipe²)]</code>. العامل الرئيسي لنقل الـ cuttings. تُقيَّم مقابل سرعة الانزلاق عبر نسبة النقل، وليس وحدها.</td></tr>
+<tr><td class="k">Nozzle jet velocity (vn)<small>m/s</small></td><td><code>vn = Q / TFA</code>, TFA = 6×14/32" = 0.902 in². Higher vn → more hydraulic energy at the bit face (HSI): cleaner cutters, less balling, higher ROP.</td><td class="ar"><code>vn = Q / TFA</code> حيث TFA = 6×14/32" = 0.902 in². زيادة vn ← طاقة هيدروليكية أكبر على وجه البت (HSI): cutters أنظف، تكتّل أقل (balling)، و ROP أعلى.</td></tr>
+<tr><td class="k">Apparent viscosity (annulus)<small>cP</small></td><td>Bingham-plastic annulus: <code>μa = PV + 5·YP·(D_hole − D_pipe)/va</code> (cP, lbf/100 ft², in, ft/s). Low flow → high μa, which slows the cuttings' fall.</td><td class="ar">للحلقي بنموذج Bingham: <code>μa = PV + 5·YP·(D_hole − D_pipe)/va</code> (cP، lbf/100 ft²، in، ft/s). التدفق المنخفض ← μa مرتفعة تبطئ سقوط الـ cuttings.</td></tr>
+<tr><td class="k">Cuttings slip velocity (vs)<small>m/min · Moore</small></td><td>Settling velocity of a cutting relative to the mud (Moore correlation; cutting 0.25 in, 2.6 sg). Particle Reynolds number picks the regime: laminar <code>vs = 82.87·ds²·Δρ/μa</code>, intermediate <code>vs = 2.90·ds·Δρ^0.667/(ρf^0.333·μa^0.333)</code>, turbulent <code>vs = 1.54·√(ds·Δρ/ρf)</code> (ft/s, in, ppg, cP).</td><td class="ar">سرعة هبوط الـ cutting نسبةً إلى الطين (معادلة Moore؛ cutting قطره 0.25 in وكثافته 2.6 sg). رقم Reynolds للجسيم يحدد النظام: laminar <code>vs = 82.87·ds²·Δρ/μa</code>، وسطي <code>vs = 2.90·ds·Δρ^0.667/(ρf^0.333·μa^0.333)</code>، turbulent <code>vs = 1.54·√(ds·Δρ/ρf)</code> (ft/s، in، ppg، cP).</td></tr>
+<tr><td class="k">Transport ratio (Ft)<small>%</small></td><td><code>Ft = 1 − vs/va</code>: the fraction of the mud velocity the cuttings actually achieve. Common rule of thumb: Ft ≥ 0.5 acceptable; higher is better. Verdict bands used here: &lt; 0.5 poor, 0.5–0.7 marginal, ≥ 0.7 good.</td><td class="ar"><code>Ft = 1 − vs/va</code>: نسبة سرعة الطين التي تحققها الـ cuttings فعلاً. قاعدة إبهام شائعة: Ft ≥ 0.5 مقبول، والأعلى أفضل. حدود التقييم هنا: &lt; 0.5 ضعيف، 0.5–0.7 حدّي، ≥ 0.7 جيد.</td></tr>
+<tr><td class="k">Cuttings concentration (Ca)<small>% by volume</small></td><td><code>Ca = Qc / (Qc + Q·Ft)</code>, Qc = ROP × bit area. High Ca raises ECD and risks pack-off. Rule of thumb used here: &lt; 3 % good, 3–5 % marginal, &gt; 5 % poor. Fix with more flow, lower ROP, or circulating clean.</td><td class="ar"><code>Ca = Qc / (Qc + Q·Ft)</code> حيث Qc = ROP × مساحة البت. Ca المرتفع يرفع الـ ECD ويخاطر بـ pack-off. قاعدة الإبهام هنا: &lt; 3 % جيد، 3–5 % حدّي، &gt; 5 % ضعيف. العلاج: تدفق أعلى، أو ROP أقل، أو التدوير حتى ينظف البئر.</td></tr>
+<tr><td class="k">Hole cleaning verdict</td><td>GOOD / MARGINAL / POOR from the Ft and Ca limits above. The <i>POOR HOLE CLEANING</i> advisory alarm fires after 30 s of Ca &gt; 5 % or Ft &lt; 0.5 while drilling.</td><td class="ar">جيد / حدّي / ضعيف حسب حدود Ft و Ca أعلاه. يعمل الإنذار الاستشاري <i>POOR HOLE CLEANING</i> بعد 30 ثانية من Ca &gt; 5 % أو Ft &lt; 0.5 أثناء الحفر.</td></tr>
+<tr><td class="k">Surface → bit<small>strokes · min</small></td><td>(string volume + 4 m³ surface lines) / displacement. Strokes are the field measure because they do not depend on pump rate. Used in the kill sheet: kill mud reaches the bit after this many strokes.</td><td class="ar">(حجم الـ string + 4 m³ خطوط سطحية) / الإزاحة. الضربات هي المقياس الحقلي لأنها لا تعتمد على معدل الضخ. تُستخدم في الـ kill sheet: يصل طين القتل إلى البت بعد هذا العدد من الضربات.</td></tr>
+<tr><td class="k">Bottoms-up<small>strokes · min</small></td><td>Annular volume (bit → surface) / displacement: the strokes needed to bring bottom mud to surface. Typical use: circulate bottoms-up before tripping, after a drilling break, or to see a gas peak.</td><td class="ar">الحجم الحلقي (من البت إلى السطح) / الإزاحة: الضربات اللازمة لإيصال طين القاع إلى السطح. الاستخدام: تدوير bottoms-up قبل الـ trip، أو بعد drilling break، أو لرصد قمة غاز.</td></tr>
+<tr><td class="k">Full circulation<small>strokes · min</small></td><td>Surface → bit + bottoms-up. One complete circuit of the hole volume.</td><td class="ar">السطح ← البت + bottoms-up. دورة كاملة لحجم البئر.</td></tr>
+<tr><td class="k">Cuttings lag time<small>min</small></td><td><code>bit depth / (va − vs)</code>. Cuttings travel slower than the mud, so their lag is longer than the bottoms-up time.</td><td class="ar"><code>عمق البت / (va − vs)</code>. الـ cuttings أبطأ من الطين، لذا زمن تأخرها أطول من زمن الـ bottoms-up.</td></tr>
+<tr><td class="k">Lag depth<small>m · formation</small></td><td>The depth the cuttings now on the shakers were drilled at. The mud logger uses it to assign samples and gas peaks to the correct depth.</td><td class="ar">العمق الذي حُفرت منه الـ cuttings الموجودة الآن على الـ shakers. يستخدمه الـ mud logger لنسب العينات وقمم الغاز إلى عمقها الصحيح.</td></tr>
+<tr><td class="k">Cuttings over shakers · in annulus<small>L/min · m³</small></td><td>Rock arriving at surface, and rock still in the hole. With pumps off the cuttings stop rising and slowly settle.</td><td class="ar">الصخر الواصل إلى السطح، والصخر الباقي في البئر. عند إيقاف المضخات تتوقف الـ cuttings عن الصعود وتهبط ببطء.</td></tr>
+<tr><td class="k">Tracer (lag test)</td><td><i>Inject tracer</i> adds a marker at the pump suction (on rigs: calcium carbide → acetylene seen by the gas detector). Compare actual strokes with calculated. Actual &gt; calculated means the open hole is enlarged (washout). Here the hole is in gauge, so they agree.</td><td class="ar"><i>احقن tracer</i> يضيف علامة عند سحب المضخة (في المنصات: calcium carbide ← أسيتيلين يرصده كاشف الغاز). قارن الضربات الفعلية بالمحسوبة. الفعلي &gt; المحسوب يعني أن الـ open hole متّسع (washout). هنا البئر بقطره الاسمي فيتطابقان.</td></tr>
+<tr><td class="k">Bottoms-up count</td><td>Starts a stroke counter against the calculated bottoms-up strokes; the event log reports completion.</td><td class="ar">يبدأ عداد ضربات مقابل ضربات الـ bottoms-up المحسوبة، ويسجّل الحدث عند الاكتمال.</td></tr>
+</tbody></table>
+
+<!-- ======================= 3. PDC BIT ======================= -->
+<h2><span>3. The bit — PDC (polycrystalline diamond compact)</span><span class="ar">3. البت — PDC (الماس المتعدد البلورات)</span></h2>
+<figure style="margin:0 0 2.5mm;display:flex;gap:5mm;align-items:center;justify-content:center;break-inside:avoid"><img src="pdc-bit.png" alt="PDC bit close-up from the simulator: side view and face view" style="height:40mm;border:1px solid #b9c9da;border-radius:2px">
+<figcaption class="note" style="max-width:95mm">Simulator close-up: side view (pin, shank, blades, gauge pads, cutters, jets) and face view (primary/secondary blades, cutters, nozzles in the junk slots). It rotates at the actual RPM, and the wear flats grow with the wear grade (shown here at 4/8).<br><span class="ar" style="display:block;font-size:9.4pt">منظر مقرّب من المحاكي: منظر جانبي (الـ pin، الـ shank، الشفرات، الـ gauge pads، القواطع، النفث) ومنظر الوجه (شفرات رئيسية/ثانوية، القواطع، الـ nozzles في الـ junk slots). يدور بسرعة RPM الفعلية، وتكبر الـ wear flats مع درجة التآكل (هنا 4/8).</span></figcaption></figure>
+<div class="cols flow">
+<div class="box">
+<p><b>What it is.</b> A fixed-cutter bit with no moving parts. Each cutter is a disc of synthetic polycrystalline diamond sintered onto a tungsten-carbide substrate. Common cutter sizes are 13, 16 and 19 mm. The cutters are brazed into <b>blades</b> on a steel or tungsten-carbide-matrix body.</p>
+<p><b>How it drills.</b> The cutters <b>shear</b> the rock, like a plane on wood. Roller-cone bits crush the rock instead, and impregnated diamond bits grind it. Shearing is efficient in soft-to-medium-hard, non-abrasive rock, so PDC bits give high ROP at moderate WOB.</p>
+<p><b>Parts shown in the close-up.</b></p>
+<ul>
+<li>API pin connection and shank (bit-breaker slots).</li>
+<li>6 blades, alternating primary (reaching the centre) and secondary blades.</li>
+<li>Cutters on the leading face of each blade.</li>
+<li>Hard-faced gauge pads that hold hole size.</li>
+<li>6 nozzles in the junk slots: the jets clean and cool the cutters and lift the cuttings into the junk slots.</li>
+</ul>
+<p><b>Design trade-off.</b> Fewer blades and larger cutters are more aggressive and drill faster in soft rock. More blades and smaller cutters are more durable in harder rock.</p>
+<p><b>Wear.</b> Cutters wear flat (and can chip or break on hard stringers and with vibration). Frictional heat also damages the diamond table. This is one reason the mud flow must cool the bit. In the model, wear rises with RPM, WOB and rock abrasiveness. It is shown as one IADC cutting-structure grade, 0 (new) to 8 (worn out). The real IADC dull grade has eight fields: inner and outer rows, dull characteristic, location, bearing, gauge, other, and reason pulled.</p>
+<p><b>Signs of a worn PDC.</b> ROP falls at the same WOB and RPM, MSE rises, and torque rises. Consider a trip when MSE keeps climbing and the formation has not changed.</p>
+<p><b>Other diamond bits.</b> <i>Impregnated</i> bits have diamond grit dispersed in the matrix. They grind very hard, abrasive rock at high RPM (often on turbines). <i>Natural-diamond</i> bits are older and rarely used now.</p>
+</div>
+<div class="box ar">
+<p><b>ما هو.</b> بت ذو قواطع ثابتة (fixed cutter) بلا أجزاء متحركة. كل قاطع (cutter) قرص من الماس الصناعي المتعدد البلورات مُلبَّد على قاعدة من كربيد التنغستن. أقطار القواطع الشائعة 13 و16 و19 mm. القواطع ملحومة على <b>شفرات (blades)</b> فوق جسم من الفولاذ أو من matrix كربيد التنغستن.</p>
+<p><b>كيف يحفر.</b> القواطع <b>تقصّ</b> الصخر (shearing) كما تقصّ الفارة الخشب. أما بتات الـ roller-cone فتسحق الصخر، والبتات الماسية المشرّبة (impregnated) تطحنه. القصّ فعّال في الصخور الطرية إلى متوسطة الصلابة غير الكاشطة، لذلك يعطي بت الـ PDC معدل ROP عالياً بـ WOB معتدل.</p>
+<p><b>الأجزاء الظاهرة في المنظر المقرّب.</b></p>
+<ul>
+<li>وصلة API pin والـ shank (فتحات bit-breaker).</li>
+<li>6 شفرات، رئيسية (تصل إلى المركز) وثانوية بالتناوب.</li>
+<li>القواطع على الوجه الأمامي لكل شفرة.</li>
+<li>gauge pads مقسّاة تحافظ على قطر البئر.</li>
+<li>6 nozzles في الـ junk slots: النفث ينظّف القواطع ويبرّدها ويرفع الـ cuttings إلى الـ junk slots.</li>
+</ul>
+<p><b>موازنة التصميم.</b> عدد شفرات أقل وقواطع أكبر = بت أكثر عدوانية وأسرع في الصخر الطري. شفرات أكثر وقواطع أصغر = متانة أعلى في الصخر الأصلب.</p>
+<p><b>التآكل.</b> القواطع تتآكل بسطح مستوٍ (wear flat)، وقد تتشظّى أو تنكسر عند الطبقات الصلبة ومع الاهتزاز. الحرارة الناتجة عن الاحتكاك تتلف طبقة الماس أيضاً، وهذا أحد أسباب ضرورة تبريد البت بتدفق الطين. في النموذج يزيد التآكل مع RPM و WOB وكاشطية الصخر، ويُعرض كدرجة IADC واحدة لبنية القطع من 0 (جديد) إلى 8 (مستهلك). أما تقييم IADC الحقيقي فيتكون من ثمانية حقول: الصفوف الداخلية والخارجية، وخاصية التآكل، والموقع، والـ bearing، والـ gauge، وملاحظات أخرى، وسبب السحب.</p>
+<p><b>علامات بت PDC متآكل.</b> انخفاض ROP عند نفس WOB و RPM، مع ارتفاع MSE وارتفاع العزم. فكّر في الـ trip عندما يستمر MSE بالارتفاع دون تغيّر في التكوين.</p>
+<p><b>بتات ماسية أخرى.</b> بتات <i>impregnated</i>: حبيبات ماس موزّعة داخل الـ matrix، تطحن الصخور شديدة الصلابة والكاشطة بسرعة دوران عالية (غالباً مع turbine). بتات <i>الماس الطبيعي</i> أقدم ونادرة الاستخدام اليوم.</p>
+</div>
+</div>
+<p class="note">Cutter temperatures above roughly 700–750 °C are commonly cited as the onset of thermal degradation of the cobalt-bonded diamond table. Treat this as an approximate figure. · تُذكر عادةً درجات حرارة تتجاوز تقريباً 700–750 °C عند حافة القاطع كبداية للتدهور الحراري لطبقة الماس المرتبطة بالكوبالت. تعامل معها كقيمة تقريبية.</p>
+
+<!-- ======================= 4. CONTROLS ======================= -->
+<h2><span>4. Drilling controls</span><span class="ar">4. أدوات التحكم بالحفر</span></h2>
+<table>
+<colgroup><col style="width:15%"><col style="width:42.5%"><col style="width:42.5%"></colgroup>
+<thead><tr><th>Control</th><th>What it does</th><th class="ar">وظيفته</th></tr></thead>
+<tbody>
+<tr><td class="k">Auto-Driller · WOB mode</td><td>Lowers the block to hold the WOB setpoint (PI controller). With <i>ROP cap</i> on, WOB is reduced if ROP exceeds the ROP target.</td><td class="ar">يُنزل البلوك ليثبّت WOB عند القيمة المطلوبة (متحكم PI). مع تفعيل <i>ROP cap</i> يُخفَّض WOB إذا تجاوز ROP القيمة المستهدفة.</td></tr>
+<tr><td class="k">Auto-Driller · ROP mode</td><td>Adjusts WOB (up to the WOB limit) to reach the ROP target.</td><td class="ar">يعدّل WOB (حتى حد WOB) للوصول إلى ROP المستهدف.</td></tr>
+<tr><td class="k">WOB / Torque / RPM limits</td><td>Protect the bit and string. Near the torque limit the controller backs off WOB (state <i>TORQUE LIMIT</i>); above it the top drive stalls.</td><td class="ar">تحمي البت والـ string. قرب حد العزم يقلّل المتحكم WOB (الحالة <i>TORQUE LIMIT</i>)، وفوقه يتوقف الـ top drive (stall).</td></tr>
+<tr><td class="k">Auto connection</td><td>12-step stand connection at stand end: stop rotation and pick up, flow-check with pumps off, set slips, break out, raise the top drive, latch the stand, make up, pick up, pull slips, start pumps, start rotation, run to bottom.</td><td class="ar">وصلة stand آلية من 12 خطوة عند نهاية الـ stand: إيقاف الدوران والرفع، ثم flow-check والمضخات متوقفة، ثم وضع الـ slips، فكّ الوصلة، رفع الـ top drive، التقاط الـ stand، ربط الوصلة، الرفع، سحب الـ slips، تشغيل المضخات، بدء الدوران، النزول إلى القاع.</td></tr>
+<tr><td class="k">Top drive modes</td><td><b>DRILL</b>: speed control with torque limit. <b>SPIN</b>: fast, low torque, to spin in a connection. <b>TORQUE</b>: low speed, fixed torque, to make up or break out.</td><td class="ar"><b>DRILL</b>: تحكم بالسرعة مع حد للعزم. <b>SPIN</b>: سرعة عالية وعزم منخفض للفّ الوصلة. <b>TORQUE</b>: سرعة منخفضة وعزم ثابت لشدّ الوصلة أو فكّها.</td></tr>
+<tr><td class="k">Drawworks · jog · brake</td><td>Hold Hoist/Lower (or ↑/↓ keys) to move the block at the jog speed; Space stops it. In Auto the brake sets 2 s after the block stops; in Manual the driller sets or releases it.</td><td class="ar">اضغط باستمرار رفع/إنزال (أو ↑/↓) لتحريك البلوك بسرعة الـ jog، و Space يوقفه. في الوضع الآلي تُثبَّت الفرامل بعد 2 ثانية من توقف البلوك؛ في اليدوي يثبّتها الحفّار أو يحرّرها.</td></tr>
+<tr><td class="k">Mud pumps · SPM · liner</td><td>Each pump: on/off, SPM (0–130), liner size. Flow = sum of the pumps. Start pumps gradually after connections to avoid pressure surges.</td><td class="ar">لكل مضخة: تشغيل/إيقاف، SPM (0–130)، قطر الـ liner. التدفق = مجموع المضخات. شغّل المضخات تدريجياً بعد الوصلات لتجنب قفزات الضغط.</td></tr>
+<tr><td class="k">Mud system</td><td>MW setpoint + <i>Mixing</i> weights the pit gradually. New mud reaches the bit only after the string volume is displaced. <i>Hole fill</i> uses the trip tank while tripping. <i>LCM pill</i> reduces losses to the weak zone.</td><td class="ar">MW المطلوب + <i>الخلط</i> يثقّل الحوض تدريجياً. لا يصل الطين الجديد إلى البت إلا بعد إزاحة حجم الـ string. <i>ملء البئر</i> يستخدم الـ trip tank أثناء الـ tripping. <i>LCM pill</i> تقلّل الفقد إلى الطبقة الضعيفة.</td></tr>
+</tbody></table>
+
+<!-- ======================= 5. WELL CONTROL ======================= -->
+<h2><span>5. Well control &amp; kill sheet</span><span class="ar">5. السيطرة على البئر و Kill sheet</span></h2>
+<table>
+<colgroup><col style="width:15%"><col style="width:42.5%"><col style="width:42.5%"></colgroup>
+<thead><tr><th>Item</th><th>Meaning · formula</th><th class="ar">المعنى · المعادلة</th></tr></thead>
+<tbody>
+<tr><td class="k">SIDPP</td><td>Shut-in drill-pipe pressure: how much the formation pressure exceeds the mud column inside the string. <code>Pp = SIDPP + 0.0981·MW·TVD</code>.</td><td class="ar">ضغط الـ drill pipe بعد الإغلاق: مقدار زيادة ضغط التكوين على عمود الطين داخل الـ string. <code>Pp = SIDPP + 0.0981·MW·TVD</code>.</td></tr>
+<tr><td class="k">SICP</td><td>Shut-in casing pressure. Normally higher than SIDPP because the influx (lighter) is in the annulus. Gas migrating up with the well shut in raises both.</td><td class="ar">ضغط الـ casing بعد الإغلاق. عادةً أعلى من SIDPP لأن الدفق (الأخف) موجود في الحلقي. صعود الغاز والبئر مغلق يرفع الضغطين معاً.</td></tr>
+<tr><td class="k">Pit gain at shut-in</td><td>Influx volume. A larger gain means a longer influx column and a higher SICP.</td><td class="ar">حجم الدفق. كلما زاد كان عمود الدفق أطول و SICP أعلى.</td></tr>
+<tr><td class="k">KMW</td><td><code>KMW = MW + SIDPP / (0.0981·TVD)</code> [sg, bar, m]. The mud weight that balances formation pressure (trip margin not included).</td><td class="ar"><code>KMW = MW + SIDPP / (0.0981·TVD)</code> [sg، bar، m]. وزن الطين الذي يوازن ضغط التكوين (دون إضافة trip margin).</td></tr>
+<tr><td class="k">SCR</td><td>Slow circulating rate pressure: pump pressure at a low, pre-recorded rate (e.g. one pump at 30–40 spm). It is the friction part of the kill pressures.</td><td class="ar">ضغط التدوير البطيء: ضغط المضخة عند معدل منخفض مسجّل مسبقاً (مثلاً مضخة واحدة 30–40 spm). يمثّل جزء الاحتكاك في ضغوط القتل.</td></tr>
+<tr><td class="k">ICP · FCP</td><td><code>ICP = SIDPP + P_SCR</code>: drill-pipe pressure at the start of the kill. <code>FCP = P_SCR × KMW / MW</code>: drill-pipe pressure once kill mud reaches the bit. DPP falls from ICP to FCP over the surface-to-bit strokes.</td><td class="ar"><code>ICP = SIDPP + P_SCR</code>: ضغط الـ drill pipe عند بدء القتل. <code>FCP = P_SCR × KMW / MW</code>: ضغط الـ drill pipe عندما يصل طين القتل إلى البت. ينخفض DPP من ICP إلى FCP خلال ضربات السطح ← البت.</td></tr>
+<tr><td class="k">MAASP</td><td><code>(FG_shoe − MW)·0.0981·TVD_shoe</code>. The maximum surface annulus pressure before the shoe fractures. It drops when MW increases.</td><td class="ar"><code>(FG_shoe − MW)·0.0981·TVD_shoe</code>. أقصى ضغط سطحي في الحلقي قبل تكسّر الـ shoe. ينخفض عند زيادة MW.</td></tr>
+<tr><td class="k">Choke · Auto-choke</td><td>Adjustable restriction on the returns while circulating with the BOP closed. Auto-choke holds the drill-pipe pressure at the DPP target, so BHP stays constant.</td><td class="ar">خانق قابل للتعديل على الراجع أثناء التدوير والـ BOP مغلق. الـ Auto-choke يثبّت ضغط الـ drill pipe عند هدف DPP فيبقى BHP ثابتاً.</td></tr>
+<tr><td class="k">BOP · accumulator</td><td>Annular (≈28 s to close), pipe rams (≈10 s), blind/shear rams (arm, then fire: cuts the pipe), HCR (opens the choke line), kill line. Closing uses accumulator fluid; low accumulator pressure slows closing.</td><td class="ar">الـ Annular (≈28 ثانية للإغلاق)، الـ pipe rams (≈10 ثوانٍ)، الـ blind/shear rams (تسليح ثم إطلاق: يقطع الأنبوب)، الـ HCR (يفتح خط الـ choke)، الـ kill line. الإغلاق يستهلك سائل الـ accumulator؛ وانخفاض ضغطه يبطئ الإغلاق.</td></tr>
+</tbody></table>
+<div class="cols">
+<div class="box"><b>Driller's method (as modelled).</b>
+<ol>
+<li>Kick signs → stop rotation, pick up to space out, stop pumps, flow-check.</li>
+<li>Close the annular (hard shut-in), open the HCR, read SIDPP and SICP after they stabilise.</li>
+<li><b>1st circulation</b>, original mud: bring the pump to SCR rate while holding casing pressure constant, then hold DPP = ICP with the auto-choke until the gas is out.</li>
+<li><b>2nd circulation</b> with KMW: DPP falls from ICP to FCP over the surface-to-bit strokes, then hold FCP until KMW returns to surface.</li>
+</ol></div>
+<div class="box ar"><b>طريقة الـ Driller (كما في النموذج).</b>
+<ol>
+<li>علامات الـ kick ← أوقف الدوران، ارفع للـ space-out، أوقف المضخات، اعمل flow-check.</li>
+<li>أغلق الـ annular (hard shut-in)، افتح HCR، اقرأ SIDPP و SICP بعد استقرارهما.</li>
+<li><b>التدوير الأول</b> بالطين الأصلي: ارفع المضخة إلى معدل SCR مع تثبيت ضغط الـ casing، ثم ثبّت DPP = ICP بالـ auto-choke حتى يخرج الغاز.</li>
+<li><b>التدوير الثاني</b> بـ KMW: ينخفض DPP من ICP إلى FCP خلال ضربات السطح ← البت، ثم ثبّت FCP حتى يعود KMW إلى السطح.</li>
+</ol></div>
+</div>
+
+<!-- ======================= 6. HYDRAULICS ======================= -->
+<h2><span>6. Hydraulics, bit performance &amp; pressure window</span><span class="ar">6. الهيدروليكا وأداء البت ونافذة الضغط</span></h2>
+<table>
+<colgroup><col style="width:15%"><col style="width:42.5%"><col style="width:42.5%"></colgroup>
+<thead><tr><th>Parameter</th><th>Role · how to read it</th><th class="ar">المهمة · التفسير</th></tr></thead>
+<tbody>
+<tr><td class="k">Bit ΔP<small>bar</small></td><td><code>ΔP_bit = ρ·Q² / (2·Cd²·TFA²)</code>, Cd = 0.95. Pressure spent at the nozzles. A sudden rise = plugged nozzle.</td><td class="ar"><code>ΔP_bit = ρ·Q² / (2·Cd²·TFA²)</code> حيث Cd = 0.95. الضغط المستهلك عند الـ nozzles. ارتفاع مفاجئ = nozzle مسدودة.</td></tr>
+<tr><td class="k">HSI<small>hp/in²</small></td><td>Hydraulic horsepower per square inch of bit area: <code>ΔP_bit·Q / A_bit</code>. More HSI → better bit-face cleaning (ROP factor in the model).</td><td class="ar">القدرة الهيدروليكية لكل بوصة مربعة من مساحة البت: <code>ΔP_bit·Q / A_bit</code>. زيادتها ← تنظيف أفضل لوجه البت (عامل في ROP بالنموذج).</td></tr>
+<tr><td class="k">Annular friction<small>bar</small></td><td>Friction pressure loss in the annulus (Bingham effective viscosity; laminar 64/Re or Blasius turbulent). It is the difference between ECD and MW.</td><td class="ar">فاقد ضغط الاحتكاك في الحلقي (لزوجة Bingham فعّالة؛ laminar ‏64/Re أو Blasius للمضطرب). هو الفرق بين الـ ECD والـ MW.</td></tr>
+<tr><td class="k">SPP expected (clean)</td><td>SPP calculated for a clean hole with nominal nozzles. Compare with measured SPP to find washouts (lower) and restrictions (higher).</td><td class="ar">SPP محسوب لبئر نظيف و nozzles اسمية. قارنه بالـ SPP المقاس لاكتشاف الـ washout (أقل) أو الانسداد (أعلى).</td></tr>
+<tr><td class="k">BHP · Overbalance<small>bar</small></td><td>BHP = hydrostatic + annular friction + cuttings + casing pressure ± swab/surge − gas effect. Overbalance = BHP − Pp. Negative overbalance → influx from permeable zones.</td><td class="ar">BHP = الهيدروستاتيكي + احتكاك الحلقي + الـ cuttings + ضغط الـ casing ± swab/surge − أثر الغاز. الـ Overbalance = BHP − Pp. القيمة السالبة ← دفق من الطبقات النفّاذة.</td></tr>
+<tr><td class="k">MSE<small>MPa</small></td><td>Mechanical specific energy (Teale, 1965): <code>MSE = WOB/A + 2π·N·T/(A·ROP)</code>. Energy per volume of rock. A steady rise in the same formation means an inefficient bit: wear, balling or vibration.</td><td class="ar">الطاقة النوعية الميكانيكية (Teale، 1965): <code>MSE = WOB/A + 2π·N·T/(A·ROP)</code>. الطاقة لكل حجم من الصخر. ارتفاعها المستمر في نفس التكوين يعني بت غير فعّال: تآكل أو balling أو اهتزاز.</td></tr>
+<tr><td class="k">d-exponent (dxc)</td><td><code>d = log(R/60N) / log(12W/10⁶D)</code> (R ft/h, N rpm, W lbf, D in) [Jorden &amp; Shirley 1966]; corrected <code>dxc = d·(ρ_normal/ECD)</code>, ρ_normal = 1.03 sg [Rehm &amp; McClendon 1971]. In shale, dxc normally increases with depth; a reversal (decreasing trend) suggests a transition into overpressure.</td><td class="ar"><code>d = log(R/60N) / log(12W/10⁶D)</code> ‏(R ft/h، N rpm، W lbf، D in) [Jorden &amp; Shirley 1966]؛ المصحَّح <code>dxc = d·(ρ_normal/ECD)</code> و ρ_normal = 1.03 sg [Rehm &amp; McClendon 1971]. في الطفل يزداد dxc طبيعياً مع العمق؛ انعكاس الاتجاه (تناقص) يشير إلى الدخول في منطقة ضغط عالٍ.</td></tr>
+<tr><td class="k">Pressure window</td><td>EMW versus depth: pore pressure (prognosis dashed, actual solid), fracture gradient, MW and ECD. Keep MW above pore pressure and ECD below the fracture gradient (at the shoe and at the bottom).</td><td class="ar">EMW مقابل العمق: ضغط المسام (المتوقع متقطع والفعلي متصل)، وتدرّج التكسير، و MW و ECD. أبقِ MW فوق ضغط المسام و ECD تحت تدرّج التكسير (عند الـ shoe وعند القاع).</td></tr>
+<tr><td class="k">PV · YP</td><td>Bingham plastic viscosity (cP) and yield point (lbf/100 ft²). Both rise with MW in the model. YP helps carry cuttings; PV mostly adds friction (ECD, SPP).</td><td class="ar">اللزوجة البلاستيكية (cP) ونقطة الخضوع (lbf/100 ft²) بنموذج Bingham. ترتفعان مع MW في النموذج. الـ YP يساعد على حمل الـ cuttings، والـ PV يضيف احتكاكاً في الغالب (ECD و SPP).</td></tr>
+</tbody></table>
+
+<!-- ======================= 7. ALARMS ======================= -->
+<h2><span>7. Alarms (priority 1 critical · 2 high · 3 advisory)</span><span class="ar">7. الإنذارات (الأولوية 1 حرجة · 2 عالية · 3 استشارية)</span></h2>
+<table>
+<colgroup><col style="width:22%"><col style="width:39%"><col style="width:39%"></colgroup>
+<thead><tr><th>Alarm</th><th>Likely cause → first action</th><th class="ar">السبب المحتمل ← الإجراء الأول</th></tr></thead>
+<tbody>
+<tr><td class="k"><span class="tag p1">1</span> FLOW OUT &gt; FLOW IN · PIT GAIN · WELL FLOWING</td><td>Influx (kick) → space out, stop pumps, flow-check, shut in.</td><td class="ar">دفق (kick) ← space-out، أوقف المضخات، flow-check، أغلق البئر.</td></tr>
+<tr><td class="k"><span class="tag p1">1</span> HIGH CASING PRESSURE</td><td>Casing pressure near MAASP → choke management; avoid breaking down the shoe.</td><td class="ar">ضغط الـ casing قريب من MAASP ← إدارة الـ choke وتجنّب تكسير الـ shoe.</td></tr>
+<tr><td class="k"><span class="tag p1">1</span> TOP DRIVE STALLED</td><td>Torque at the limit → pick up off bottom, reduce WOB, check for pack-off.</td><td class="ar">العزم عند الحد ← ارفع عن القاع، قلّل WOB، تحقق من pack-off.</td></tr>
+<tr><td class="k"><span class="tag p2">2</span> HIGH / LOW STANDPIPE PRESSURE</td><td>High: plugged nozzle or pack-off. Low: washout or pump fault → compare with expected SPP and pump strokes.</td><td class="ar">مرتفع: nozzle مسدودة أو pack-off. منخفض: washout أو عطل مضخة ← قارن بالـ SPP المتوقع وضربات المضخات.</td></tr>
+<tr><td class="k"><span class="tag p2">2</span> OVERPULL · HIGH HOOK LOAD</td><td>Drag or tight hole → stop, work the pipe, circulate; do not pull through.</td><td class="ar">احتكاك أو تضيّق ← توقّف، حرّك الأنبوب، دوّر؛ لا تسحب بالقوة.</td></tr>
+<tr><td class="k"><span class="tag p2">2</span> PIT LOSS · <span class="tag p3">3</span> LOW MUD FLOW</td><td>Losses → reduce rate and ECD, pump an LCM pill, watch the well.</td><td class="ar">Losses ← خفّض المعدل والـ ECD، اضخ LCM pill، راقب البئر.</td></tr>
+<tr><td class="k"><span class="tag p2">2</span> HIGH GAS</td><td>Gas in returns → check overbalance and connection/trip gas; consider weighting up.</td><td class="ar">غاز في الراجع ← تحقق من الـ overbalance ومن connection/trip gas؛ فكّر في زيادة الوزن.</td></tr>
+<tr><td class="k"><span class="tag p2">2</span> MUD PUMP RELIEF · <span class="tag p3">3</span> PUMP FAULT</td><td>Over-pressure trip or low volumetric efficiency → check the liner rating, valves and liners.</td><td class="ar">فصل بسبب ضغط زائد أو كفاءة حجمية منخفضة ← تحقق من rating الـ liner والصمامات والـ liners.</td></tr>
+<tr><td class="k"><span class="tag p2">2</span> LOW ACCUMULATOR · ROTATING WITH BOP CLOSED</td><td>BOP readiness / misuse → recharge and fix the leak; stop rotation and pipe movement.</td><td class="ar">جاهزية الـ BOP / سوء الاستخدام ← أعد الشحن وأصلح التسريب؛ أوقف الدوران وحركة الأنبوب.</td></tr>
+<tr><td class="k"><span class="tag p3">3</span> POOR HOLE CLEANING</td><td>Ca &gt; 5 % or Ft &lt; 0.5 while drilling → raise flow, control ROP, circulate bottoms-up.</td><td class="ar">Ca &gt; 5 % أو Ft &lt; 0.5 أثناء الحفر ← ارفع التدفق، تحكّم بالـ ROP، دوّر bottoms-up.</td></tr>
+<tr><td class="k"><span class="tag p3">3</span> BIT WORN · STAND DRILLED DOWN</td><td>Wear grade &gt; 6.8/8 → plan a trip. Stand end → make a connection.</td><td class="ar">درجة التآكل &gt; 6.8/8 ← خطط للـ trip. نهاية الـ stand ← اعمل connection.</td></tr>
+</tbody></table>
+
+<!-- ======================= 8. SCENARIOS ======================= -->
+<h2><span>8. Instructor scenarios — what to look for</span><span class="ar">8. سيناريوهات المدرّب — ماذا تراقب</span></h2>
+<table>
+<colgroup><col style="width:15%"><col style="width:42.5%"><col style="width:42.5%"></colgroup>
+<thead><tr><th>Scenario</th><th>Signature</th><th class="ar">العلامات</th></tr></thead>
+<tbody>
+<tr><td class="k">Kick</td><td>Flow out ↑, pit gain ↑, gas ↑, SPP slowly ↓; after shut-in, SICP &gt; SIDPP.</td><td class="ar">تدفق خارج ↑، زيادة الحوض ↑، غاز ↑، SPP ↓ ببطء؛ بعد الإغلاق SICP &gt; SIDPP.</td></tr>
+<tr><td class="k">Lost circulation</td><td>Flow out ↓, pit loss, SPP slightly ↓.</td><td class="ar">تدفق خارج ↓، نقص الحوض، SPP ↓ قليلاً.</td></tr>
+<tr><td class="k">Pack-off</td><td>SPP ↑, torque ↑ and erratic, overpull, flow out ↓, ROP ↓.</td><td class="ar">SPP ↑، عزم ↑ ومتذبذب، overpull، تدفق خارج ↓، ROP ↓.</td></tr>
+<tr><td class="k">String washout</td><td>SPP falls slowly at a constant rate; differential pressure negative; HSI ↓.</td><td class="ar">SPP ينخفض ببطء عند معدل ثابت؛ الضغط التفاضلي سالب؛ HSI ↓.</td></tr>
+<tr><td class="k">Plugged nozzle</td><td>Step rise in SPP and bit ΔP; possible pop-off.</td><td class="ar">قفزة في SPP و ΔP البت؛ قد يفتح الـ pop-off.</td></tr>
+<tr><td class="k">Pump failure</td><td>That pump's efficiency ↓ → less flow and SPP at the same SPM.</td><td class="ar">كفاءة تلك المضخة ↓ ← تدفق و SPP أقل عند نفس الـ SPM.</td></tr>
+<tr><td class="k">Accelerated bit wear</td><td>ROP ↓ and MSE ↑ at constant WOB/RPM; wear flats grow in the PDC close-up.</td><td class="ar">ROP ↓ و MSE ↑ عند ثبات WOB/RPM؛ تكبر الـ wear flats في المنظر المقرّب للـ PDC.</td></tr>
+<tr><td class="k">Geohazards</td><td>Gas sand 3215–3250 m with pore pressure 1.30 sg (prognosis 1.24); vugular limestone 3480–3495 m with losses. With MW 1.20 sg you will take a kick unless you weight up in time.</td><td class="ar">رمل غازي بين 3215–3250 m بضغط مسام 1.30 sg (المتوقع 1.24)؛ حجر جيري كهفي بين 3480–3495 m مع losses. بوزن طين 1.20 sg ستحدث kick ما لم تزد الوزن في الوقت المناسب.</td></tr>
+</tbody></table>
+
+<!-- ======================= 9. REFERENCES ======================= -->
+<h2><span>9. References</span><span class="ar">9. المراجع</span></h2>
+<ol class="ref">
+<li>Bourgoyne, A.T. Jr., Millheim, K.K., Chenevert, M.E., Young, F.S. Jr. (1986). <i>Applied Drilling Engineering</i>. SPE Textbook Series, Vol. 2. Society of Petroleum Engineers. — Bingham hydraulics, bit hydraulics, Moore slip-velocity correlation, cuttings transport, kick control.</li>
+<li>Moore, P.L. (1974). <i>Drilling Practices Manual</i>. PennWell, Tulsa. — Original source of the slip-velocity correlation.</li>
+<li>Teale, R. (1965). The concept of specific energy in rock drilling. <i>International Journal of Rock Mechanics and Mining Sciences</i>, 2(1), 57–73. doi:10.1016/0148-9062(65)90022-7</li>
+<li>Jorden, J.R., Shirley, O.J. (1966). Application of drilling performance data to overpressure detection. <i>Journal of Petroleum Technology</i>, 18(11), 1387–1394. doi:10.2118/1407-PA</li>
+<li>Rehm, B., McClendon, R. (1971). Measurement of formation pressure from drilling data. SPE 3601, SPE Annual Fall Meeting. doi:10.2118/3601-MS</li>
+<li>Bourgoyne, A.T. Jr., Young, F.S. Jr. (1974). A multiple regression approach to optimal drilling and abnormal pressure detection. <i>SPE Journal</i>, 14(4), 371–384. doi:10.2118/4238-PA — basis for the form of the ROP model (coefficients here are hand-tuned, not regressed).</li>
+</ol>
+<p class="note">Simulator values come from a simplified training model and are not calibrated to any specific rig, bit or formation. · قيم المحاكي من نموذج تدريبي مبسّط وغير معايَرة على منصة أو بت أو تكوين محدد.</p>
+</body>
+</html>
