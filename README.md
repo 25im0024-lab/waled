@@ -14,3 +14,7 @@ https://github.com/25im0024-lab/waled/commit/be429ce5f3b571389ec05952bc00c307bfe
 الأداة تطبيق ويب قابل للتثبيت (PWA): من Chrome أو Edge اختر Install / Create shortcut، ومن Safari على iPhone اختر Add to Home Screen. تعمل بدون إنترنت بعد أول فتح (الخطوط فقط تحتاج اتصالاً في أول مرة).
 
 الكود المصدري في `oilfield/src/`، وللبناء: `node oilfield/build.js` (ينتج `oilfield/index.html`). اختبار سريع للحسابات: `node oilfield/tests/core-smoke.js`.
+
+## Driller's Console — محاكي لوحة الحفّار
+
+لوحة تحكم تفاعلية لمنصة حفر (auto-driller، top drive، mud pumps، BOP و well control، alarms، trends): [`drillers-console/`](drillers-console/README.md). بعد تفعيل GitHub Pages تُفتح من `https://25im0024-lab.github.io/waled/drillers-console/`
