@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Driller's Console</title>
+<meta name="description" content="Interactive driller's console simulator: auto-driller, top drive, drawworks, triplex mud pumps, BOP & well control, kick/loss scenarios, alarms and real-time trends.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+
+<header class="hdr">
+  <div class="title">
+    <h1>Driller's Console <span>— Drilling Rig Control</span></h1>
+    <div class="toolbar">
+      <span class="lbl">Sim</span>
+      <span class="seg" id="speedSeg">
+        <button class="btn sm" data-speed="0" title="Pause">❚❚</button>
+        <button class="btn sm on" data-speed="1">1×</button>
+        <button class="btn sm" data-speed="5">5×</button>
+        <button class="btn sm" data-speed="20">20×</button>
+        <button class="btn sm" data-speed="60">60×</button>
+      </span>
+      <span class="lbl">Units</span>
+      <span class="seg"><button class="btn sm on" data-units="si">SI</button><button class="btn sm" data-units="fd">Field</button></span>
+      <button class="btn sm" id="soundBtn" title="Alarm horn">🔇 Horn</button>
+      <button class="btn sm cy" id="instrBtn">Instructor / Setup</button>
+    </div>
+  </div>
+  <div><div class="kv"><span class="lbl">Rig ID</span><b id="rigId">RIG-03</b><span class="lbl">Well</span><b id="wellId">Well-12A</b></div></div>
+  <div><span class="lbl">Well status</span><div class="status-badge" id="wellStatus">DRILLING</div></div>
+  <div><span class="lbl" id="dateTxt">—</span><span class="clock" id="clockTxt">--:--:--</span></div>
+  <div class="alarm-banner ok" id="alarmBanner" title="Click to acknowledge">
+    <svg class="ico" viewBox="0 0 34 30"><path d="M17 2L32 28H2Z" fill="#ffcc00" stroke="#000" stroke-width="1.5"/><path d="M17 11v8" stroke="#000" stroke-width="3"/><circle cx="17" cy="23.5" r="1.8"/></svg>
+    <div><div class="txt" id="alarmTxt">No active alarms</div><div class="sub" id="alarmSub">—</div></div>
+  </div>
+  <div><span class="lbl">ESD</span><button class="btn on" id="esdBtn">READY</button></div>
+  <div><span class="lbl">Comms</span><div class="comms"><span><i class="dot" id="cRig"></i>Rig</span><span id="cRigT">Online</span><span><i class="dot" id="cTvd"></i>TVD</span><span>Online</span><span><i class="dot" id="cSat"></i>Sat</span><span id="cSatT">Online</span></div></div>
+  <div><span class="lbl">Bit / Formation</span><span id="fmTxt" style="font-size:13px">—</span></div>
+</header>
+
+<main class="grid">
+  <!-- ROW 1 -->
+  <section class="card c3">
+    <h2>Primary Parameters <small id="unitsNote">SI</small></h2>
+    <div class="body"><div class="params" id="params"></div></div>
+  </section>
+
+  <section class="card c6 scene-card">
+    <h2>Rig &amp; Well Schematic <small id="sceneNote">live</small></h2>
+    <div class="body"><svg id="scene" viewBox="0 0 760 860" aria-label="Animated rig and wellbore schematic"></svg>
+      <div class="scene-legend"><span><i style="background:#3fb0ff"></i>Mud in</span><span><i style="background:#c9925a"></i>Returns</span><span><i style="background:#ff5a5a"></i>Choke line</span><span><i style="background:#ffe14d"></i>Gas</span></div>
+    </div>
+  </section>
+
+  <div class="c3 stack">
+    <section class="card">
+      <h2>Drilling Control Loop</h2>
+      <div class="body loop" id="loop">
+        <div class="lb" id="lb1">Formation / Bit Interaction<small id="lb1v">—</small></div><div class="arr">▼</div>
+        <div class="lb" id="lb2">WOB / Torque / ROP Measurement<small id="lb2v">—</small></div><div class="arr">▼</div>
+        <div class="lb" id="lb3">Drilling Controller / Auto-Driller<small id="lb3v">—</small></div><div class="arr">▼</div>
+        <div class="lb" id="lb4">Drawworks / Top Drive Command<small id="lb4v">—</small></div><div class="arr">▼</div>
+        <div class="lb" id="lb5">Bit Response<small id="lb5v">—</small></div><div class="arr">▼</div>
+        <div class="lb ok" id="lb6">Stable Drilling</div>
+      </div>
+    </section>
+    <section class="card">
+      <h2>Drilling Control <small id="adState">—</small></h2>
+      <div class="body">
+        <div class="pvsp"><div><span class="lbl">PV</span><b id="adPV">—</b></div><div><span class="lbl">SP</span><b id="adSP">—</b></div><div><span class="lbl">Out (DW cmd)</span><b id="adOut">—</b></div></div>
+        <div class="row sp"><span>Mode</span><span class="seg"><button class="btn" id="adAuto">Auto</button><button class="btn" id="adMan">Manual</button></span></div>
+        <div class="row sp" style="margin-top:4px"><span>Control variable</span><span class="seg"><button class="btn sm" data-admode="WOB">WOB</button><button class="btn sm" data-admode="ROP">ROP</button></span></div>
+        <div class="row sp" style="margin-top:4px"><span>ROP cap (WOB mode)</span><button class="btn sm" id="ropCapBtn">On</button></div>
+        <div class="ctl"><label>WOB setpoint</label><input type="range" id="sWob" min="0" max="300" step="1"><output id="oWob"></output></div>
+        <div class="ctl"><label>ROP target</label><input type="range" id="sRop" min="1" max="60" step="0.5"><output id="oRop"></output></div>
+        <div class="ctl"><label>WOB limit</label><input type="range" id="sWobLim" min="20" max="300" step="5"><output id="oWobLim"></output></div>
+        <div class="ctl"><label>Torque limit</label><input type="range" id="sTqLim" min="4" max="35" step="0.5"><output id="oTqLim"></output></div>
+        <div class="ctl"><label>RPM limit</label><input type="range" id="sRpmLim" min="20" max="200" step="5"><output id="oRpmLim"></output></div>
+        <div class="row sp"><span>Auto connection at stand end</span><button class="btn sm" id="autoConnBtn">On</button></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ROW 2 -->
+  <section class="card c3">
+    <h2>Top Drive <small id="tdSrc"></small></h2>
+    <div class="body">
+      <div class="kvt"><span>RPM</span><b id="tdRpm">—</b><span>Torque</span><b id="tdTq">—</b></div>
+      <div class="sub-h">Mode</div>
+      <div class="seg"><button class="btn" data-tdmode="DRILL">Drill</button><button class="btn" data-tdmode="SPIN">Spin</button><button class="btn" data-tdmode="TORQUE">Torque</button></div>
+      <div class="sub-h">FWD / OFF / REV</div>
+      <div class="seg"><button class="btn" data-tddir="FWD">Fwd</button><button class="btn" data-tddir="OFF">Off</button><button class="btn" data-tddir="REV">Rev</button></div>
+      <div class="ctl"><label>RPM setpoint</label><input type="range" id="sRpm" min="0" max="200" step="1"><output id="oRpm"></output></div>
+      <div class="ctl"><label>Torque setpoint</label><input type="range" id="sTq" min="1" max="35" step="0.5"><output id="oTq"></output></div>
+      <div class="kvt" style="margin-top:4px">
+        <span><i class="dot" id="tdMotD"></i>Motor status</span><b id="tdMot">—</b>
+        <span><i class="dot" id="tdTempD"></i>Motor temperature</span><b id="tdTemp">—</b>
+        <span><i class="dot"></i>Hydraulic pressure</span><b id="tdHyd">—</b>
+        <span><i class="dot"></i>Lubrication</span><b>OK</b>
+        <span><i class="dot" id="tdCoolD"></i>Cooling</span><b id="tdCool">OK</b>
+        <span><i class="dot" id="tdVfdD"></i>VFD</span><b id="tdVfd">OK</b>
+      </div>
+    </div>
+  </section>
+
+  <section class="card c3">
+    <h2>Drawworks <small id="dwSrc"></small></h2>
+    <div class="body">
+      <div class="row sp"><span>Hoist / Lower <span class="hint">(hold)</span></span><span class="seg"><button class="btn" data-hold="1">Hoist</button><button class="btn" data-hold="-1">Lower</button></span></div>
+      <div class="kvt" style="margin-top:6px">
+        <span>Block position</span><b id="dwPos">—</b>
+        <span>Hook load</span><b id="dwHl">—</b>
+        <span>Block speed</span><b id="dwSpd">—</b>
+        <span>Drum RPM</span><b id="dwRpm">—</b>
+        <span>Brake status</span><b id="dwBrake">—</b>
+        <span>Motor load</span><b id="dwLoad">—</b>
+        <span>Motor status</span><b id="dwMot">—</b>
+      </div>
+      <div class="row sp" style="margin-top:6px"><span>Brake mode</span><span class="seg"><button class="btn sm" data-brake="AUTO">Auto</button><button class="btn sm" data-brake="MANUAL">Manual</button><button class="btn sm" id="brakeSetBtn">Set</button></span></div>
+      <div class="ctl"><label>Jog speed</label><input type="range" id="sJog" min="0.5" max="60" step="0.5"><output id="oJog"></output></div>
+      <p class="hint">Keyboard: hold <kbd>↑</kbd> hoist, <kbd>↓</kbd> lower, <kbd>Space</kbd> stop block, <kbd>P</kbd> pause.</p>
+    </div>
+  </section>
+
+  <section class="card c6">
+    <h2>Mud Pumps 1 / 2 / 3 <small id="pumpsTot"></small></h2>
+    <div class="body">
+      <div class="row sp" style="margin-bottom:6px">
+        <span class="seg"><button class="btn sm" id="allPumpsOn">All On</button><button class="btn sm" id="allPumpsOff">All Off</button></span>
+        <div class="ctl" style="flex:1;max-width:380px;margin:0"><label>Master SPM</label><input type="range" id="sMaster" min="0" max="130" step="1"><output id="oMaster"></output></div>
+      </div>
+      <div class="pumps" id="pumps"></div>
+    </div>
+  </section>
+
+  <!-- ROW 3 -->
+  <section class="card c4">
+    <h2>BOP / Well Control <small id="bopNote"></small></h2>
+    <div class="body">
+      <div class="kvt" id="bopRows"></div>
+      <div class="sub-h">Choke manifold</div>
+      <div class="ctl"><label>Choke position</label><input type="range" id="sChoke" min="0" max="100" step="0.5"><output id="oChoke"></output></div>
+      <div class="row"><button class="btn sm" data-chk="-5">−5</button><button class="btn sm" data-chk="-1">−1</button><button class="btn sm" data-chk="1">+1</button><button class="btn sm" data-chk="5">+5</button>
+        <button class="btn sm" id="chokeAutoBtn" title="Auto-choke holds drill-pipe pressure at the target (constant BHP method)">Auto (hold DPP)</button></div>
+      <div class="ctl"><label>DPP target</label><input type="range" id="sChkT" min="0" max="150" step="0.5"><output id="oChkT"></output></div>
+      <div class="kvt">
+        <span>Choke (casing) pressure</span><b id="bcPc">—</b>
+        <span>Drill-pipe pressure</span><b id="bcDp">—</b>
+        <span>Accumulator pressure</span><b id="bcAcc">—</b>
+        <span>MAASP (shoe @ 2000 m)</span><b id="bcMaasp" class="c">—</b>
+        <span>BHP / Pore pressure</span><b id="bcBhp" class="w">—</b>
+      </div>
+    </div>
+  </section>
+
+  <section class="card c4">
+    <h2>Kill Sheet &amp; Mud <small>Driller's / Wait-&amp;-Weight</small></h2>
+    <div class="body">
+      <div class="kvt" id="kill">
+        <span>SIDPP</span><b id="kSidpp">—</b><span>SICP</span><b id="kSicp">—</b><span>Pit gain at shut-in</span><b id="kGain">—</b>
+        <span>Kill mud weight</span><b id="kKmw" class="a">—</b><span>SCR (slow circ. rate)</span><b id="kScr" class="w">—</b>
+        <span>ICP (initial circ.)</span><b id="kIcp" class="c">—</b><span>FCP (final circ.)</span><b id="kFcp" class="c">—</b><span>Strokes surface→bit</span><b id="kStk" class="w">—</b>
+      </div>
+      <div class="row" style="margin-top:6px"><button class="btn sm" id="scrBtn">Record SCR</button><button class="btn sm" id="useIcp">DPP target = ICP</button><button class="btn sm amb" id="setKmw">Mix KMW</button></div>
+      <div class="sub-h">Active mud system</div>
+      <div class="ctl"><label>MW setpoint (mixing)</label><input type="range" id="sMw" min="1.00" max="2.00" step="0.005"><output id="oMw"></output></div>
+      <div class="kvt">
+        <span>MW in / out</span><b id="mMw">—</b><span>Pit volume / Δ</span><b id="mPit">—</b><span>Trip tank</span><b id="mTt">—</b>
+        <span>PV / YP</span><b id="mRheo" class="w">—</b><span>ECD @ bit</span><b id="mEcd">—</b>
+      </div>
+      <div class="row" style="margin-top:6px"><button class="btn sm" id="mixBtn">Mixing</button><button class="btn sm" id="fillBtn">Hole fill</button><button class="btn sm" id="zeroPit">Zero pit Δ</button>
+        <button class="btn sm" id="addMud">+20 m³</button><button class="btn sm" id="dumpMud">−20 m³</button><button class="btn sm" id="lcmBtn">LCM pill</button></div>
+      <p class="note" id="killHint"></p>
+    </div>
+  </section>
+
+  <section class="card c4">
+    <h2>Pipe Handling &amp; Driller's Panel</h2>
+    <div class="body">
+      <div class="row" id="phLamps" style="font-size:12px;gap:10px"></div>
+      <div class="row" style="margin-top:6px"><button class="btn cy" id="connBtn">Auto Connection</button><button class="btn sm red" id="connAbort">Abort</button><span class="hint" id="opTxt"></span></div>
+      <div class="prog"><i id="opProg"></i></div>
+      <ul class="steps" id="steps"></ul>
+      <div class="row" style="margin-top:6px">
+        <button class="btn sm" id="opSet">Set slips</button><button class="btn sm" id="opPull">Pull slips</button><button class="btn sm" id="opBreak">Break out</button>
+        <button class="btn sm" id="opPick">Pick stand</button><button class="btn sm" id="opRack">Rack stand</button><button class="btn sm" id="opMake">Make up</button>
+      </div>
+      <div class="sub-h">Driller's panel</div>
+      <div class="dpanel">
+        <button class="btn big" data-hold="1"><svg viewBox="0 0 20 20"><path d="M10 2l7 8h-4v8H7v-8H3z" fill="currentColor"/></svg>Hoist</button>
+        <button class="btn big" data-hold="-1"><svg viewBox="0 0 20 20"><path d="M10 18l7-8h-4V2H7v8H3z" fill="currentColor"/></svg>Lower</button>
+        <button class="btn big" id="blkUp">▲ Block up</button>
+        <button class="btn big" id="blkDn">▼ Block down</button>
+      </div>
+      <div class="row sp" style="margin-top:10px;justify-content:space-around">
+        <button class="lampbtn" id="pwrBtn" title="Reset E-STOP / power"><span class="lamp g" id="pwrLamp"></span>PWR ON</button>
+        <button class="lampbtn" id="almBtn" title="Acknowledge alarms"><span class="lamp" id="almLamp"></span>ALARM</button>
+        <button class="estop" id="estopBtn" title="Emergency stop: top drive, drawworks, pumps">E-STOP</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ROW 4 -->
+  <section class="card c8">
+    <h2>Real-Time Trends <small id="trendWin"></small>
+      <span class="seg"><button class="btn sm" data-win="900">15 min</button><button class="btn sm on" data-win="3600">1 h</button><button class="btn sm" data-win="7200">2 h</button><button class="btn sm" data-win="21600">6 h</button></span></h2>
+    <div class="body trend-wrap"><div class="legend" id="legend"></div><canvas id="trend"></canvas></div>
+  </section>
+
+  <section class="card c4">
+    <h2>Alarm / Safety <span class="seg"><button class="btn sm" id="ackAll">Ack all</button></span></h2>
+    <div class="body">
+      <div class="alist"><table class="atable"><thead><tr><th>Time</th><th>Alarm</th><th>Status</th></tr></thead><tbody id="alarmBody"></tbody></table></div>
+      <div class="sub-h">Event log</div>
+      <div class="log" id="log"></div>
+    </div>
+  </section>
+
+  <!-- ROW 5 -->
+  <section class="card c8">
+    <h2>Pressure Window &amp; Lithology <small>EMW (sg) vs depth — pore (prognosis dashed), fracture, MW, ECD</small></h2>
+    <div class="body"><canvas id="pwin"></canvas></div>
+  </section>
+
+  <section class="card c4">
+    <h2>Hydraulics &amp; Bit</h2>
+    <div class="body">
+      <div class="kvt">
+        <span>Bit ΔP / HSI</span><b id="hBit">—</b>
+        <span>Annular friction</span><b id="hAnn">—</b>
+        <span>SPP expected (clean)</span><b id="hExp" class="w">—</b>
+        <span>Hole depth / bit</span><b id="hDepth" class="w">—</b>
+        <span>Bit hours / wear (IADC)</span><b id="hWear">—</b>
+        <span>MSE</span><b id="hMse" class="c">—</b>
+        <span>d-exponent (dxc)</span><b id="hDxc" class="c">—</b>
+        <span>Pore / Frac @ bottom</span><b id="hPpFg" class="w">—</b>
+        <span>Overbalance</span><b id="hOb">—</b>
+        <span>Stands added / racked</span><b id="hStands" class="w">—</b>
+      </div>
+      <p class="note">12¼" PDC, 6×14/32" nozzles · 5½" 21.9 ppf DP + 200 m BHA · 13⅜" shoe 2000 m · vertical well (MD = TVD). Values are a simplified training model, not calibrated to a specific rig.</p>
+    </div>
+  </section>
+</main>
+</div>
+
+<div id="toast"></div>
+
+<dialog id="instr">
+  <h2 class="card" style="margin:0;border:0;border-bottom:1px solid var(--line);padding:8px 14px;display:flex;justify-content:space-between;flex-direction:row;align-items:center">INSTRUCTOR / SETUP <button class="btn sm" id="instrClose">Close</button></h2>
+  <div class="body">
+    <div class="sub-h">Scenarios (fault injection)</div>
+    <div class="row">
+      <button class="btn sm red" data-sc="kick">Kick (overpressured pocket)</button>
+      <button class="btn sm amb" data-sc="loss">Lost circulation</button>
+      <button class="btn sm amb" data-sc="packoff">Pack-off</button>
+      <button class="btn sm amb" data-sc="washout">String washout</button>
+      <button class="btn sm amb" data-sc="plug">Plugged nozzle</button>
+      <button class="btn sm amb" data-sc="pump2">Pump 2 valve/liner failure</button>
+      <button class="btn sm amb" data-sc="tdcool">TD cooling failure</button>
+      <button class="btn sm amb" data-sc="accum">Accumulator leak</button>
+      <button class="btn sm amb" data-sc="wear">Accelerated bit wear</button>
+      <button class="btn sm on" data-sc="clear">Clear all faults</button>
+    </div>
+    <div class="sub-h">Well / simulation</div>
+    <div class="row">
+      <button class="btn sm" id="hazBtn">Geohazards: ON</button>
+      <button class="btn sm cy" id="resetHot">Reset — drilling (hot start)</button>
+      <button class="btn sm" id="resetCold">Reset — rig idle (cold start)</button>
+    </div>
+    <p class="note">Geohazards ON: limestone stringer 3140–3152 m, overpressure transition from 3152 m, gas sand 3215–3250 m (pore 1.30 sg, prognosis shows 1.24), depleted vugular limestone 3480–3495 m (losses). With MW 1.20 sg you will take a kick in the gas sand unless you weight up in time.</p>
+    <div class="sub-h">Alarm set-points</div>
+    <div class="thgrid" id="thGrid"></div>
+    <div class="sub-h">What is modelled</div>
+    <p class="note">String axial elasticity (WOB = k·(lowered length − drilled length), so drill-off tests work); ROP = f(WOB, RPM, bit hydraulics, overbalance, bit wear, formation drillability, founder point); top-drive speed loop with torque limit and stall; triplex pumps with liner size, efficiency and pop-off relief; Bingham/turbulent pipe and annular friction, bit nozzle ΔP, surface losses; mud transport as plug-flow parcels (kill mud reaches the bit after the string volume); BHP/ECD, cuttings load, swab/surge, pipe displacement and trip tank; influx from permeable zones and losses to weak/vugular zones; gas kick migration and expansion; BOP closing times and accumulator; choke flow with auto-choke; ISA-style alarm states.</p>
+  </div>
+</dialog>
+
+<script src="sim.js"></script>
+<script src="ui.js"></script>
+</body>
+</html>

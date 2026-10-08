@@ -3,9 +3,191 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Driller's Console — Drilling Rig Simulator</title>
+<title>Driller's Console</title>
 <meta name="description" content="Interactive driller's console simulator: auto-driller, top drive, drawworks, triplex mud pumps, BOP & well control, kick/loss scenarios, alarms and real-time trends.">
-<link rel="stylesheet" href="style.css">
+<style>
+:root{color-scheme:dark;
+  --bg:#040b15;--bg2:#071425;--panel:#0a1a2f;--panel2:#0d223d;--line:#1e4f7d;--line2:#15385b;
+  --text:#dcecff;--muted:#7f9dbd;--dim:#4f6c8a;--cyan:#36c8ff;--green:#2bd66f;--green-d:#0f5c31;
+  --amber:#ffb627;--red:#ff4545;--red-d:#6b1010;--purple:#b689ff;--yellow:#ffe14d;--blue:#4f8dff;
+  --num:"Bahnschrift","DIN Alternate","Roboto Condensed","Arial Narrow",ui-sans-serif,system-ui,sans-serif;
+  --mono:ui-monospace,"Cascadia Mono",Consolas,"DejaVu Sans Mono",monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg) radial-gradient(1200px 600px at 50% -10%,#0b2340 0,var(--bg) 60%) fixed;color:var(--text);
+  font:13px/1.35 var(--num);-webkit-font-smoothing:antialiased}
+button,select,input{font:inherit;color:inherit}
+.app{padding-block:10px;padding-inline:16px;max-width:1920px;margin:0 auto}
+
+/* header */
+.hdr{display:grid;grid-template-columns:minmax(150px,1fr) auto auto minmax(210px,1.4fr) auto auto auto;gap:8px;margin-bottom:8px}
+.hdr>div{background:linear-gradient(#0d2240,#0a1a30);border:1px solid var(--line);border-radius:4px;padding:6px 10px;display:flex;flex-direction:column;justify-content:center}
+.title{grid-column:1/-1;flex-direction:row!important;align-items:center;justify-content:space-between;background:linear-gradient(90deg,#0e2a4d,#081627 70%)!important;padding:8px 14px!important}
+.title h1{margin:0;font-size:24px;letter-spacing:.06em;font-weight:700;text-transform:uppercase}
+.title h1 span{color:var(--cyan)}
+.toolbar{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:1px 12px;font-size:15px}
+.kv b{font-weight:600}
+.status-badge{font-size:20px;font-weight:700;letter-spacing:.05em;text-align:center;border-radius:3px;padding:3px 12px;background:var(--green-d);border:1px solid var(--green);color:#d9ffe7;min-width:170px}
+.status-badge.warn{background:#5a3b00;border-color:var(--amber);color:#ffe3a6}
+.status-badge.crit{background:var(--red-d);border-color:var(--red);color:#ffd6d6}
+.status-badge.idle{background:#14263d;border-color:var(--dim);color:var(--muted)}
+.clock{font:600 18px var(--mono);letter-spacing:.02em}
+.alarm-banner{cursor:pointer;flex-direction:row!important;align-items:center;gap:10px;min-height:52px}
+.alarm-banner .ico{width:34px;height:30px;flex:none}
+.alarm-banner .txt{font-size:16px;font-weight:700;text-transform:uppercase;line-height:1.1}
+.alarm-banner .sub{font-size:11px;font-weight:400;opacity:.85}
+.alarm-banner.p1{background:linear-gradient(#7c0d0d,#4d0606)!important;border-color:var(--red)!important}
+.alarm-banner.p2{background:linear-gradient(#6b4300,#3e2700)!important;border-color:var(--amber)!important}
+.alarm-banner.p3{background:linear-gradient(#063c57,#05263a)!important;border-color:var(--cyan)!important}
+.alarm-banner.ok{opacity:.75}
+.blink{animation:blink 1s steps(2) infinite}
+@keyframes blink{50%{filter:brightness(1.6)}}
+.comms{font-size:12px;display:grid;grid-template-columns:auto auto;gap:1px 10px}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);margin-right:5px;box-shadow:0 0 6px var(--green)}
+.dot.off{background:var(--dim);box-shadow:none}.dot.red{background:var(--red);box-shadow:0 0 6px var(--red)}.dot.amb{background:var(--amber);box-shadow:0 0 6px var(--amber)}
+
+/* grid */
+.grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:8px}
+.c3{grid-column:span 3}.c4{grid-column:span 4}.c5{grid-column:span 5}.c6{grid-column:span 6}.c8{grid-column:span 8}.c12{grid-column:span 12}
+.stack{display:flex;flex-direction:column;gap:8px}
+@media (max-width:1500px){.c3{grid-column:span 4}.c5{grid-column:span 8}.c6{grid-column:span 8}.c8{grid-column:span 12}.c4{grid-column:span 6}}
+@media (max-width:1100px){.c3,.c4{grid-column:span 6}.c5,.c6,.c8{grid-column:span 12}.hdr{grid-template-columns:1fr 1fr}.alarm-banner{grid-column:1/-1}}
+@media (max-width:720px){.c3,.c4,.c5,.c6,.c8{grid-column:span 12}.app{padding-inline:16px}.title h1{font-size:17px}.hdr{grid-template-columns:1fr 1fr}.status-badge{min-width:0;font-size:16px}}
+
+/* cards */
+.card{background:linear-gradient(180deg,var(--panel2),var(--panel) 40%);border:1px solid var(--line);border-radius:4px;min-width:0;display:flex;flex-direction:column}
+.card>h2{margin:0;padding:6px 10px;font-size:14px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;border-bottom:1px solid var(--line2);
+  background:linear-gradient(90deg,#123259,transparent);display:flex;align-items:center;gap:8px;justify-content:space-between}
+.card>h2 small{font-weight:400;color:var(--muted);letter-spacing:.02em;text-transform:none;font-size:11px}
+.card .body{padding:8px 10px;flex:1}
+.sub-h{font-size:11px;color:var(--cyan);text-transform:uppercase;letter-spacing:.08em;margin:8px 0 4px;border-bottom:1px dashed var(--line2);padding-bottom:2px}
+
+/* parameter rows */
+.params{display:flex;flex-direction:column}
+.prow{display:grid;grid-template-columns:1fr auto;align-items:baseline;padding:3px 2px;border-bottom:1px solid #10294433}
+.prow:nth-child(odd){background:#0c203a55}
+.prow .n{color:#c7dcf3;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prow .n i{font-style:normal;color:var(--muted);font-size:12px}
+.prow .v{font:700 19px var(--num);color:var(--green);text-align:right;font-variant-numeric:tabular-nums;min-width:74px}
+.prow.al .v{color:var(--red)}.prow.al{background:#3a080866!important}
+.prow.wn .v{color:var(--amber)}
+.v.g{color:var(--green)}.v.a{color:var(--amber)}.v.r{color:var(--red)}.v.c{color:var(--cyan)}
+.num{font-variant-numeric:tabular-nums}
+
+/* key-value mini table */
+.kvt{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:center;font-size:13px}
+.kvt>span{color:#bcd3ea}
+.kvt>b{font:700 16px var(--num);text-align:right;color:var(--green);font-variant-numeric:tabular-nums}
+.kvt>b.w{color:#fff}.kvt>b.c{color:var(--cyan)}.kvt>b.a{color:var(--amber)}.kvt>b.r{color:var(--red)}
+
+/* buttons */
+.btn{background:linear-gradient(#173556,#0f2440);border:1px solid #2b5f90;border-radius:3px;padding:5px 10px;cursor:pointer;font-weight:600;letter-spacing:.03em;
+  text-transform:uppercase;font-size:12px;color:#cfe3f7;min-height:28px;touch-action:manipulation;user-select:none}
+.btn:hover{border-color:var(--cyan)}
+.btn:active{transform:translateY(1px)}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.btn.on{background:linear-gradient(#25b45f,#0f7a3b);border-color:#5df59a;color:#fff;box-shadow:0 0 10px #2bd66f55}
+.btn.amb{background:linear-gradient(#d18d0c,#8a5600);border-color:#ffd27a;color:#fff}
+.btn.red{background:linear-gradient(#c32323,#7a0c0c);border-color:#ff8a8a;color:#fff}
+.btn.cy{background:linear-gradient(#167fb0,#0b4868);border-color:#7fdcff;color:#fff}
+.btn.sm{padding:3px 7px;min-height:24px;font-size:11px}
+.seg{display:inline-flex;gap:3px;flex-wrap:wrap}
+.pill{display:inline-block;min-width:74px;text-align:center;padding:3px 8px;border-radius:3px;font-weight:700;font-size:12px;letter-spacing:.04em;border:1px solid}
+.pill.g{background:#0f5c31;border-color:var(--green);color:#dcffe9}
+.pill.r{background:#6b1010;border-color:var(--red);color:#ffdede}
+.pill.a{background:#6a4500;border-color:var(--amber);color:#fff0cc}
+.pill.c{background:#08405d;border-color:var(--cyan);color:#dff6ff}
+.pill.d{background:#14263d;border-color:var(--dim);color:var(--muted)}
+.row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.row.sp{justify-content:space-between}
+.ctl{display:grid;grid-template-columns:auto 1fr auto;gap:2px 8px;align-items:center;margin:4px 0;font-size:12px}
+.ctl label{color:#bcd3ea;white-space:nowrap}
+.ctl output{font:700 14px var(--num);color:var(--cyan);min-width:72px;text-align:right}
+input[type=range]{width:100%;accent-color:var(--cyan);height:22px;min-width:60px}
+select{background:#0f2440;border:1px solid #2b5f90;border-radius:3px;padding:2px 4px}
+
+/* scene */
+.scene-card .body{padding:0;position:relative}
+#scene{width:100%;height:auto;display:block;max-height:880px}
+.scene-legend{position:absolute;right:8px;top:6px;font-size:11px;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap;pointer-events:none}
+.scene-legend i{display:inline-block;width:14px;height:3px;margin-right:4px;vertical-align:middle}
+.flow{stroke-dasharray:7 7;animation:flow 1s linear infinite}
+@keyframes flow{to{stroke-dashoffset:-28}}
+
+/* control loop */
+.loop{display:flex;flex-direction:column;align-items:stretch;gap:0}
+.lb{border:1px solid #2b5f90;background:#0d2441;border-radius:3px;padding:5px 8px;text-align:center;font-size:12.5px;line-height:1.25}
+.lb small{display:block;color:var(--cyan);font:600 12px var(--num)}
+.lb.act{border-color:var(--cyan);box-shadow:0 0 8px #36c8ff44}
+.lb.ok{background:linear-gradient(#22b05b,#0e6a35);border-color:#6dfaa5;color:#fff;font-weight:700;font-size:14px}
+.lb.warn{background:linear-gradient(#c7860b,#7f5000);border-color:#ffd27a;color:#fff;font-weight:700}
+.lb.bad{background:linear-gradient(#b51f1f,#6d0b0b);border-color:#ff8a8a;color:#fff;font-weight:700}
+.arr{text-align:center;color:var(--muted);height:13px;line-height:13px;font-size:12px}
+.pvsp{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-bottom:6px}
+.pvsp div{background:#081830;border:1px solid var(--line2);border-radius:3px;padding:3px 6px;text-align:center}
+.pvsp b{display:block;font:700 18px var(--num);color:var(--green)}
+
+/* pumps */
+.pumps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.pump{border:1px solid var(--line2);border-radius:3px;padding:6px;background:#091a30}
+.pump h3{margin:0 0 4px;font-size:13px;letter-spacing:.05em;display:flex;justify-content:space-between;align-items:center}
+.lamp{width:14px;height:14px;border-radius:50%;background:#28384b;border:1px solid #4d6683;display:inline-block}
+.lamp.r{background:var(--red);box-shadow:0 0 8px var(--red)}.lamp.g{background:var(--green);box-shadow:0 0 8px var(--green)}.lamp.a{background:var(--amber);box-shadow:0 0 8px var(--amber)}
+@media (max-width:560px){.pumps{grid-template-columns:1fr}}
+
+/* driller panel */
+.dpanel{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.big{min-height:56px;font-size:15px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.big svg{width:20px;height:20px}
+.estop{width:64px;height:64px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ff8080,#d10f0f 55%,#7a0000);border:4px solid #f6d33f;box-shadow:0 0 0 3px #222,0 4px 12px #000;cursor:pointer;color:#fff;font-weight:800;font-size:11px}
+.estop:active{transform:scale(.96)}
+.lampbtn{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:var(--muted);background:none;border:0;cursor:pointer}
+.lampbtn .lamp{width:26px;height:26px}
+
+/* steps */
+.steps{list-style:none;margin:4px 0 0;padding:0;font-size:12px;max-height:190px;overflow:auto}
+.steps li{padding:2px 6px;border-left:3px solid transparent;color:var(--muted)}
+.steps li.done{color:#8fd8ab}.steps li.cur{color:#fff;border-left-color:var(--cyan);background:#0e2b4a}
+.prog{height:6px;background:#0a1f38;border:1px solid var(--line2);border-radius:3px;overflow:hidden;margin-top:4px}
+.prog>i{display:block;height:100%;background:var(--cyan);width:0}
+
+/* trends */
+.trend-wrap{position:relative}
+#trend{width:100%;height:430px;display:block;cursor:crosshair}
+.legend{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:11.5px;padding:2px 2px 6px}
+.legend span{display:inline-flex;align-items:center;gap:5px;cursor:pointer;user-select:none}
+.legend span.off{opacity:.35}
+.legend i{width:14px;height:3px;display:inline-block}
+
+/* alarms */
+.atable{width:100%;border-collapse:collapse;font-size:12.5px}
+.atable th{text-align:left;color:var(--muted);font-weight:500;border-bottom:1px solid var(--line2);padding:3px 4px;font-size:11px;text-transform:uppercase}
+.atable td{padding:4px;border-bottom:1px solid #10294466;vertical-align:middle}
+.atable tr.p1 td:nth-child(2){color:#ff8f8f}.atable tr.p2 td:nth-child(2){color:#ffcf73}.atable tr.p3 td:nth-child(2){color:#8fe1ff}
+.atable tr.unack td:nth-child(2){animation:blink 1s steps(2) infinite;font-weight:700}
+.alist{max-height:260px;overflow:auto}
+.log{font:12px var(--mono);max-height:220px;overflow:auto;color:#a9c3de}
+.log div{padding:1px 0;border-bottom:1px solid #0f243c}
+.log .p1{color:#ff9494}.log .p2{color:#ffcf73}.log .ev{color:#8fb2d6}
+
+/* toasts / dialog */
+#toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);display:flex;flex-direction:column;gap:6px;z-index:50;pointer-events:none;width:min(560px,92vw)}
+#toast div{background:#2a1d00;border:1px solid var(--amber);color:#ffe5a8;padding:8px 12px;border-radius:4px;box-shadow:0 6px 24px #000a;font-size:13px;animation:fade 4s forwards}
+@keyframes fade{0%,85%{opacity:1}100%{opacity:0}}
+dialog{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:0;width:min(860px,96vw);max-height:90vh}
+dialog::backdrop{background:#000a}
+dialog .body{padding:12px 14px;overflow:auto;max-height:calc(90vh - 50px)}
+.thgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:6px 14px}
+.thgrid label{display:grid;grid-template-columns:1fr 84px;gap:6px;align-items:center;font-size:12px;color:#bcd3ea}
+.thgrid input{background:#081830;border:1px solid var(--line);border-radius:3px;padding:3px 6px;text-align:right}
+.note{font-size:11.5px;color:var(--muted);line-height:1.45}
+.hint{font-size:11px;color:var(--dim)}
+canvas{display:block}
+#pwin{width:100%;height:360px}
+kbd{font:11px var(--mono);border:1px solid var(--line);border-radius:3px;padding:0 4px;background:#081830}
+</style>
 </head>
 <body>
 <div class="app">
@@ -277,7 +459,1260 @@
   </div>
 </dialog>
 
-<script src="sim.js"></script>
-<script src="ui.js"></script>
+<script>
+/* Driller's Console — physics core (no DOM). Runs in the browser (window.RigSim) and in Node (module.exports).
+   Coupled models: drawworks/string elasticity -> WOB, ROP (bit/formation), top-drive dynamics, triplex pumps,
+   Bingham/turbulent hydraulics, mud transport (parcel FIFO), BHP/ECD, influx/losses, gas-kick migration/expansion,
+   BOP/choke/accumulator, auto-driller (cascade PI), connection sequencer, alarms (ISA-18.2 style), trends. */
+(function (root) {
+'use strict';
+const G = 9.80665, BAR = 1e5, PI = Math.PI;
+const clamp = (x, a, b) => x < a ? a : x > b ? b : x;
+const approach = (c, t, r, dt) => { const d = t - c, m = r * dt; return Math.abs(d) <= m ? t : c + Math.sign(d) * m; };
+const lag = (c, t, tau, dt) => c + (t - c) * (1 - Math.exp(-dt / tau));
+
+const CFG = {
+  rigId: 'RIG-03', well: 'Well-12A',
+  holeD: 0.3112, bitIn: 12.25, shoe: 2000,
+  dp: { od: 0.1397, id: 0.1214, kgm: 32.6 },          // 5-1/2" 21.9 ppf drill pipe
+  bha: { len: 200, kgm: 180 },
+  standLen: 28.5, tdOff: 5.0, blockW: 343,            // block + top drive weight, kN
+  minBlockH: 6.2, standEndH: 6.9, crownStop: 42.5, maxBlockH: 44.5,
+  EA: 7.0e8, wobFound: 300, mu: 0.62,
+  tfa: 5.82e-4, cd: 0.95,                              // 6 x 14/32" nozzles
+  pump: { stroke: 0.3048, maxSpm: 130, eff: 0.95, kw: 746, rating: { 5: 345, 5.5: 345, 6: 310, 6.5: 262 } },
+  dw: { kw: 1119, lines: 10, drumD: 0.9, vmax: 1.0, accel: 0.4, hlRated: 2200 },
+  td: { J: 1.5, maxTq: 35, aMax: 4 },
+  bopRating: 345, accumNom: 207, tripTank: 20, pitNom: 520,
+};
+
+/* lithology column (vertical well, MD = TVD). pp/fg as equivalent mud weight (sg), linear within each layer */
+const FORM_HAZ = [
+  { n: 'Clay / Silt', top: 0, bot: 800, kf: 6.0e-3, abr: .3, pp: [1.00, 1.03], fg: [1.45, 1.68], col: '#7d6b4c' },
+  { n: 'Sand / Shale', top: 800, bot: 1500, kf: 5.0e-3, abr: .5, pp: [1.03, 1.05], fg: [1.68, 1.74], col: '#8b7753' },
+  { n: 'Claystone', top: 1500, bot: 2000, kf: 4.5e-3, abr: .4, pp: [1.05, 1.06], fg: [1.74, 1.78], col: '#6f624c' },
+  { n: 'Shale', top: 2000, bot: 2600, kf: 4.0e-3, abr: .5, pp: [1.06, 1.08], fg: [1.78, 1.82], col: '#5e5b52' },
+  { n: 'Silty sandstone', top: 2600, bot: 3140, kf: 3.4e-3, abr: .7, pp: [1.08, 1.10], fg: [1.82, 1.87], col: '#86775a' },
+  { n: 'Limestone stringer', top: 3140, bot: 3152, kf: .9e-3, abr: 1.2, pp: [1.10, 1.10], fg: [1.88, 1.88], col: '#a9b3ba' },
+  { n: 'Shale (transition)', top: 3152, bot: 3215, kf: 3.6e-3, abr: .6, pp: [1.12, 1.22], fg: [1.88, 1.90], col: '#55514a' },
+  { n: 'Gas sand', top: 3215, bot: 3250, kf: 3.0e-3, abr: 1.0, pp: [1.30, 1.30], fg: [1.90, 1.90], col: '#c9a443', gas: { pi: 14 }, prog: 1.24 },
+  { n: 'Shale', top: 3250, bot: 3480, kf: 3.4e-3, abr: .6, pp: [1.28, 1.28], fg: [1.90, 1.92], col: '#55514a' },
+  { n: 'Vugular limestone', top: 3480, bot: 3495, kf: 1.6e-3, abr: 1.0, pp: [1.05, 1.05], fg: [1.55, 1.55], col: '#9aa6ae', loss: { k: 3.5 }, prog: 1.28 },
+  { n: 'Sandstone / Shale', top: 3495, bot: 6000, kf: 3.0e-3, abr: .8, pp: [1.28, 1.32], fg: [1.92, 2.05], col: '#86775a' },
+];
+const FORM_SAFE = FORM_HAZ.map(f => {
+  const g = Object.assign({}, f); delete g.gas; delete g.loss; delete g.prog;
+  if (f.top >= 3140) { g.pp = [1.10, 1.12]; g.fg = [1.88, 1.95]; }
+  if (f.n === 'Limestone stringer') g.kf = 2.4e-3;
+  if (f.n === 'Gas sand') { g.n = 'Sandstone'; }
+  if (f.n === 'Vugular limestone') { g.n = 'Limestone'; g.fg = [1.92, 1.92]; }
+  return g;
+});
+function formations(haz) { return haz ? FORM_HAZ : FORM_SAFE; }
+function formAt(z, haz) { const L = formations(haz); for (const f of L) if (z < f.bot) return f; return L[L.length - 1]; }
+function interp(f, key, z) { const a = f[key]; const u = clamp((z - f.top) / (f.bot - f.top), 0, 1); return a[0] + (a[1] - a[0]) * u; }
+function ppAt(z, haz) { return interp(formAt(z, haz), 'pp', z); }
+function fgAt(z, haz) { return interp(formAt(z, haz), 'fg', z); }
+function ppProg(z, haz) { const f = formAt(z, haz); return f.prog || interp(f, 'pp', z); }
+
+function fricDP(Q, Dh, A, L, rho, pv, yp) { // Pa — Bingham effective viscosity, max(laminar, Blasius)
+  if (Q <= 1e-7 || L <= 0) return 0;
+  const v = Q / A, mu = pv + yp * Dh / (6 * v), Re = rho * v * Dh / mu;
+  const f = Math.max(64 / Re, 0.316 / Math.pow(Re, 0.25));
+  return f * (L / Dh) * rho * v * v / 2;
+}
+
+class Fifo { // plug-flow mud column made of (volume, density) parcels; a[0] = exit end
+  constructor() { this.a = []; this.vol = 0; }
+  push(v, r) { if (v <= 0) return; const l = this.a[this.a.length - 1]; if (l && Math.abs(l.r - r) < 0.0015) l.v += v; else this.a.push({ v, r }); this.vol += v; }
+  pop(v) { let m = 0, out = 0; while (v > 1e-12 && this.a.length) { const p = this.a[0], t = Math.min(p.v, v); m += t * p.r; out += t; p.v -= t; v -= t; this.vol -= t; if (p.v <= 1e-12) this.a.shift(); } return out > 0 ? m / out : null; }
+  avg() { let m = 0; for (const p of this.a) m += p.v * p.r; return this.vol > 0 ? m / this.vol : 1.2; }
+  fit(cap, atExit) { // grow/shrink to capacity
+    const d = cap - this.vol;
+    if (d > 1e-6) { const ref = atExit ? (this.a[0] || { r: 1.2 }) : (this.a[this.a.length - 1] || { r: 1.2 }); if (atExit) this.a.unshift({ v: d, r: ref.r }); else this.a.push({ v: d, r: ref.r }); this.vol += d; }
+    else if (d < -1e-6) { if (atExit) this.pop(-d); else { let v = -d; while (v > 1e-12 && this.a.length) { const p = this.a[this.a.length - 1], t = Math.min(p.v, v); p.v -= t; v -= t; this.vol -= t; if (p.v <= 1e-12) this.a.pop(); } } }
+  }
+}
+
+const DEF_TH = { sppHi: 275, sppLoPct: 0.85, hlHi: 1800, overpull: 400, flowDev: 150, flowPct: 4, flowCheck: 60, pitGain: 2.0, pitLoss: 3.0, pcHiPct: 80, accumLo: 186, gasHi: 150, blockSpeedHi: 60, tdTempHi: 105 };
+
+const ALARMS = [
+  // id, text, priority(1 crit, 2 high, 3 advisory), on-delay s, test
+  ['ESD', 'EMERGENCY SHUTDOWN ACTIVE', 1, 0, m => m.c.esd],
+  ['ESTOP', 'DRILLER E-STOP ACTIVE', 1, 0, m => m.c.estop],
+  ['BLOW', 'WELL CONTROL LOST — WELLHEAD PRESSURE EXCEEDED', 1, 0, m => m.s.bop.failed],
+  ['KICK', 'FLOW OUT > FLOW IN — POSSIBLE KICK', 1, 8, m => m.pumpsOn() && !m.sealed() && m.d.qout - m.d.qinExp > Math.max(m.th.flowDev, m.d.qin * m.th.flowPct / 100)],
+  ['FLOWING', 'WELL FLOWING WITH PUMPS OFF', 1, 10, m => !m.pumpsOn() && !m.sealed() && m.d.qout - m.d.qinExp > m.th.flowCheck],
+  ['PITGAIN', 'PIT GAIN', 1, 5, m => m.d.pitDelta > m.th.pitGain],
+  ['HPC', 'HIGH CASING PRESSURE (> % MAASP)', 1, 3, m => m.d.pc > 5 && m.d.pc > m.th.pcHiPct / 100 * m.d.maasp],
+  ['CROWN', 'CROWN-O-MATIC — BLOCK AT UPPER LIMIT', 1, 0, m => m.s.blockH >= CFG.crownStop - 0.05],
+  ['HSPP', 'HIGH STANDPIPE PRESSURE', 2, 2, m => m.d.spp > m.th.sppHi],
+  ['LSPP', 'LOW STANDPIPE PRESSURE — POSSIBLE WASHOUT', 2, 15, m => m.pumpsOn() && !m.sealed() && m.d.sppExp > 30 && m.d.spp < m.th.sppLoPct * m.d.sppExp],
+  ['HTQ', 'HIGH TORQUE', 2, 2, m => m.d.torque > m.c.ad.torqueLimit],
+  ['STALL', 'TOP DRIVE STALLED', 1, 1, m => m.s.tdStall],
+  ['HHL', 'HIGH HOOK LOAD', 2, 2, m => m.d.hl > m.th.hlHi],
+  ['OVERPULL', 'OVERPULL — EXCESS DRAG', 2, 2, m => m.d.overpull > m.th.overpull],
+  ['HWOB', 'HIGH WOB', 2, 3, m => m.d.wob > m.c.ad.wobLimit],
+  ['HRPM', 'HIGH RPM', 2, 2, m => m.d.rpm > m.c.ad.rpmLimit + 2],
+  ['LOWFLOW', 'LOW MUD FLOW — FLOW OUT < FLOW IN', 3, 8, m => m.pumpsOn() && !m.sealed() && m.d.qinExp - m.d.qout > Math.max(m.th.flowDev, m.d.qin * m.th.flowPct / 100)],
+  ['PITLOSS', 'PIT LOSS', 2, 5, m => m.d.pitDelta < -m.th.pitLoss],
+  ['GAS', 'HIGH GAS', 2, 3, m => m.d.gas > m.th.gasHi],
+  ['ACCUM', 'LOW ACCUMULATOR PRESSURE', 2, 3, m => m.s.bop.accum < m.th.accumLo],
+  ['BSPD', 'HIGH BLOCK SPEED', 2, 1, m => Math.abs(m.d.blockV) > m.th.blockSpeedHi],
+  ['TDTEMP', 'TOP DRIVE MOTOR HIGH TEMPERATURE', 2, 3, m => m.s.tdTemp > m.th.tdTempHi],
+  ['PRELIEF', 'MUD PUMP RELIEF / TRIP', 2, 0, m => m.s.pumps.some(p => p.relief)],
+  ['PFAULT', 'MUD PUMP FAULT — LOW VOLUMETRIC EFFICIENCY', 3, 5, m => m.s.pumps.some((p, i) => p.effLoss > 0.1 && p.spm > 5)],
+  ['CONN', 'STAND DRILLED DOWN — CONNECTION REQUIRED', 3, 2, m => m.s.connected && !m.s.inSlips && m.s.blockH <= CFG.standEndH + 0.05 && !m.m.active],
+  ['BIT', 'BIT WORN — CONSIDER TRIP', 3, 0, m => m.s.wear > 0.85],
+  ['ROTBOP', 'ROTATING / MOVING WITH BOP CLOSED', 2, 2, m => m.sealed() && (m.s.rpm > 5 || Math.abs(m.s.vUp) > 0.02)],
+];
+
+class RigSim {
+  constructor(opts) { opts = opts || {}; this.seed = opts.seed || 20261005; this.th = Object.assign({}, DEF_TH); this.haz = opts.haz !== false; this.reset(opts.hot !== false); }
+
+  rnd() { this.rs = (this.rs * 1664525 + 1013904223) >>> 0; return this.rs / 4294967296; }
+  gauss() { return (this.rnd() + this.rnd() + this.rnd() - 1.5) * 2; }
+
+  reset(hot) {
+    this.rs = this.seed;
+    const on = !!hot;
+    this.c = {
+      td: { dir: on ? 'FWD' : 'OFF', mode: 'DRILL', rpmSet: 120, torqueSet: 10 },
+      dw: { jog: 0, jogSpeed: 15, blockAuto: 0, brakeMode: 'AUTO', brakeSet: true },
+      pumps: [0, 1, 2].map(() => ({ on: on, spm: 95, liner: 5.5 })),
+      ad: { on: on, mode: 'WOB', wobSet: 120, ropTarget: 25, ropCap: true, wobLimit: 200, torqueLimit: 18, rpmLimit: 180, kp: 0.03, ki: 0.0015 },
+      bop: { annular: 'OPEN', pipe: 'OPEN', shear: 'OPEN', shearArmed: false, hcr: 'CLOSED', kill: 'CLOSED', choke: 0, chokeAuto: false, chokeTarget: 0 },
+      mud: { mwSet: 1.20, mixing: true, holeFill: true },
+      autoConnect: true, power: true, estop: false, esd: false,
+    };
+    const Dh = on ? 3115.0 : 3125.4;
+    this.s = {
+      t: 0, Dh, zFree: on ? Dh + 0.5 : Dh - 0.5, blockH: on ? 28.6 : 18.0, vUp: 0, brake: 'SET', brakeHold: 0,
+      connected: true, inSlips: false, standOnTD: false, slipRef: 0, racked: 0, stands: 0, op: null,
+      wob: 0, rop: 0, w: on ? 12.57 : 0, rpm: on ? 120 : 0, tdTorque: 0, rotTorque: 0, tdStall: false, tdTemp: on ? 62 : 35,
+      wear: 0.12, bitHours: 31.5, hl: 0, wBuoy: 0, overpull: 0,
+      pumps: [0, 1, 2].map(() => ({ spm: on ? 95 : 0, q: 0, p: 0, load: 0, relief: false, effLoss: 0, strokes: 0 })),
+      qin: 0, qout: 0, qoutLag: 0, pit: CFG.pitNom, pitRef: CFG.pitNom, tripTank: CFG.tripTank, pitRho: 1.20, retRho: 1.20,
+      Pc: 0, bhp: 0, dpAnn: 0, gasDef: 0, swab: 0, levelDrop: 0, cutRho: 0, rhoA: 1.2, rhoP: 1.2,
+      spp: 0, sppClean: 0, dpBit: 0, qInfl: 0, qLoss: 0, qExp: 0, ecd: 1.2, overbal: 0, mse: 0, dxc: 0, hsi: 0, gasU: 8,
+      gas: { m: 0, zb: 0, h: 0, V: 0, Pm: 1, surf: false },
+      bop: { annular: 0, pipe: 0, shear: 0, hcr: 0, kill: 0, accum: CFG.accumNom, failed: false, overT: 0 },
+      choke: 0, sheared: false,
+      fault: { kick: null, lossK: 0, lcm: 1, packTarget: 0, pack: 0, washTarget: 0, wash: 0, plug: 0, tdCool: false, accumLeak: false, wearX: 1 },
+      pitIntegral: 0, kickVol: 0, shutin: null, scr: null,
+    };
+    this.pipe = new Fifo(); this.ann = new Fifo();
+    this.pipe.push(this.Ap() * Dh + 4, 1.20); this.ann.push(this.Aann() * Dh, 1.20);
+    this.m = { active: false, step: 0, t: 0, msg: '', v: null, saved: null };
+    this.ad = { state: 'OFF', iu: 0.005, capWob: this.c.ad.wobLimit, sp: 0, pv: 0, out: 0 };
+    this.d = {};
+    this.alarm = {}; for (const a of ALARMS) this.alarm[a[0]] = { id: a[0], text: a[1], prio: a[2], delay: a[3], t: 0, active: false, acked: true, t0: 0 };
+    this.log = [];
+    this.trend = { n: 0, N: 4320, dt: 5, last: -1e9, t: new Float64Array(4320), ch: {} };
+    for (const k of TREND_KEYS) this.trend.ch[k] = new Float32Array(4320);
+    this.msg = [];
+    this.tStart = 0; this.clock0 = Date.now();
+    if (on) { for (let i = 0; i < 3600; i++) { this.step(0.5); if (i === 240) { this.trend.n = 0; this.trend.last = -1e9; } } this.tStart = this.s.t; this.s.pitRef = this.s.pit; this.d.pitDelta = 0; this.d.pit = this.s.pit; for (const a of Object.values(this.alarm)) { a.active = false; a.acked = true; a.t = 0; } this.log = []; }
+    else this._sense(1);
+  }
+
+  /* ---------- geometry ---------- */
+  Ap() { return PI / 4 * CFG.dp.id ** 2; }
+  Aann() { return PI / 4 * (CFG.holeD ** 2 - CFG.dp.od ** 2); }
+  bitDepth() { return Math.min(this.s.zFree, this.s.Dh); }
+  onBottom() { const s = this.s; return s.connected && !s.inSlips && s.zFree >= s.Dh - 1e-3; }
+  pumpsOn() { return this.s.qin * 60000 > 200; }
+  sealed() { const b = this.s.bop; return !b.failed && (b.annular > 0.95 || b.pipe > 0.95 || b.shear > 0.95); }
+  chokePath() { return this.sealed() && this.s.bop.hcr > 0.9 && this.s.choke > 0.004; }
+  powerOK() { return this.c.power && !this.c.estop && !this.c.esd; }
+  saverElev() { return this.s.blockH - CFG.tdOff; }
+  jointAtFloor() { const L = CFG.standLen, x = ((this.saverElev() - 1.5) % L + L) % L; return Math.min(x, L - x) <= 1.4; }
+  clockMs() { return this.clock0 + (this.s.t - this.tStart) * 1000; }
+  note(text) { this.msg.push({ t: this.s.t, text }); if (this.msg.length > 30) this.msg.shift(); return { ok: false, msg: text }; }
+
+  /* ---------- main step ---------- */
+  step(dt) {
+    const s = this.s; s.t += dt;
+    this._ops(dt); this._macro(dt); this._faults(dt); this._bopUpdate(dt); this._pumps(dt); this._mud(dt);
+    this._drawworks(dt); this._topdrive(dt); this._bit(dt); this._well(dt); this._hydraulics(dt);
+    this._sense(dt); this._alarms(dt); this._record();
+  }
+
+  /* ---------- rig-floor operations (timed) ---------- */
+  _ops(dt) {
+    const op = this.s.op; if (!op) return;
+    op.t += dt; if (op.t >= op.dur) { this.s.op = null; op.fn(); }
+  }
+  _startOp(name, dur, fn) { if (this.s.op) return this.note('Another floor operation is in progress'); this.s.op = { name, t: 0, dur, fn }; return { ok: true }; }
+  setSlips() {
+    const s = this.s;
+    if (s.inSlips) return this.note('Slips already set');
+    if (!s.connected) return this.note('String not on the top drive');
+    if (Math.abs(s.vUp) > 0.03) return this.note('Stop the block before setting slips');
+    if (s.wob > 2 || this.onBottom()) return this.note('Pick up off bottom before setting slips');
+    if (!this.jointAtFloor()) return this.note('No tool joint at slip height — position the block (saver sub 1.5 m above floor ± stand length)');
+    return this._startOp('SET SLIPS', 4, () => { s.inSlips = true; s.slipRef = s.blockH; });
+  }
+  pullSlips() {
+    const s = this.s;
+    if (!s.inSlips) return this.note('Slips are not set');
+    if (!s.connected) return this.note('Make up the top drive to the string first');
+    if (this._slipF() < 0.97 * s.wBuoy) return this.note('Take string weight on the hook before pulling slips');
+    return this._startOp('PULL SLIPS', 3, () => { s.inSlips = false; });
+  }
+  breakOut() {
+    const s = this.s;
+    if (!s.inSlips || !s.connected) return this.note('Break-out needs the string in slips and connected');
+    if (s.rpm > 2) return this.note('Stop top drive rotation first');
+    if (s.qin * 60000 > 50) return this.note('Stop the mud pumps first');
+    return this._startOp('BREAK OUT', 8, () => { s.connected = false; s.standOnTD = this.saverElev() > 3; });
+  }
+  pickStand() {
+    const s = this.s, need = CFG.tdOff + 1.5 + CFG.standLen;
+    if (s.connected || s.standOnTD) return this.note('Top drive must be empty and disconnected');
+    if (s.blockH < need - 1.5) return this.note('Raise the block to the racking board (≥ ' + (need - 1.5).toFixed(1) + ' m)');
+    return this._startOp('PICK UP STAND', 6, () => { s.standOnTD = true; if (s.racked > 0) s.racked--; });
+  }
+  rackStand() {
+    const s = this.s;
+    if (!s.standOnTD || s.connected) return this.note('No free stand on the top drive');
+    return this._startOp('RACK BACK STAND', 6, () => { s.standOnTD = false; s.racked++; });
+  }
+  makeUp() {
+    const s = this.s;
+    if (s.connected) return this.note('Already connected');
+    if (!s.inSlips) return this.note('String must be in slips');
+    const tgt = s.standOnTD ? CFG.tdOff + 1.5 + CFG.standLen : CFG.tdOff + 1.5;
+    if (Math.abs(s.blockH - tgt) > 1.2) return this.note('Position block at ' + tgt.toFixed(1) + ' m to stab');
+    return this._startOp('SPIN-IN & TORQUE UP', 14, () => { if (s.standOnTD) s.stands++; s.connected = true; s.standOnTD = false; s.slipRef = s.blockH; });
+  }
+
+  /* ---------- automatic connection ---------- */
+  startConnection() {
+    const s = this.s;
+    if (this.m.active) return this.note('Connection already running');
+    if (!s.connected || s.inSlips) return this.note('String must be connected and out of slips');
+    if (this.saverElev() > 3.2) return this.note('Drill the stand down first (saver sub ≤ 3 m above floor)');
+    this.m = { active: true, step: 0, t: 0, msg: '', v: null, saved: { pumps: this.c.pumps.map(p => ({ on: p.on, spm: p.spm })), dir: this.c.td.dir === 'OFF' ? 'FWD' : this.c.td.dir, mode: this.c.td.mode } };
+    this._log('CONNECTION', 'Auto connection started', 3, 'EVENT');
+    return { ok: true };
+  }
+  abortConnection() { if (!this.m.active) return; this.m.active = false; this.m.v = null; this._log('CONNECTION', 'Auto connection aborted at step ' + (this.m.step + 1), 3, 'EVENT'); }
+  _macro(dt) {
+    const M = this.m; if (!M.active) return;
+    if (!this.powerOK()) { this.abortConnection(); return; }
+    const st = CONN_STEPS[M.step]; M.t += dt; M.msg = st.n;
+    let done = false;
+    try { done = st.run(this, M); } catch (e) { done = false; }
+    if (done) { M.step++; M.t = 0; M.v = null; if (M.step >= CONN_STEPS.length) { M.active = false; this.ad.state = 'SEEK'; this._log('CONNECTION', 'Connection complete — stand #' + this.s.stands, 3, 'EVENT'); } }
+    else if (M.t > st.to) { this.abortConnection(); this.note('Connection step timed out: ' + st.n); }
+  }
+
+  /* ---------- faults / scenarios ---------- */
+  scenario(name) {
+    const f = this.s.fault;
+    switch (name) {
+      case 'kick': f.kick = { dpp: 60, pi: 18 }; break;
+      case 'loss': f.lossK = 6; f.lcm = 1; break;
+      case 'packoff': f.packTarget = 0.85; break;
+      case 'washout': f.washTarget = 0.6; break;
+      case 'plug': f.plug = 0.35; break;
+      case 'pump2': this.s.pumps[1].effLoss = 0.4; break;
+      case 'tdcool': f.tdCool = true; break;
+      case 'accum': f.accumLeak = true; break;
+      case 'wear': f.wearX = 40; break;
+      case 'clear':
+        Object.assign(f, { kick: null, lossK: 0, lcm: 1, packTarget: 0, washTarget: 0, plug: 0, tdCool: false, accumLeak: false, wearX: 1 });
+        this.s.pumps.forEach(p => { p.effLoss = 0; p.relief = false; }); break;
+    }
+    this._log('SCENARIO', 'Instructor: ' + name, 3, 'EVENT');
+  }
+  pumpLCM() { const f = this.s.fault; f.lcm = Math.max(0.05, f.lcm * 0.45); this._log('MUD', 'LCM pill pumped (8 m³)', 3, 'EVENT'); }
+  _faults(dt) {
+    const s = this.s, f = s.fault;
+    const working = Math.abs(s.vUp) > 0.03 && s.connected && !s.inSlips;
+    if (working) f.packTarget = Math.max(0, f.packTarget - 0.006 * dt);
+    if (s.qin * 60000 < 2000) f.packTarget = Math.max(0, f.packTarget - 0.002 * dt);
+    f.pack = lag(f.pack, f.packTarget, 40, dt);
+    f.wash = lag(f.wash, f.washTarget, 90, dt);
+    if (f.accumLeak) s.bop.accum = Math.max(0, s.bop.accum - 0.35 * dt);
+  }
+
+  /* ---------- BOP, choke, accumulator ---------- */
+  bopCmd(el, state) {
+    const b = this.c.bop;
+    if (el === 'shear') { if (!b.shearArmed) return this.note('Arm the blind/shear rams first'); b.shear = 'CLOSED'; this._log('BOP', 'BLIND/SHEAR RAMS FIRED', 1, 'EVENT'); return { ok: true }; }
+    b[el] = state; this._log('BOP', el.toUpperCase() + ' → ' + state, 3, 'EVENT'); return { ok: true };
+  }
+  _bopUpdate(dt) {
+    const s = this.s, b = this.c.bop, sb = s.bop;
+    const rate = { annular: 1 / 28, pipe: 1 / 10, shear: 1 / 8, hcr: 1 / 4, kill: 1 / 4 };
+    const use = { annular: 30, pipe: 14, shear: 40, hcr: 2, kill: 2 };
+    for (const el of ['annular', 'pipe', 'shear', 'hcr', 'kill']) {
+      const closing = el === 'hcr' || el === 'kill' ? b[el] === 'OPEN' : b[el] === 'CLOSED';
+      const tgt = closing ? 1 : 0; const prev = sb[el];
+      const r = sb.accum > 100 ? rate[el] : rate[el] * 0.05;
+      sb[el] = approach(sb[el], tgt, r, dt); sb.accum -= Math.abs(sb[el] - prev) * use[el];
+    }
+    if (this.powerOK() && !s.fault.accumLeak) sb.accum = Math.min(CFG.accumNom, sb.accum + 0.9 * dt);
+    sb.accum = Math.max(0, sb.accum);
+    if (sb.shear > 0.9 && !s.sheared && this.bitDepth() > 10) { s.sheared = true; s.connected = false; s.inSlips = false; s.standOnTD = false; this.c.ad.on = false; this.c.td.dir = 'OFF'; this.c.pumps.forEach(p => p.on = false); this.abortConnection(); }
+    // choke actuator + auto choke (holds drill-pipe pressure at target)
+    if (b.chokeAuto && this.chokePath() && this.pumpsOn()) {
+      const e = this.d.spp - b.chokeTarget, cc = Math.max(this.s.choke, 0.02);
+      b.choke = clamp(b.choke + clamp(0.25 * e * cc / (4 * Math.max(s.Pc, 3)), -0.08, 0.08) * dt * 100, 0, 100);
+    }
+    s.choke = approach(s.choke, b.choke / 100, 0.1, dt);
+    // wellhead over-pressure
+    if (s.Pc > CFG.bopRating * 1.05) { sb.overT += dt; if (sb.overT > 5 && !sb.failed) { sb.failed = true; this._log('WELL', 'WELLHEAD/BOP FAILURE — LOSS OF CONTAINMENT', 1, 'EVENT'); } } else sb.overT = 0;
+  }
+
+  /* ---------- pumps ---------- */
+  _pumps(dt) {
+    const s = this.s, c = this.c, k = CFG; let q = 0; const pw = this.powerOK() && !s.sheared;
+    for (let i = 0; i < 3; i++) {
+      const pc = c.pumps[i], ps = s.pumps[i];
+      const tgt = pc.on && pw && !ps.relief ? clamp(pc.spm, 0, k.pump.maxSpm) : 0;
+      ps.spm = approach(ps.spm, tgt, tgt > ps.spm ? 4 : (pw ? 10 : 30), dt);
+      const D = pc.liner * 0.0254, vs = 3 * PI / 4 * D * D * k.pump.stroke * (k.pump.eff - ps.effLoss);
+      ps.q = vs * ps.spm / 60; ps.strokes += ps.spm / 60 * dt; q += ps.q;
+    }
+    s.qin = q;
+  }
+
+  /* ---------- mud system: pit mixing + transport through string/annulus ---------- */
+  _mud(dt) {
+    const s = this.s, c = this.c;
+    if (c.mud.mixing) s.pitRho = approach(s.pitRho, c.mud.mwSet, 0.02 / 60, dt);
+    const dV = s.qin * dt;
+    this.pipe.fit(this.Ap() * this.bitDepth() + 4, true);
+    this.ann.fit(this.Aann() * s.Dh, false);
+    if (dV > 0) {
+      this.pipe.push(dV, s.pitRho); const r1 = this.pipe.pop(dV);
+      if (r1 !== null) { this.ann.push(dV, r1); const r2 = this.ann.pop(dV); if (r2 !== null) s.retRho = r2; }
+      s.pitRho += (s.retRho - s.pitRho) * Math.min(1, dV / Math.max(s.pit, 50));
+    }
+    s.rhoP = this.pipe.avg(); s.rhoA = this.ann.avg();
+  }
+  rheo(rho) { return { pv: 0.025 * (1 + 4 * (rho - 1.2)), yp: 5.75 * (1 + 2 * (rho - 1.2)) }; }
+
+  /* ---------- drawworks / block / string ---------- */
+  hoist(dir) { this.c.dw.jog = dir; this.c.dw.blockAuto = 0; }
+  blockAuto(dir) { this.c.dw.blockAuto = this.c.dw.blockAuto === dir ? 0 : dir; }
+  _slipF() { const s = this.s; return clamp(5000 * (s.blockH - s.slipRef), 0, s.wBuoy); } // kN, stiffness 5 kN/mm above slips
+  _autodriller(dt) {
+    const c = this.c.ad, s = this.s, A = this.ad;
+    if (!c.on) { A.state = 'OFF'; return null; }
+    if (this.m.active) { A.state = 'HOLD (CONNECTION)'; return null; }
+    if (!s.connected || s.inSlips || !this.powerOK() || s.sheared || s.rpm < 20 || s.qin * 60000 < 500 || this.sealed()) { A.state = 'STANDBY'; A.iu = 0.005; return null; }
+    if (s.blockH <= CFG.standEndH) {
+      A.state = 'STAND END';
+      if (this.c.autoConnect && Math.abs(s.vUp) < 0.01) this.startConnection();
+      return 0;
+    }
+    const gap = s.Dh - s.zFree;
+    if (gap > 0 && s.wob < 1) { A.state = 'SEEK BOTTOM'; A.iu = 0.004; return clamp(gap * 0.4, 0.008, 0.1); }
+    A.state = 'CONTROL';
+    // outer loop: ROP target -> WOB cap (integral)
+    A.capWob = clamp(A.capWob + 0.25 * (c.ropTarget - s.rop) * dt, 0, c.wobLimit);
+    let sp = c.mode === 'ROP' ? A.capWob : (c.ropCap ? Math.min(c.wobSet, A.capWob) : c.wobSet);
+    sp = Math.min(sp, c.wobLimit);
+    const tq = s.tdTorque / c.torqueLimit; if (tq > 0.92) { sp *= clamp(1 - (tq - 0.92) * 6, 0.2, 1); A.state = 'TORQUE LIMIT'; }
+    if (s.rop > c.ropTarget * 1.02 && c.mode === 'WOB' && c.ropCap && sp < c.wobSet) A.state = 'ROP LIMIT';
+    const e = (sp - s.wob) / 100;
+    A.iu = clamp(A.iu + c.ki * e * dt, -0.005, 0.03);
+    const u = clamp(c.kp * e + A.iu, -0.05, 0.03);
+    A.sp = sp; A.pv = s.wob; A.out = u;
+    if (c.mode === 'ROP') { A.pvR = s.rop; }
+    return u;
+  }
+  _drawworks(dt) {
+    const s = this.s, c = this.c, k = CFG;
+    let vT = 0, src = 'MANUAL';
+    const adU = this._autodriller(dt);
+    if (!this.powerOK() || s.sheared) { vT = 0; src = 'STOP'; }
+    else if (this.m.active && this.m.v !== null) { vT = this.m.v; src = 'SEQUENCE'; }
+    else if (c.dw.jog) { vT = c.dw.jog * c.dw.jogSpeed / 60; c.dw.blockAuto = 0; }
+    else if (c.dw.blockAuto) { vT = c.dw.blockAuto * Math.min(40, c.dw.jogSpeed * 2) / 60; if ((c.dw.blockAuto > 0 && s.blockH >= k.crownStop - 3) || (c.dw.blockAuto < 0 && s.blockH <= (s.connected ? k.minBlockH : 6.0) + 0.3)) c.dw.blockAuto = 0; }
+    else if (adU !== null) { vT = -adU; src = 'AUTO-DRILLER'; }
+    // brake
+    if (c.dw.brakeMode === 'MANUAL') { s.brake = c.dw.brakeSet ? 'SET' : 'RELEASED'; }
+    else { if (vT !== 0) { s.brake = 'RELEASED'; s.brakeHold = 0; } else if (Math.abs(s.vUp) < 0.002) { s.brakeHold += dt; if (s.brakeHold > 2) s.brake = 'SET'; } }
+    if (s.brake === 'SET' || !this.powerOK()) vT = 0;
+    // power limit when hoisting
+    const vPow = k.dw.kw / Math.max(s.hl, 100); if (vT > 0) vT = Math.min(vT, vPow, k.dw.vmax);
+    if (vT > 0 && s.hl > k.dw.hlRated) vT = 0;
+    const acc = vT === 0 && (s.brake === 'SET' || !this.powerOK()) ? 2.0 : k.dw.accel;
+    s.vUp = approach(s.vUp, vT, acc, dt); s.dwSrc = src;
+    // limits
+    const minH = s.connected && !s.inSlips ? k.minBlockH : 6.0;
+    if (s.blockH >= k.crownStop && s.vUp > 0) s.vUp = 0;
+    if (s.blockH <= minH && s.vUp < 0) s.vUp = 0;
+    if (s.connected && !s.inSlips && s.zFree <= 60 && s.vUp > 0) s.vUp = 0;
+    const db = s.vUp * dt; const z0 = this.bitDepth();
+    s.blockH = clamp(s.blockH + db, 5.5, k.maxBlockH);
+    if (s.connected && !s.inSlips) s.zFree -= db;
+    // pipe displacement (tripping): steel volume in/out of the hole
+    const dz = this.bitDepth() - z0;
+    if (Math.abs(dz) > 0) {
+      const steel = Math.abs(dz) * (CFG.dp.kgm / 7850);
+      if (dz < 0) { if (c.mud.holeFill) s.tripTank = Math.max(0, s.tripTank - steel); else s.levelDrop += steel / this.Aann(); }
+      else { if (s.levelDrop > 0) s.levelDrop = Math.max(0, s.levelDrop - steel / this.Aann()); else s.tripTank += steel; }
+    }
+    if (s.qin > 0.002 && s.levelDrop > 0) s.levelDrop = Math.max(0, s.levelDrop - s.qin / this.Aann() * dt);
+    if (c.mud.holeFill && s.levelDrop > 0 && s.tripTank > 0) { const v = Math.min(s.levelDrop * this.Aann(), 0.02 * dt); s.levelDrop -= v / this.Aann(); s.tripTank -= v; }
+    // swab / surge (bar), only when string hangs from the block
+    const vp = s.connected && !s.inSlips ? s.vUp : 0;
+    s.swab = -Math.sign(vp) * 3.0 * Math.abs(vp) * (this.bitDepth() / 1000) * (s.qin > 0.01 ? 0.4 : 1);
+  }
+
+  /* ---------- top drive ---------- */
+  _topdrive(dt) {
+    const s = this.s, c = this.c, k = CFG, td = c.td, f = s.fault;
+    const pw = this.powerOK() && !s.sheared;
+    const dir = !pw || td.dir === 'OFF' ? 0 : td.dir === 'REV' ? -1 : 1;
+    let rpmT = Math.min(td.rpmSet, c.ad.rpmLimit), Tlim = c.ad.torqueLimit;
+    if (td.mode === 'SPIN') { rpmT = Math.min(td.rpmSet, 60); Tlim = Math.min(3, Tlim); }
+    if (td.mode === 'TORQUE') { rpmT = Math.min(td.rpmSet, 15); }
+    if (this.m.active && this.m.td) { rpmT = this.m.td.rpm; Tlim = this.m.td.tq; }
+    const string = s.connected && !s.inSlips;
+    const fm = formAt(s.Dh, this.haz);
+    const Tbit = this.onBottom() && s.wob > 0.5 ? k.mu * s.wob * k.holeD / 3 * (1 + 0.6 * s.wear) * (fm.kf < 1.5e-3 ? 1.15 : 1) : 0;
+    const wn = s.w / 12.57;
+    const Tdrag = string ? (0.6 + 0.0011 * this.bitDepth()) * (0.5 + 0.5 * clamp(wn, 0, 2)) * (1 + 1.2 * f.pack) : 0.15;
+    const Tload = s.w > 0.05 || dir ? Tbit + Tdrag : 0;
+    const wCmd = dir ? rpmT * 2 * PI / 60 : 0;
+    let Tm;
+    if (td.mode === 'TORQUE' && dir && !(this.m.active && this.m.td)) Tm = Math.min(td.torqueSet, Tlim);
+    else { const aDes = clamp((wCmd - s.w) * 1.5, -k.td.aMax, k.td.aMax); Tm = clamp(Tload + k.td.J * aDes, dir ? -Tlim : -k.td.maxTq, dir ? Tlim : 0); }
+    if (!pw) Tm = Math.min(Tm, 0) - (s.w > 0 ? 6 : 0);
+    s.w = Math.max(0, s.w + (Tm - Tload) / k.td.J * dt);
+    if (td.mode === 'TORQUE' && s.w > wCmd) s.w = wCmd;
+    if (!dir && s.w < 0.05) s.w = 0;
+    s.rpm = s.w * 60 / (2 * PI);
+    s.tdStall = string && dir && wCmd > 1 && s.rpm < 3 && Tm >= Tlim * 0.98;
+    s.tdTorque = s.rpm > 0.3 || s.tdStall ? Math.max(0, Tm) : 0; s.tdSign = dir || 1;
+    s.rotTorque = s.rpm > 0.3 || s.tdStall ? Math.max(0, s.tdStall ? Tlim : Tload) : 0;
+    const load = clamp(s.tdTorque / k.td.maxTq, 0, 1.5);
+    s.tdTemp = lag(s.tdTemp, 35 + 70 * load * load + (s.rpm > 1 ? 8 : 0) + (f.tdCool ? 55 * (0.3 + load) : 0), 300, dt);
+  }
+
+  /* ---------- bit / formation ---------- */
+  _bit(dt) {
+    const s = this.s, k = CFG, f = formAt(s.Dh, this.haz);
+    let rop = 0;
+    if (this.onBottom() && s.wob > 10 && s.rpm > 3) {
+      const base = f.kf * ((s.wob - 10) / k.holeD) * Math.pow(s.rpm, 0.6);
+      const found = 1 / (1 + Math.pow(s.wob / k.wobFound, 3));
+      const fh = 0.7 + 0.3 * clamp(s.hsi / 1.5, 0, 1);
+      const over = clamp(Math.exp(-0.012 * (s.overbal - 30)), 0.6, 1.6);
+      const fw = 1 - 0.55 * Math.pow(s.wear, 1.5);
+      rop = base * found * fh * over * fw * (1 - 0.6 * s.fault.pack);
+      s.wear = Math.min(1, s.wear + s.fault.wearX * f.abr * (s.rpm / 120) * (0.6 + 0.4 * s.wob / 120) / (120 * 3600) * dt);
+      s.bitHours += dt / 3600;
+    }
+    s.rop = lag(s.rop, rop, 6, dt);
+    s.Dh += s.rop / 3600 * dt;
+    const kStr = k.EA / Math.max(500, this.bitDepth()) / 1000; // kN/m
+    s.wob = s.connected && !s.inSlips ? kStr * Math.max(0, s.zFree - s.Dh) : 0;
+    // hook load
+    const bd = this.bitDepth(), BF = 1 - s.rhoA / 7.85;
+    const Wair = (CFG.dp.kgm * Math.max(0, bd - CFG.bha.len) + CFG.bha.kgm * Math.min(CFG.bha.len, bd)) * G / 1000;
+    s.wBuoy = Wair * BF;
+    const drag = Math.sign(s.vUp) * Math.min(1, Math.abs(s.vUp) / 0.1) * (0.025 * s.wBuoy + (s.vUp > 0 ? 450 : 200) * s.fault.pack);
+    if (s.sheared) s.hl = k.blockW;
+    else if (!s.connected) s.hl = k.blockW + (s.standOnTD ? CFG.dp.kgm * CFG.standLen * G / 1000 : 0);
+    else if (s.inSlips) s.hl = k.blockW + this._slipF();
+    else s.hl = k.blockW + s.wBuoy - s.wob + drag;
+    s.overpull = s.connected && !s.inSlips && s.vUp > 0 ? s.hl - (k.blockW + s.wBuoy) : 0;
+    s.cutRho = lag(s.cutRho, s.qin > 0.005 ? clamp(s.rop / 3600 * PI / 4 * k.holeD ** 2 / (s.qin * 0.7) * (2600 - s.rhoA * 1000) / 1000, 0, 0.05) : 0, s.qin > 0.005 ? 120 : 400, dt);
+  }
+
+  /* ---------- well: BHP, influx/losses, kick gas, casing pressure, returns, pits ---------- */
+  _gasGeom() {
+    const s = this.s, g = s.gas, A = this.Aann(), rho = s.rhoA * 1000;
+    if (g.m < 0.5) { g.m = 0; g.h = 0; g.V = 0; s.gasDef = 0; g.surf = false; return; }
+    let P = s.Pc + 1 + rho * G * g.zb / BAR, h = g.m / (0.8 * P * A);
+    for (let i = 0; i < 6; i++) { P = s.Pc + 1 + rho * G * Math.max(g.zb - h / 2, 0) / BAR; h = g.m / (0.8 * P * A); }
+    g.hU = h; g.surf = h >= g.zb; h = Math.min(h, g.zb);
+    g.h = h; g.V = h * A; g.Pm = P; g.zt = g.zb - h;
+    s.gasDef = Math.max(0, (rho - 0.8 * P) * G * h / BAR);
+  }
+  bhp() { const s = this.s; return s.Pc + s.rhoA * 1000 * G * s.Dh / BAR + s.dpAnn - s.gasDef + s.swab - s.levelDrop * s.rhoA * 1000 * G / BAR + s.cutRho * 1000 * G * this.bitDepth() / BAR; }
+  _well(dt) {
+    const s = this.s, k = CFG, g = s.gas, D = s.Dh, A = this.Aann(), bd = this.bitDepth();
+    const rho = s.rhoA * 1000, r = this.rheo(s.rhoA);
+    s.dpAnn = fricDP(s.qin, k.holeD - k.dp.od, A, bd, rho, r.pv, r.yp) / BAR;
+    this._gasGeom();
+    let bhp = this.bhp();
+    // permeable zones exposed in open hole
+    let qIn = 0, qLoss = 0; const shoe = k.shoe;
+    for (const f of formations(this.haz)) {
+      if (f.top >= D || f.bot <= shoe || !(f.gas || f.loss)) continue;
+      const zt = Math.max(f.top, shoe), zbt = Math.min(f.bot, D), zm = (zt + zbt) / 2, expo = clamp((zbt - zt) / 15, 0, 1);
+      const pz = bhp - rho * G * (D - zm) / BAR, pp = interp(f, 'pp', zm) * 1000 * G * zm / BAR;
+      if (f.gas && pp > pz) { const q = f.gas.pi * expo * (pp - pz); qIn += q; this._addGas(q, pz, zm, dt); }
+      if (f.loss && pz > pp) qLoss += f.loss.k * expo * (pz - pp) * s.fault.lcm;
+    }
+    if (s.fault.kick) { const pk = ppAt(D, this.haz) * 1000 * G * D / BAR + s.fault.kick.dpp; if (pk > bhp) { const q = s.fault.kick.pi * (pk - bhp); qIn += q; this._addGas(q, bhp, D, dt); } }
+    if (s.fault.lossK) qLoss += s.fault.lossK * Math.max(0, bhp - ppAt(D, this.haz) * 1000 * G * D / BAR + 20) * s.fault.lcm;
+    // induced fractures (bottom, shoe)
+    const pfB = fgAt(D, this.haz) * 1000 * G * D / BAR, pShoe = bhp - rho * G * (D - shoe) / BAR, pfS = fgAt(shoe, this.haz) * 1000 * G * shoe / BAR;
+    if (bhp > pfB) qLoss += 60 * (bhp - pfB);
+    if (pShoe > pfS) qLoss += 60 * (pShoe - pfS);
+    s.maasp = pfS - rho * G * shoe / BAR;
+    s.qInfl = qIn; s.qLoss = Math.min(qLoss, 6000 + s.qin * 60000);
+    // gas movement / migration / venting
+    const vmig = 0.05;
+    let qExp = 0;
+    if (g.m > 0) {
+      const vA = s.qin / A, V0 = g.V;
+      g.zb = Math.max(0, g.zb - (vA + vmig) * dt);
+      this._gasGeom();
+      if (g.surf || g.zb <= 0.5) { const rate = Math.max(vA + vmig, 0.02) / Math.max(g.hU, 1); g.m *= Math.exp(-rate * dt * 3); if (g.m < 1) g.m = 0; }
+      else qExp = Math.max(0, g.V - V0) / dt; // expansion of rising gas displaces mud
+      if (s.qInfl > 0) qExp = Math.max(0, qExp - s.qInfl / 60000);
+    }
+    s.qExp = qExp * 60000;
+    // returns path
+    const qNet = s.qin + (s.qInfl - s.qLoss) / 60000 + qExp; // m3/s
+    let qOut;
+    if (s.bop.failed) { s.Pc = lag(s.Pc, 0, 2, dt); qOut = Math.max(0, qNet) + (g.m > 0 ? 0.08 : 0.02); }
+    else if (!this.sealed()) { s.Pc = lag(s.Pc, 0, 1.5, dt); qOut = Math.max(0, qNet); }
+    else {
+      const beta = 0.012 + (g.V > 0 ? g.V / Math.max(g.Pm, 1) : 0);
+      if (this.chokePath()) {
+        const Ae = 4.5e-3 * s.choke * s.choke, Pb = 1.5;
+        const Peq = Pb + rho * Math.max(qNet, 0) ** 2 / (2 * 0.49 * Ae * Ae) / BAR;
+        const tau = clamp(beta * 2 * (Peq - Pb + 0.1) / Math.max(qNet, 1e-4), 0.3, 40);
+        s.Pc = lag(s.Pc, Math.min(Peq, 600), tau, dt);
+        qOut = 0.7 * Ae * Math.sqrt(2 * Math.max(s.Pc - Pb, 0) * BAR / rho);
+      } else {
+        s.Pc += qNet * dt / beta + (g.m > 0 && s.qin < 0.002 ? rho * G * vmig * dt / BAR : 0);
+        qOut = 0;
+      }
+      s.Pc = Math.max(0, s.Pc);
+    }
+    if (s.fault.pack > 0.05 && !this.sealed()) qOut *= 1 - 0.25 * s.fault.pack;
+    s.qout = qOut;
+    s.qoutLag = lag(s.qoutLag, qOut, 3, dt); s.qinLag = lag(s.qinLag || 0, s.qin, 3, dt);
+    s.pit += (s.qoutLag - s.qin) * dt;
+    if (s.qInfl > 0) s.kickVol += s.qInfl / 60000 * dt;
+    this._gasGeom();
+    s.bhp = this.bhp();
+    const pp = ppAt(D, this.haz) * 1000 * G * D / BAR;
+    s.pp = pp; s.overbal = s.bhp - pp; s.ecd = s.bhp * BAR / (G * D) / 1000;
+    // shut-in snapshot (SIDPP/SICP) once pressures stabilise
+    if (this.sealed() && s.qin < 0.001 && s.Pc > 0.5) {
+      if (!s.shutin) s.shutin = { t: s.t, pit: s.pit - s.pitRef, sidpp: 0, sicp: 0, tvd: D, mw: s.rhoP };
+      if (s.t - s.shutin.t < 600) { s.shutin.sidpp = Math.max(0, s.bhp - s.rhoP * 1000 * G * D / BAR); s.shutin.sicp = s.Pc; s.shutin.mw = s.rhoP; s.shutin.tvd = D; }
+    }
+  }
+  _addGas(qLmin, P, z, dt) {
+    const g = this.s.gas, dV = qLmin / 60000 * dt, dm = 0.8 * dV * Math.max(P, 1);
+    g.zb = g.m > 0 ? (g.zb * g.m + z * dm) / (g.m + dm) : z; g.m += dm;
+  }
+  recordSCR() { const s = this.s; s.scr = { spm: s.pumps.reduce((a, p) => a + p.spm, 0), q: s.qin * 60000, spp: this.d.spp, t: s.t }; this._log('WELL', 'SCR recorded: ' + s.scr.spm.toFixed(0) + ' spm @ ' + s.scr.spp.toFixed(1) + ' bar', 3, 'EVENT'); }
+  killSheet() {
+    const s = this.s, si = s.shutin, scr = s.scr; if (!si) return null;
+    const kmw = si.mw + si.sidpp / (0.0980665 * si.tvd);
+    const o = { sidpp: si.sidpp, sicp: si.sicp, pitGain: si.pit, tvd: si.tvd, mw: si.mw, kmw };
+    if (scr) { o.icp = si.sidpp + scr.spp; o.fcp = scr.spp * kmw / si.mw; o.scrSpm = scr.spm; o.scrSpp = scr.spp; }
+    o.strokesToBit = (this.Ap() * this.bitDepth() + 4) / (s.pumps[0].q > 0 ? s.pumps[0].q / Math.max(s.pumps[0].spm / 60, 1e-6) : 0.0133);
+    return o;
+  }
+
+  /* ---------- pressures at surface ---------- */
+  _hydraulics() {
+    const s = this.s, k = CFG, f = s.fault, Q = s.qin, bd = this.bitDepth();
+    const rp = this.rheo(s.rhoP), rhoP = s.rhoP * 1000, rhoA = s.rhoA * 1000;
+    if (s.sheared || !s.connected) { s.spp = 0; s.dpBit = 0; s.sppClean = 0; s.hsi = 0; }
+    else {
+      const Qb = Q * (1 - 0.6 * f.wash), A = k.tfa * (1 - 0.55 * f.plug);
+      const dpBit = rhoP * Qb * Qb / (2 * k.cd ** 2 * A * A) / BAR;
+      const dpPipe = fricDP(Q, k.dp.id, this.Ap(), bd, rhoP, rp.pv, rp.yp) / BAR * (1 - 0.75 * f.wash);
+      const dpSurf = 8 * Math.pow(Q / 0.0633, 1.86) * s.rhoP / 1.2;
+      const clean = rhoP * Q * Q / (2 * k.cd ** 2 * k.tfa ** 2) / BAR + fricDP(Q, k.dp.id, this.Ap(), bd, rhoP, rp.pv, rp.yp) / BAR + dpSurf + s.dpAnn;
+      s.sppClean = clean;
+      s.spp = Math.max(0, s.bhp - rhoP * G * s.Dh / BAR + dpBit + dpPipe + dpSurf + 70 * f.pack * (Q > 0.003 ? 1 : 0));
+      s.dpBit = dpBit; s.hsi = dpBit * BAR * Qb / 745.7 / (PI / 4 * k.bitIn ** 2);
+    }
+    for (let i = 0; i < 3; i++) {
+      const ps = s.pumps[i], pc = this.c.pumps[i];
+      ps.p = ps.spm > 0.5 ? s.spp * 1.012 + 0.8 : 0;
+      ps.load = clamp(ps.p * BAR * ps.q / (k.pump.kw * 1000) * 100 + (ps.spm > 0.5 ? 6 : 0), 0, 150);
+      if (ps.p > (k.pump.rating[pc.liner] || 345) && !ps.relief) { ps.relief = true; pc.on = false; this._log('PUMP', 'Pump ' + (i + 1) + ' pop-off relief opened @ ' + ps.p.toFixed(0) + ' bar', 2, 'EVENT'); }
+    }
+    // MSE / d-exponent
+    const Ab = PI / 4 * k.holeD ** 2, ropMs = s.rop / 3600;
+    s.mse = ropMs > 1e-5 ? (s.wob * 1e3 / Ab + 2 * PI * (s.rpm / 60) * s.rotTorque * 1e3 / (Ab * ropMs)) / 1e6 : 0;
+    if (s.rop > 0.5 && s.rpm > 5 && s.wob > 15) {
+      const d = Math.log10(s.rop * 3.28084 / (60 * s.rpm)) / Math.log10(12 * s.wob * 224.809 / (1e6 * k.bitIn));
+      s.dxc = d * 1.03 / Math.max(s.ecd, 0.9);
+    }
+    const g = s.gas;
+    s.gasU = 6 + 90 * Math.exp(-Math.max(s.overbal, 0) / 8) + (g.m > 0 && s.qin > 0.001 ? 1500 * clamp(1 - (g.zt || g.zb) / 400, 0, 1) : 0) + (g.surf ? 800 : 0);
+  }
+
+  /* ---------- sensors (noise + filtering) ---------- */
+  _sense(dt) {
+    const s = this.s, d = this.d, n = () => this.gauss();
+    const set = (key, v, noise, tau) => { const x = v + noise * n(); d[key] = d[key] === undefined || tau <= 0 ? x : lag(d[key], x, tau, dt); };
+    set('holeDepth', s.Dh, 0, 0); set('bitDepth', this.bitDepth(), 0, 0); set('blockH', s.blockH, 0.005, 0);
+    set('blockV', s.vUp * 60, 0.02, 0.3); set('hl', s.hl, 1.2, 0.6); set('wob', s.wob, 0.35, 0.6); set('rop', s.rop, 0.1, 1.5);
+    set('rpm', s.rpm, s.rpm > 1 ? 0.4 : 0, 0.4); set('torque', s.tdTorque, s.rpm > 1 ? 0.06 : 0, 0.4); set('rotTorque', s.rotTorque * 0.97, s.rpm > 1 ? 0.06 : 0, 0.4);
+    set('spp', s.spp, s.spp > 1 ? 0.35 : 0, 0.5); set('pc', s.Pc, s.Pc > 0.5 ? 0.15 : 0, 0.5);
+    set('spm', s.pumps.reduce((a, p) => a + p.spm, 0), 0, 0); set('pumpP', Math.max(...s.pumps.map(p => p.p)), s.spp > 1 ? 0.4 : 0, 0.5);
+    set('qin', s.qin * 60000, s.qin > 0 ? 2 : 0, 0.5); set('qout', s.qoutLag * 60000, s.qoutLag > 0.0005 ? 6 : 0, 1.0);
+    d.qout = Math.max(0, d.qout); d.qin = Math.max(0, d.qin); set('qinExp', (s.qinLag || 0) * 60000, 0, 1.0);
+    set('pit', s.pit, 0.008, 2); d.pitDelta = d.pit - s.pitRef; set('tripTank', s.tripTank, 0.003, 1);
+    set('dp', s.connected && s.qin > 0.003 && !this.sealed() ? s.spp - s.sppClean : 0, 0.15, 1);
+    set('ecd', s.ecd, 0.0005, 2); set('bhp', s.bhp, 0.2, 1); set('overbal', s.overbal, 0, 0); set('gas', s.gasU, 1.5, 3);
+    set('mse', s.mse, 2, 5); set('dxc', s.dxc, 0.004, 10);
+    d.sppExp = s.sppClean; d.mwIn = s.pitRho; d.mwOut = s.retRho - (s.gas.surf ? 0.15 : 0); d.maasp = s.maasp || 0; d.overpull = s.overpull;
+    d.pp = s.pp; d.ppSg = ppAt(s.Dh, this.haz); d.fgSg = fgAt(s.Dh, this.haz);
+  }
+
+  /* ---------- alarms ---------- */
+  _alarms(dt) {
+    for (const def of ALARMS) {
+      const a = this.alarm[def[0]]; let cond = false;
+      try { cond = !!def[4](this); } catch (e) { cond = false; }
+      if (cond) { a.t += dt; if (!a.active && a.t >= a.delay) { a.active = true; a.acked = false; a.t0 = this.s.t; this._log(a.id, a.text, a.prio, 'ALARM'); } }
+      else { a.t = 0; if (a.active) { a.active = false; a.t1 = this.s.t; this._log(a.id, a.text, a.prio, 'CLEAR'); } }
+    }
+  }
+  _log(id, text, prio, type) { this.log.unshift({ t: this.s.t, id, text, prio, type }); if (this.log.length > 200) this.log.pop(); }
+  ack(id) { for (const a of Object.values(this.alarm)) if (!id || a.id === id) a.acked = true; }
+  alarmList() { return Object.values(this.alarm).filter(a => a.active || !a.acked).sort((x, y) => x.prio - y.prio || (y.t0 - x.t0)); }
+
+  /* ---------- trends ---------- */
+  _record() {
+    const T = this.trend, s = this.s; if (s.t - T.last < T.dt) return; T.last = s.t;
+    const i = T.n % T.N; T.t[i] = s.t;
+    for (const k of TREND_KEYS) T.ch[k][i] = this.d[k] === undefined ? 0 : this.d[k];
+    T.n++;
+  }
+
+  /* ---------- driller commands ---------- */
+  estop() { this.c.estop = true; this.c.dw.jog = 0; this.c.dw.blockAuto = 0; this.c.pumps.forEach(p => p.on = false); this.c.td.dir = 'OFF'; this.abortConnection(); this._log('ESTOP', 'E-STOP pressed', 1, 'EVENT'); }
+  esdTrip() { this.estop(); this.c.esd = true; this._log('ESD', 'ESD activated', 1, 'EVENT'); }
+  resetEstop() { if (this.c.esd) return this.note('Reset ESD first'); this.c.estop = false; this._log('ESTOP', 'E-STOP reset, power restored', 3, 'EVENT'); return { ok: true }; }
+  resetEsd() { this.c.esd = false; this._log('ESD', 'ESD reset', 3, 'EVENT'); }
+  zeroPit() { this.s.pitRef = this.s.pit; this.s.kickVol = 0; }
+  addMud(v) { this.s.pit += v; this._log('MUD', (v > 0 ? 'Added ' : 'Transferred out ') + Math.abs(v) + ' m³', 3, 'EVENT'); }
+}
+
+/* connection sequence (drilling with stands). Each run() returns true when the step is complete */
+const CONN_STEPS = [
+  { n: 'Stop rotation, pick up off bottom', to: 90, run: (S, M) => { S.c.td.dir = 'OFF'; M.v = S.s.Dh - S.s.zFree < 0.15 ? 0.1 : 0; return M.v === 0 && S.s.rpm < 2 && Math.abs(S.s.vUp) < 0.005; } },
+  { n: 'Stop mud pumps (flow-check)', to: 120, run: (S) => { S.c.pumps.forEach(p => p.on = false); return S.s.qin * 60000 < 20; } },
+  { n: 'Set slips', to: 30, run: (S, M) => { if (!S.s.op && !S.s.inSlips) S.setSlips(); return S.s.inSlips; } },
+  { n: 'Break out top-drive connection', to: 40, run: (S) => { if (!S.s.op && S.s.connected) S.breakOut(); return !S.s.connected; } },
+  { n: 'Raise top drive to racking board', to: 150, run: (S, M) => { const tgt = CFG.tdOff + 1.5 + CFG.standLen; M.v = clamp((tgt - S.s.blockH) * 0.5, 0.0, 0.6); if (M.v < 0.01) M.v = 0; return Math.abs(S.s.blockH - tgt) < 0.05 && Math.abs(S.s.vUp) < 0.01; } },
+  { n: 'Latch new stand', to: 30, run: (S) => { if (!S.s.op && !S.s.standOnTD) S.pickStand(); return S.s.standOnTD; } },
+  { n: 'Stab, spin-in and torque up', to: 40, run: (S, M) => { M.td = { rpm: M.t < 8 ? 40 : 5, tq: M.t < 8 ? 3 : 30 }; if (!S.s.op && !S.s.connected) S.makeUp(); const ok = S.s.connected; if (ok) M.td = null; return ok; } },
+  { n: 'Take string weight', to: 40, run: (S, M) => { M.v = S._slipF() < 0.985 * S.s.wBuoy ? 0.06 : 0; return M.v === 0 && Math.abs(S.s.vUp) < 0.005; } },
+  { n: 'Pull slips', to: 30, run: (S) => { if (!S.s.op && S.s.inSlips) S.pullSlips(); return !S.s.inSlips; } },
+  { n: 'Restart pumps (staged)', to: 120, run: (S, M) => { const sv = M.saved.pumps; S.c.pumps.forEach((p, i) => { p.on = sv[i].on; p.spm = sv[i].spm; }); return S.s.pumps.every((p, i) => Math.abs(p.spm - (sv[i].on ? sv[i].spm : 0)) < 1); } },
+  { n: 'Start rotation', to: 60, run: (S, M) => { S.c.td.dir = M.saved.dir; S.c.td.mode = M.saved.mode; return S.s.rpm > 0.9 * Math.min(S.c.td.rpmSet, S.c.ad.rpmLimit); } },
+  { n: 'Run to bottom', to: 240, run: (S, M) => { const gap = S.s.Dh - S.s.zFree; M.v = -clamp(gap * 0.3, 0.01, 0.3); return S.s.wob > 3; } },
+];
+
+const TREND_KEYS = ['wob', 'rop', 'hl', 'blockH', 'torque', 'rpm', 'spp', 'pc', 'qin', 'qout', 'pitDelta', 'gas', 'ecd', 'bhp', 'holeDepth', 'dxc'];
+
+const api = { RigSim, CFG, FORM_HAZ, FORM_SAFE, formations, formAt, ppAt, fgAt, ppProg, TREND_KEYS, CONN_STEPS, ALARMS, DEF_TH };
+if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Rig = api;
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+<script>
+/* Driller's Console — UI layer: binds the RigSim physics core to the console, animated rig schematic and trends. */
+(function () {
+'use strict';
+const R = window.Rig, CFG = R.CFG;
+let sim = new R.RigSim();
+const $ = id => document.getElementById(id);
+const st = { units: 'si', speed: 1, win: 3600, sound: false, hover: null, lastUi: 0, lastTrend: 0, lastPw: 0, lastMsg: 0, hidden: {}, beepT: 0, anim: { td: 0, drum: 0, pump: [0, 0, 0], shake: 0, bit: 0 } };
+
+/* ---------------- units ---------------- */
+const UN = {
+  len: { si: ['m', 1], fd: ['ft', 3.28084] }, rop: { si: ['m/h', 1], fd: ['ft/h', 3.28084] }, spd: { si: ['m/min', 1], fd: ['ft/min', 3.28084] },
+  force: { si: ['kN', 1], fd: ['klbf', 0.224809] }, torque: { si: ['kN·m', 1], fd: ['kft·lbf', 0.737562] },
+  press: { si: ['bar', 1], fd: ['psi', 14.5038, 0] }, flow: { si: ['L/min', 1], fd: ['gpm', 0.264172, 0] },
+  vol: { si: ['m³', 1], fd: ['bbl', 6.28981] }, dens: { si: ['sg', 1], fd: ['ppg', 8.3454, 2] },
+  temp: { si: ['°C', 1], fd: ['°F', 1] }, mpa: { si: ['MPa', 1], fd: ['ksi', 0.145038] },
+};
+const cv = (q, v) => q === 'temp' ? (st.units === 'si' ? v : v * 1.8 + 32) : (UN[q] ? v * UN[q][st.units][1] : v);
+const un = q => UN[q] ? UN[q][st.units][0] : (q || '');
+function fmt(q, v, dec) {
+  if (v === undefined || v === null || !isFinite(v)) return '—';
+  const u = UN[q]; const d = u && st.units === 'fd' && u.fd[2] !== undefined ? u.fd[2] : dec;
+  const x = cv(q, v); return (Math.abs(x) < 0.5 * Math.pow(10, -d) ? 0 : x).toFixed(d);
+}
+const fu = (q, v, dec) => fmt(q, v, dec) + ' ' + un(q);
+const toSI = (q, x) => q === 'temp' ? (st.units === 'si' ? x : (x - 32) / 1.8) : (UN[q] ? x / UN[q][st.units][1] : x);
+
+/* ---------------- primary parameters ---------------- */
+const PARAMS = [
+  ['holeDepth', 'Hole Depth', 'len', 1], ['bitDepth', 'Bit Depth', 'len', 1], ['blockH', 'Block Position', 'len', 2], ['blockV', 'Block Speed', 'spd', 1],
+  ['hl', 'Hook Load', 'force', 1], ['wob', 'WOB', 'force', 1], ['rop', 'ROP', 'rop', 1], ['rpm', 'Top Drive RPM', 'rpm', 0],
+  ['torque', 'Top Drive Torque', 'torque', 1], ['spp', 'Standpipe Pressure', 'press', 1], ['pc', 'Casing Pressure', 'press', 1],
+  ['spm', 'Pump Strokes', 'spm', 0], ['pumpP', 'Pump Pressure', 'press', 1], ['qin', 'Mud Flow In', 'flow', 0], ['qout', 'Mud Flow Out', 'flow', 0],
+  ['pit', 'Mud Pit Volume', 'vol', 1], ['pitDelta', 'Pit Gain / Loss', 'vol', 2], ['dp', 'Differential Pressure', 'press', 1],
+  ['rotTorque', 'Rotary Torque', 'torque', 1], ['ecd', 'ECD @ bit', 'dens', 3], ['gas', 'Gas', 'units', 0],
+];
+const ALARM_ROW = { HSPP: 'spp', LSPP: 'spp', HTQ: 'torque', STALL: 'torque', HHL: 'hl', OVERPULL: 'hl', HWOB: 'wob', HRPM: 'rpm', KICK: 'qout', LOWFLOW: 'qout', FLOWING: 'qout', PITGAIN: 'pitDelta', PITLOSS: 'pitDelta', HPC: 'pc', GAS: 'gas', BSPD: 'blockV', CROWN: 'blockH', CONN: 'blockH' };
+function buildParams() {
+  $('params').innerHTML = PARAMS.map(p => `<div class="prow" id="pr_${p[0]}"><span class="n">${p[1]} <i id="pu_${p[0]}"></i></span><span class="v" id="pv_${p[0]}">—</span></div>`).join('');
+}
+
+/* ---------------- pumps / BOP rows ---------------- */
+function buildPumps() {
+  $('pumps').innerHTML = [0, 1, 2].map(i => `<div class="pump">
+    <h3>PUMP ${i + 1} <span class="lamp" id="pl${i}" title="Alarm"></span></h3>
+    <div class="seg"><button class="btn sm" data-pon="${i}">On</button><button class="btn sm" data-poff="${i}">Off</button>
+      <select data-liner="${i}" title="Liner size">${[5, 5.5, 6, 6.5].map(l => `<option value="${l}">${l}" liner</option>`).join('')}</select></div>
+    <div class="ctl"><label>SPM</label><input type="range" min="0" max="130" step="1" data-pspm="${i}"><output id="po${i}"></output></div>
+    <div class="kvt">
+      <span>SPM</span><b id="pS${i}">—</b><span>Pressure</span><b id="pP${i}">—</b><span>Stroke</span><b id="pK${i}">—</b>
+      <span>Flow</span><b id="pQ${i}">—</b><span>Motor load</span><b id="pL${i}">—</b><span>Strokes</span><b id="pT${i}" class="w">—</b><span>Status</span><b id="pX${i}">—</b>
+    </div></div>`).join('');
+}
+const BOP_ROWS = [['annular', 'Annular BOP'], ['pipe', 'Pipe rams'], ['shear', 'Blind / shear rams'], ['hcr', 'HCR (choke line)'], ['kill', 'Kill line']];
+function buildBop() {
+  $('bopRows').innerHTML = BOP_ROWS.map(([k, n]) => `<span>${n}</span><span class="row" style="justify-content:flex-end;gap:4px">
+    ${k === 'shear' ? `<button class="btn sm" data-arm="1">Arm</button><button class="btn sm red" data-fire="1">Fire</button>` :
+      `<button class="btn sm" data-bop="${k}" data-st="OPEN">Open</button><button class="btn sm" data-bop="${k}" data-st="CLOSED">Close</button>`}
+    <span class="pill d" id="bp_${k}">—</span></span>`).join('');
+}
+function buildSteps() { $('steps').innerHTML = R.CONN_STEPS.map((s, i) => `<li id="cs${i}">${i + 1}. ${s.n}</li>`).join(''); }
+
+/* ---------------- alarm thresholds (instructor) ---------------- */
+const TH_META = { sppHi: ['High SPP', 'press'], sppLoPct: ['Low SPP (fraction of expected)', ''], hlHi: ['High hook load', 'force'], overpull: ['Overpull', 'force'], flowDev: ['Flow deviation', 'flow'], flowPct: ['Flow deviation (% of in)', ''], flowCheck: ['Flow-check (pumps off)', 'flow'], pitGain: ['Pit gain', 'vol'], pitLoss: ['Pit loss', 'vol'], pcHiPct: ['Casing P (% of MAASP)', ''], accumLo: ['Low accumulator', 'press'], gasHi: ['High gas (units)', ''], blockSpeedHi: ['High block speed', 'spd'], tdTempHi: ['TD motor temperature', 'temp'] };
+function buildTh() {
+  $('thGrid').innerHTML = Object.keys(TH_META).map(k => { const [n, q] = TH_META[k]; return `<label>${n} ${q ? '(' + un(q) + ')' : ''}<input type="number" step="any" data-th="${k}" value="${q ? +cv(q, sim.th[k]).toFixed(2) : sim.th[k]}"></label>`; }).join('');
+}
+
+/* ---------------- scene ---------------- */
+const X = 330, FL = 380, GR = 470, S = 7.0, SUB0 = 532, SUB1 = 852;
+const xl = y => 250 + 56 * (FL - y) / (FL - 52), xr = y => 410 - 56 * (FL - y) / (FL - 52);
+let SC = {};
+function buildScene() {
+  let h = `<defs>
+  <linearGradient id="gSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0d2a4b"/><stop offset="1" stop-color="#061321"/></linearGradient>
+  <linearGradient id="gGround" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a2c1d"/><stop offset="1" stop-color="#1c150e"/></linearGradient>
+  <linearGradient id="gYel" x1="0" x2="1"><stop offset="0" stop-color="#9d7500"/><stop offset=".45" stop-color="#ffd84a"/><stop offset="1" stop-color="#8f6a00"/></linearGradient>
+  <linearGradient id="gRed" x1="0" x2="1"><stop offset="0" stop-color="#6d0b0b"/><stop offset=".45" stop-color="#e03a3a"/><stop offset="1" stop-color="#5e0a0a"/></linearGradient>
+  <linearGradient id="gAmb" x1="0" x2="1"><stop offset="0" stop-color="#6a4a00"/><stop offset=".45" stop-color="#e6a515"/><stop offset="1" stop-color="#5c4000"/></linearGradient>
+  <linearGradient id="gBlue" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#3d8fe8"/><stop offset="1" stop-color="#103e7a"/></linearGradient>
+  <linearGradient id="gSteel" x1="0" x2="1"><stop offset="0" stop-color="#55697e"/><stop offset=".5" stop-color="#cfdbe6"/><stop offset="1" stop-color="#4c5f73"/></linearGradient>
+  <linearGradient id="gMud" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#a37445"/><stop offset="1" stop-color="#5c3d20"/></linearGradient>
+  <filter id="glow"><feGaussianBlur stdDeviation="2.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  <clipPath id="clipSub"><rect x="0" y="${SUB0}" width="760" height="${SUB1 - SUB0}"/></clipPath></defs>
+  <rect width="760" height="${GR}" fill="url(#gSky)"/>
+  <rect y="${GR}" width="760" height="${SUB0 - GR - 4}" fill="url(#gGround)"/>
+  <path d="M0 ${GR}H760" stroke="#6b5a40" stroke-width="2"/>`;
+  // derrick lattice
+  let lat = `M250 ${FL}L306 52M410 ${FL}L354 52`; const lv = []; for (let y = FL - 8; y > 60; y -= 34) lv.push(y);
+  for (let i = 0; i < lv.length; i++) { const y = lv[i]; lat += `M${xl(y)} ${y}H${xr(y)}`; if (i + 1 < lv.length) { const y2 = lv[i + 1]; lat += `M${xl(y)} ${y}L${xr(y2)} ${y2}M${xr(y)} ${y}L${xl(y2)} ${y2}`; } }
+  h += `<path d="${lat}" stroke="#7fa6c9" stroke-width="2" fill="none" opacity=".85"/><path d="M250 ${FL}L306 52M410 ${FL}L354 52" stroke="#c9dceb" stroke-width="4"/>`;
+  const mb = FL - 27 * S; h += `<path d="M${xl(mb) - 34} ${mb}H${xl(mb)}" stroke="#c9dceb" stroke-width="4"/><text x="${xl(mb) - 36}" y="${mb - 5}" class="sl">Racking board</text>`;
+  // crown
+  h += `<rect x="296" y="34" width="68" height="20" rx="2" fill="url(#gYel)" stroke="#2a2000"/>${[312, 324, 336, 348].map(x => `<circle cx="${x}" cy="44" r="5" fill="#3a3000" stroke="#ffe27a"/>`).join('')}
+  <text x="372" y="36" class="sl">Crown Block</text><text x="372" y="160" class="sl">Derrick / Mast</text>`;
+  // standpipe + hose
+  h += `<path id="stdp" d="M445 395V140" stroke="#3fb0ff" stroke-width="5" fill="none"/><path id="stdpF" class="flow" d="M445 395V140" stroke="#bfe9ff" stroke-width="2" fill="none"/>
+  <path id="hose" d="" stroke="#1c2b3c" stroke-width="7" fill="none" stroke-linecap="round"/><path id="hoseF" class="flow" d="" stroke="#3fb0ff" stroke-width="3" fill="none"/>
+  <text x="452" y="150" class="sl">Standpipe</text><text x="452" y="162" class="sv" id="tSpp">—</text>`;
+  // drilling lines + drawworks
+  h += `<g id="dlines" stroke="#d6e3ef" stroke-width="1.2">${[0, 1, 2, 3].map(i => `<line id="dl${i}" x1="${314 + i * 10.7}" y1="54"/>`).join('')}</g>
+  <line x1="226" y1="356" x2="300" y2="48" stroke="#d6e3ef" stroke-width="1.2"/><line x1="360" y1="48" x2="404" y2="${FL - 2}" stroke="#d6e3ef" stroke-width="1.2"/>
+  <rect x="198" y="350" width="54" height="30" rx="2" fill="#163556" stroke="#5c8fbf"/><g id="drum" transform="translate(225 365)"><circle r="12" fill="#2b4a6b" stroke="#bcd3ea"/><path d="M-12 0H12M0 -12V12M-8.5 -8.5L8.5 8.5M-8.5 8.5L8.5 -8.5" stroke="#bcd3ea" stroke-width="1.2"/></g>
+  <text x="196" y="344" class="sl">Drawworks</text>`;
+  // block + top drive
+  h += `<g id="blk"><rect x="315" y="-18" width="30" height="18" rx="3" fill="url(#gYel)" stroke="#2a2000"/><path d="M330 0v6" stroke="#ffd84a" stroke-width="3"/>
+    <rect x="314" y="6" width="32" height="20" rx="2" fill="url(#gYel)" stroke="#2a2000"/><rect x="346" y="8" width="13" height="15" rx="2" fill="#c49b18" stroke="#2a2000"/>
+    <rect x="326" y="26" width="8" height="9" fill="url(#gSteel)"/><ellipse id="tdSpin" cx="330" cy="30" rx="7" ry="2.6" fill="none" stroke="#36c8ff" stroke-width="2" stroke-dasharray="4 4"/>
+    <text x="364" y="-6" class="sl">Travelling Block</text><text x="364" y="16" class="sl">Top Drive</text><text x="364" y="28" class="sv" id="tRpm">—</text></g>
+  <line id="strTop" x1="${X}" x2="${X}" stroke="url(#gSteel)" stroke-width="6"/><line id="stand" x1="${X}" x2="${X}" stroke="#9fb3c8" stroke-width="5" stroke-dasharray="40 2"/>
+  <line id="stub" x1="${X}" x2="${X}" y1="${FL - 1.5 * S}" y2="${FL}" stroke="url(#gSteel)" stroke-width="6"/>`;
+  // floor, substructure, rotary, slips
+  h += `<path d="M215 ${FL + 8}L238 ${GR}M445 ${FL + 8}L422 ${GR}M215 ${FL + 8}L422 ${GR}M445 ${FL + 8}L238 ${GR}" stroke="#4f7397" stroke-width="2"/>
+  <rect x="190" y="${FL}" width="285" height="8" fill="#2b4a6b" stroke="#6b97c2"/><ellipse cx="${X}" cy="${FL + 1}" rx="24" ry="4.5" fill="#0d1d30" stroke="#ffb627"/>
+  <g id="slips" visibility="hidden"><path d="M${X - 13} ${FL - 4}L${X - 4} ${FL - 4}L${X - 4} ${FL + 4}L${X - 9} ${FL + 4}Z M${X + 13} ${FL - 4}L${X + 4} ${FL - 4}L${X + 4} ${FL + 4}L${X + 9} ${FL + 4}Z" fill="#ffb627"/></g>
+  <line id="strBop" x1="${X}" x2="${X}" y1="${FL}" y2="${SUB0}" stroke="url(#gSteel)" stroke-width="5"/>
+  <text x="478" y="${FL + 7}" class="sl">Drill floor</text>`;
+  // BOP stack
+  const ram = (id, y, hgt, fill) => `<rect x="${X - 34}" y="${y}" width="68" height="${hgt}" rx="3" fill="${fill}" stroke="#2a0000"/><rect id="${id}L" x="${X - 30}" y="${y + 3}" width="2" height="${hgt - 6}" fill="#ffd2d2"/><rect id="${id}R" x="${X + 28}" y="${y + 3}" width="2" height="${hgt - 6}" fill="#ffd2d2"/>`;
+  h += `<rect x="${X - 9}" y="${FL + 8}" width="18" height="6" fill="#5b6f84"/>
+  <rect x="${X - 27}" y="394" width="54" height="20" rx="9" fill="url(#gRed)" stroke="#2a0000"/><rect id="annL" x="${X - 22}" y="399" width="2" height="10" fill="#ffd2d2"/><rect id="annR" x="${X + 20}" y="399" width="2" height="10" fill="#ffd2d2"/>
+  ${ram('pr', 417, 15, 'url(#gRed)')}${ram('sr', 435, 15, 'url(#gAmb)')}
+  <rect x="${X - 24}" y="452" width="48" height="6" fill="#7b8da0"/><rect x="${X - 18}" y="458" width="36" height="12" fill="#56697d" stroke="#9fb3c8"/>
+  <circle id="ldAnn" cx="${X + 41}" cy="404" r="4"/><circle id="ldPr" cx="${X + 41}" cy="424" r="4"/><circle id="ldSr" cx="${X + 41}" cy="442" r="4"/>
+  <text x="${X + 48}" y="407" class="sl">Annular</text><text x="${X + 48}" y="427" class="sl">Pipe rams</text><text x="${X + 48}" y="445" class="sl">Blind/Shear</text>
+  <text x="${X - 36}" y="${FL + 26}" class="sl" text-anchor="end">BOP Stack</text><text x="${X + 4}" y="494" class="sl">Wellhead</text>`;
+  // choke / kill lines, MGS, flare
+  h += `<path d="M${X + 24} 455H510V380" stroke="#4a1d1d" stroke-width="6" fill="none"/><path id="chkF" class="flow" d="M${X + 24} 455H510V380" stroke="#ff5a5a" stroke-width="3" fill="none"/>
+  <path d="M${X - 24} 455H250" stroke="#36506b" stroke-width="5"/><path id="killV" d="M262 449L274 461M262 461L274 449" stroke="#9fb3c8" stroke-width="2.5"/>
+  <path id="hcrV" d="M394 449L406 461V449L394 461Z" fill="#2bd66f" stroke="#081627"/><path id="chkV" d="M462 448L476 462V448L462 462Z" fill="#ffb627" stroke="#081627"/><rect x="465" y="438" width="8" height="8" fill="#9fb3c8"/>
+  <text x="380" y="476" class="sl">HCR</text><text x="420" y="478" class="sl">Choke</text><text x="420" y="490" class="sv" id="tPc">—</text><text x="236" y="476" class="sl">Kill</text>
+  <rect x="496" y="292" width="28" height="88" rx="10" fill="#183858" stroke="#6b97c2"/><text x="528" y="320" class="sl">Mud-gas</text><text x="528" y="332" class="sl">separator</text>
+  <path d="M510 292V214H690V188" stroke="#36506b" stroke-width="3" fill="none"/><path id="flare" d="M690 188c-10-10-4-22 0-30c4 8 10 20 0 30z" fill="#ffb627" filter="url(#glow)" visibility="hidden"/>
+  <text x="640" y="206" class="sl">Flare</text><text x="528" y="344" class="sv" id="tGas">—</text>
+  <path id="mgsRet" class="flow" d="M496 372H486V496H140V462" stroke="#c9925a" stroke-width="3" fill="none" visibility="hidden"/>`;
+  // flowline, shaker, pits, trip tank
+  h += `<path d="M${X - 9} 391H250L205 401" stroke="#5c3d20" stroke-width="7" fill="none"/><path id="flowF" class="flow" d="M${X - 9} 391H250L205 401" stroke="#c9925a" stroke-width="3" fill="none"/>
+  <g id="shaker"><rect x="148" y="393" width="58" height="12" rx="2" fill="#284c70" stroke="#8fb2d6"/><path d="M152 397H202" stroke="#c9925a" stroke-width="2" stroke-dasharray="3 2"/></g>
+  <text x="148" y="388" class="sl">Shale shaker</text>
+  ${[20, 112].map((x, i) => `<rect x="${x}" y="410" width="88" height="56" fill="#0d1d30" stroke="#6b97c2"/><rect id="mud${i}" x="${x + 2}" y="440" width="84" height="24" fill="url(#gMud)"/>`).join('')}
+  <text x="22" y="404" class="sl">Mud Pits</text><text x="70" y="404" class="sv" id="tPit">—</text>
+  <rect x="210" y="404" width="18" height="40" fill="#0d1d30" stroke="#6b97c2"/><rect id="ttLvl" x="212" y="420" width="14" height="22" fill="url(#gMud)"/><text x="206" y="456" class="sl" font-size="9">Trip tank</text>`;
+  // suction, pumps, discharge
+  h += `<path d="M196 462V512H740V462" stroke="#5c3d20" stroke-width="6" fill="none"/><path id="sucF" class="flow" d="M196 462V512H740V462" stroke="#c9925a" stroke-width="2.5" fill="none"/>
+  <path d="M740 404V394H445" stroke="#143d66" stroke-width="7" fill="none"/><path id="disF" class="flow" d="M740 404V394H445" stroke="#3fb0ff" stroke-width="3" fill="none"/>`;
+  for (let i = 0; i < 3; i++) {
+    const x0 = 556 + i * 64;
+    h += `<g><rect x="${x0}" y="404" width="56" height="58" rx="3" fill="url(#gBlue)" stroke="#9cc8ff"/>
+      <rect x="${x0 + 4}" y="410" width="18" height="46" rx="2" fill="#0d3466" stroke="#5c8fbf"/>${[0, 1, 2].map(k => `<circle cx="${x0 + 13}" cy="${418 + k * 15}" r="5" fill="#1d6fd1" stroke="#bfe0ff"/>`).join('')}
+      <rect id="rod${i}" x="${x0 + 22}" y="428" width="14" height="5" fill="#cfdbe6"/><rect x="${x0 + 36}" y="414" width="16" height="36" rx="2" fill="#123a6b" stroke="#5c8fbf"/>
+      <circle id="pumpLamp${i}" cx="${x0 + 50}" cy="409" r="3.5" fill="#28384b"/><text x="${x0 + 28}" y="476" class="sl" text-anchor="middle">${i + 1}</text></g>`;
+  }
+  h += `<text x="740" y="526" class="sl" text-anchor="end">Mud Pumps (triplex)</text><text x="200" y="526" class="sl">Suction</text>`;
+  // subsurface group (re-rendered), section break
+  h += `<rect y="${SUB0 - 4}" width="760" height="${SUB1 - SUB0 + 8}" fill="#0a0f16"/><g id="sub" clip-path="url(#clipSub)"></g>
+  <path d="M${X - 20} ${SUB0 - 10}l10 -6l10 6l10 -6l10 6" stroke="#ffb627" fill="none" stroke-width="1.5"/>
+  <text x="8" y="${SUB0 + 14}" class="sl">Well section (depth window)</text>`;
+  $('scene').innerHTML = `<style>.sl{font:10.5px system-ui,sans-serif;fill:#9cc4e8}.sv{font:700 11px system-ui,sans-serif;fill:#2bd66f}.fl{font:10px system-ui,sans-serif;fill:#e8dcc4}.dt{font:9.5px system-ui,sans-serif;fill:#7f9dbd}</style>` + h;
+  for (const id of ['blk', 'strTop', 'stand', 'stub', 'hose', 'hoseF', 'drum', 'tdSpin', 'slips', 'strBop', 'annL', 'annR', 'prL', 'prR', 'srL', 'srR', 'ldAnn', 'ldPr', 'ldSr', 'chkF', 'hcrV', 'chkV', 'killV', 'flare', 'mgsRet', 'flowF', 'shaker', 'mud0', 'mud1', 'ttLvl', 'sucF', 'disF', 'stdpF', 'sub', 'tSpp', 'tRpm', 'tPc', 'tPit', 'tGas', 'rod0', 'rod1', 'rod2', 'pumpLamp0', 'pumpLamp1', 'pumpLamp2', 'dl0', 'dl1', 'dl2', 'dl3'])
+    SC[id] = document.getElementById(id);
+}
+function flowAnim(el, q, qRef) { // q in L/min
+  if (!el) return;
+  if (q > 5) { el.style.animationPlayState = 'running'; el.style.animationDuration = clamp(2.2 * qRef / Math.max(q, 1), 0.25, 8).toFixed(2) + 's'; el.style.opacity = 1; }
+  else { el.style.animationPlayState = 'paused'; el.style.opacity = 0.25; }
+}
+const clamp = (x, a, b) => x < a ? a : x > b ? b : x;
+const sevColor = p => p >= 0.98 ? '#ff4545' : p <= 0.02 ? '#2bd66f' : '#ffb627';
+function updateScene(dtA) {
+  const s = sim.s, d = sim.d, A = st.anim;
+  const yb = FL - s.blockH * S, ys = yb + CFG.tdOff * S;
+  SC.blk.setAttribute('transform', `translate(0 ${yb})`);
+  for (let i = 0; i < 4; i++) { SC['dl' + i].setAttribute('x2', 318 + i * 8); SC['dl' + i].setAttribute('y2', yb - 18); SC['dl' + i].setAttribute('y1', 54); }
+  const hp = `M445 140C445 ${Math.min(yb + 60, 300)} 372 ${yb - 40} 359 ${yb + 10}`; SC.hose.setAttribute('d', hp); SC.hoseF.setAttribute('d', hp);
+  const conn = s.connected && !s.sheared;
+  SC.strTop.setAttribute('y1', ys); SC.strTop.setAttribute('y2', FL); SC.strTop.style.visibility = conn ? 'visible' : 'hidden';
+  SC.stand.setAttribute('y1', ys); SC.stand.setAttribute('y2', ys + CFG.standLen * S); SC.stand.style.visibility = s.standOnTD ? 'visible' : 'hidden';
+  SC.stub.style.visibility = !conn && !s.sheared ? 'visible' : 'hidden';
+  SC.slips.setAttribute('visibility', s.inSlips ? 'visible' : 'hidden');
+  SC.strBop.style.visibility = s.sheared ? 'hidden' : 'visible';
+  A.td = (A.td + s.rpm / 60 * dtA * 16) % 16; SC.tdSpin.setAttribute('stroke-dashoffset', A.td.toFixed(2)); SC.tdSpin.style.opacity = s.rpm > 0.5 ? 1 : 0.3;
+  A.drum = (A.drum + s.vUp * 60 * CFG.dw.lines / (Math.PI * CFG.dw.drumD) / 60 * 360 * dtA * 0.25) % 360; SC.drum.setAttribute('transform', `translate(225 365) rotate(${A.drum.toFixed(1)})`);
+  // BOP visuals
+  const b = s.bop;
+  SC.annL.setAttribute('width', 2 + 16 * b.annular); SC.annR.setAttribute('x', X + 20 - 16 * b.annular); SC.annR.setAttribute('width', 2 + 16 * b.annular);
+  SC.prL.setAttribute('width', 2 + 26 * b.pipe); SC.prR.setAttribute('x', X + 28 - 26 * b.pipe); SC.prR.setAttribute('width', 2 + 26 * b.pipe);
+  SC.srL.setAttribute('width', 2 + 26 * b.shear); SC.srR.setAttribute('x', X + 28 - 26 * b.shear); SC.srR.setAttribute('width', 2 + 26 * b.shear);
+  SC.ldAnn.setAttribute('fill', sevColor(b.annular)); SC.ldPr.setAttribute('fill', sevColor(b.pipe)); SC.ldSr.setAttribute('fill', sim.c.bop.shearArmed && b.shear < 0.02 ? '#ffb627' : sevColor(b.shear));
+  SC.hcrV.setAttribute('fill', b.hcr > 0.98 ? '#2bd66f' : b.hcr < 0.02 ? '#ff4545' : '#ffb627'); SC.killV.setAttribute('stroke', b.kill > 0.98 ? '#2bd66f' : '#ff4545');
+  const sealed = sim.sealed(), qo = s.qout * 60000, qi = s.qin * 60000;
+  flowAnim(SC.chkF, sealed ? qo : 0, 3800); SC.chkF.style.visibility = sealed && b.hcr > 0.5 ? 'visible' : 'hidden';
+  SC.mgsRet.setAttribute('visibility', sealed && qo > 5 ? 'visible' : 'hidden'); flowAnim(SC.mgsRet, sealed ? qo : 0, 3800);
+  SC.flare.setAttribute('visibility', s.gas.surf || (s.gas.m > 0 && s.gas.zt < 30) ? 'visible' : 'hidden');
+  flowAnim(SC.flowF, sealed ? 0 : qo, 3800); flowAnim(SC.sucF, qi, 3800); flowAnim(SC.disF, qi, 3800); flowAnim(SC.stdpF, qi, 3800); flowAnim(SC.hoseF, conn ? qi : 0, 3800);
+  A.shake += dtA * 40; SC.shaker.setAttribute('transform', qo > 50 && !sealed ? `translate(${Math.sin(A.shake) * 0.8} 0)` : '');
+  for (let i = 0; i < 3; i++) {
+    const p = s.pumps[i]; A.pump[i] = (A.pump[i] + p.spm / 60 * dtA * 2 * Math.PI) % (2 * Math.PI);
+    SC['rod' + i].setAttribute('x', 556 + i * 64 + 22 + 5 * Math.sin(A.pump[i]));
+    SC['pumpLamp' + i].setAttribute('fill', p.relief || p.effLoss > 0.1 ? '#ff4545' : p.spm > 1 ? '#2bd66f' : '#28384b');
+  }
+  const lv = clamp(s.pit / 800, 0, 1) * 52; for (const k of ['mud0', 'mud1']) { SC[k].setAttribute('y', 464 - lv); SC[k].setAttribute('height', lv); }
+  const tl = clamp(s.tripTank / 30, 0, 1) * 36; SC.ttLvl.setAttribute('y', 442 - tl); SC.ttLvl.setAttribute('height', tl);
+  SC.tSpp.textContent = fu('press', d.spp, 1); SC.tRpm.textContent = fmt('', d.rpm, 0) + ' rpm · ' + fu('torque', d.torque, 1);
+  SC.tPc.textContent = fu('press', d.pc, 1); SC.tPit.textContent = fu('vol', d.pit, 1); SC.tGas.textContent = 'Gas ' + fmt('', d.gas, 0) + ' u';
+}
+function renderSub() {
+  const s = sim.s, d = sim.d, bd = sim.bitDepth(), W = 1000;
+  const top = Math.max(0, bd - 0.72 * W), y = z => SUB0 + (z - top) * (SUB1 - SUB0) / W;
+  let h = '';
+  for (const f of R.formations(sim.haz)) {
+    if (f.bot < top || f.top > top + W) continue;
+    const y0 = Math.max(y(f.top), SUB0), y1 = Math.min(y(f.bot), SUB1);
+    h += `<rect x="40" y="${y0}" width="720" height="${y1 - y0}" fill="${f.col}" opacity=".55"/><path d="M40 ${y0}H760" stroke="#000" stroke-opacity=".35"/>`;
+    if (y1 - y0 > 11) h += `<text x="752" y="${(y0 + y1) / 2 + 3}" class="fl" text-anchor="end">${f.n} · pp ${f.pp[1].toFixed(2)} sg${f.gas ? ' · GAS' : ''}${f.loss ? ' · LOSS' : ''}</text>`;
+  }
+  for (let z = Math.ceil(top / 100) * 100; z < top + W; z += 100) h += `<path d="M30 ${y(z)}H44" stroke="#7f9dbd"/><text x="2" y="${y(z) + 3}" class="dt">${fmt('len', z, 0)}</text>`;
+  const shoeY = y(CFG.shoe), holeB = y(s.Dh);
+  // annulus (mud), casing, open hole
+  h += `<rect x="${X - 16}" y="${SUB0}" width="32" height="${Math.max(0, holeB - SUB0)}" fill="#6d4a2a"/>`;
+  if (shoeY > SUB0) h += `<path d="M${X - 18} ${SUB0}V${shoeY}M${X + 18} ${SUB0}V${shoeY}" stroke="#c4ced8" stroke-width="3"/><path d="M${X - 18} ${shoeY}l-6 6h6zM${X + 18} ${shoeY}l6 6h-6z" fill="#c4ced8"/><text x="${X + 28}" y="${shoeY + 4}" class="fl">13⅜" shoe ${fmt('len', CFG.shoe, 0)} ${un('len')}</text>`;
+  else h += `<text x="${X + 24}" y="${SUB0 + 12}" class="fl">↑ 13⅜" shoe @ ${fmt('len', CFG.shoe, 0)} ${un('len')}</text>`;
+  // gas
+  const g = s.gas;
+  if (g.m > 0) { const ya = Math.max(y(g.zt || g.zb), SUB0), yz = Math.max(y(g.zb), ya + 2); h += `<rect x="${X - 16}" y="${ya}" width="10" height="${yz - ya}" fill="#ffe14d" opacity=".85"/><rect x="${X + 6}" y="${ya}" width="10" height="${yz - ya}" fill="#ffe14d" opacity=".85"/>`; if (yz > SUB0 + 4) h += `<text x="${X - 22}" y="${(ya + yz) / 2 + 3}" class="fl" text-anchor="end" fill="#ffe14d">gas ${fmt('vol', g.V, 1)} ${un('vol')}</text>`; }
+  // string
+  if (!s.sheared) {
+    const yBha = y(Math.max(0, bd - CFG.bha.len)), yBit = y(bd);
+    h += `<rect x="${X - 3}" y="${SUB0}" width="6" height="${Math.max(0, yBha - SUB0)}" fill="#c4ced8"/><rect x="${X - 6}" y="${Math.max(yBha, SUB0)}" width="12" height="${Math.max(0, yBit - Math.max(yBha, SUB0))}" fill="#8fa2b5"/>
+      <path d="M${X - 9} ${yBit}h18l-9 9z" fill="#ffb627" transform="rotate(${(st.anim.bit % 360).toFixed(0)} ${X} ${yBit + 4})"/>
+      <text x="${X + 30}" y="${yBit + 4}" class="fl">◄ Bit ${fmt('len', bd, 1)} ${un('len')}</text>`;
+  }
+  h += `<path d="M${X - 18} ${holeB}H${X + 18}" stroke="#ffb627" stroke-width="1.5"/><text x="${X - 24}" y="${holeB + 12}" class="fl" text-anchor="end">TD ${fmt('len', s.Dh, 1)}</text>`;
+  if (s.qInfl > 1) h += `<text x="${X - 60}" y="${y(Math.min(s.Dh, bd)) - 4}" class="fl" fill="#ffe14d" font-size="14">⟹ influx ${fmt('flow', s.qInfl, 0)} ${un('flow')}</text>`;
+  if (s.qLoss > 1) h += `<text x="${X + 30}" y="${y(s.Dh) - 14}" class="fl" fill="#ff8a8a" font-size="13">⟸ losses ${fmt('flow', s.qLoss, 0)} ${un('flow')}</text>`;
+  h += `<text x="60" y="${SUB1 - 8}" class="fl">MW in ${fmt('dens', d.mwIn, 3)} ${un('dens')} · ECD ${fmt('dens', d.ecd, 3)} · BHP ${fu('press', d.bhp, 1)} · Pp ${fu('press', d.pp, 1)}</text>`;
+  SC.sub.innerHTML = h;
+}
+
+/* ---------------- trends ---------------- */
+const TRACKS = [
+  [['wob', 'WOB', 'force', 0, 300, '#36d97b'], ['rop', 'ROP', 'rop', 0, 60, '#ffb627']],
+  [['hl', 'Hook load', 'force', 0, 2200, '#4f8dff'], ['blockH', 'Block pos', 'len', 0, 45, '#9fb3c8']],
+  [['torque', 'Torque', 'torque', 0, 35, '#ff8a3d'], ['rpm', 'RPM', '', 0, 200, '#b689ff']],
+  [['spp', 'SPP', 'press', 0, 350, '#36c8ff'], ['pc', 'Casing P', 'press', 0, 150, '#ff4545']],
+  [['qin', 'Flow in', 'flow', 0, 5000, '#7fdcff'], ['qout', 'Flow out', 'flow', 0, 5000, '#ff6fd8'], ['pitDelta', 'Pit Δ', 'vol', -10, 10, '#ffe14d']],
+];
+function buildLegend() {
+  $('legend').innerHTML = TRACKS.flat().map(c => `<span data-ch="${c[0]}" class="${st.hidden[c[0]] ? 'off' : ''}"><i style="background:${c[5]}"></i>${c[1]} <em class="hint">(${un(c[2]) || c[2]})</em></span>`).join('');
+}
+function trendData() {
+  const T = sim.trend, n = Math.min(T.n, T.N), out = [];
+  for (let k = n; k > 0; k--) { const i = (T.n - k) % T.N; out.push(i); } return out;
+}
+function drawTrend() {
+  const cv0 = $('trend'), dpr = window.devicePixelRatio || 1, W = cv0.clientWidth, H = cv0.clientHeight;
+  if (cv0.width !== Math.round(W * dpr)) { cv0.width = Math.round(W * dpr); cv0.height = Math.round(H * dpr); }
+  const c = cv0.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, W, H);
+  const T = sim.trend, idx = trendData(), tNow = sim.s.t, t0 = tNow - st.win;
+  const L = 58, Rm = 58, plotW = W - L - Rm, th = (H - 18) / TRACKS.length;
+  const xt = t => L + (t - t0) / st.win * plotW;
+  c.font = '10.5px system-ui,sans-serif';
+  TRACKS.forEach((tr, ti) => {
+    const y0 = ti * th + 2, y1 = y0 + th - 6;
+    c.fillStyle = ti % 2 ? '#0a1a2f' : '#0b1e36'; c.fillRect(L, y0, plotW, y1 - y0);
+    c.strokeStyle = '#163a5e'; c.lineWidth = 1; c.beginPath();
+    for (let g = 1; g < 4; g++) { const yy = y0 + (y1 - y0) * g / 4; c.moveTo(L, yy); c.lineTo(L + plotW, yy); }
+    const step = st.win <= 900 ? 120 : st.win <= 3600 ? 600 : st.win <= 7200 ? 900 : 3600;
+    for (let t = Math.ceil(t0 / step) * step; t < tNow; t += step) { const x = xt(t); c.moveTo(x, y0); c.lineTo(x, y1); }
+    c.stroke(); c.strokeStyle = '#1e4f7d'; c.strokeRect(L, y0, plotW, y1 - y0);
+    tr.forEach((ch, ci) => {
+      const [key, name, q, mn0, mx0, col] = ch; if (st.hidden[key]) return;
+      const arr = T.ch[key]; let mn = mn0, mx = mx0;
+      for (const i of idx) { if (T.t[i] < t0) continue; const v = arr[i]; if (v > mx) mx = v * 1.1; if (v < mn) mn = v * 1.1; }
+      const yv = v => y1 - (v - mn) / (mx - mn || 1) * (y1 - y0);
+      c.strokeStyle = col; c.lineWidth = 1.6; c.beginPath(); let first = true;
+      for (const i of idx) { if (T.t[i] < t0) continue; const x = xt(T.t[i]), yy = yv(arr[i]); if (first) { c.moveTo(x, yy); first = false; } else c.lineTo(x, yy); }
+      c.stroke();
+      c.fillStyle = col; const left = ci % 2 === 0, lx = left ? L - 4 : L + plotW + 4; c.textAlign = left ? 'right' : 'left';
+      const row = Math.floor(ci / 2) * 11;
+      c.fillText(fmt(q, mx, 0), lx, y0 + 9 + row); c.fillText(fmt(q, mn, 0), lx, y1 - 2 - row);
+      c.font = 'bold 12px system-ui,sans-serif'; c.fillText(fmt(q, sim.d[key], q === 'vol' ? 2 : 1), lx, (y0 + y1) / 2 + 4 + row); c.font = '10.5px system-ui,sans-serif';
+    });
+  });
+  // time axis
+  c.fillStyle = '#7f9dbd'; c.textAlign = 'center';
+  const step = st.win <= 900 ? 120 : st.win <= 3600 ? 600 : st.win <= 7200 ? 900 : 3600;
+  for (let t = Math.ceil(t0 / step) * step; t < tNow; t += step) c.fillText(clockStr(sim.clock0 + (t - sim.tStart) * 1000, true), xt(t), H - 4);
+  // hover cursor
+  if (st.hover !== null && st.hover > L && st.hover < L + plotW) {
+    const tH = t0 + (st.hover - L) / plotW * st.win; let best = -1, bd = 1e9;
+    for (const i of idx) { const dd = Math.abs(T.t[i] - tH); if (dd < bd) { bd = dd; best = i; } }
+    c.strokeStyle = '#ffffffaa'; c.beginPath(); c.moveTo(st.hover, 0); c.lineTo(st.hover, H - 14); c.stroke();
+    if (best >= 0 && bd < 60) {
+      const lines = [clockStr(sim.clock0 + (T.t[best] - sim.tStart) * 1000, false)].concat(TRACKS.flat().filter(ch => !st.hidden[ch[0]]).map(ch => `${ch[1]}: ${fmt(ch[2], T.ch[ch[0]][best], ch[2] === 'vol' ? 2 : 1)} ${un(ch[2])}`));
+      const bw = 170, bx = st.hover + 8 + bw > W ? st.hover - bw - 8 : st.hover + 8;
+      c.fillStyle = '#071425ee'; c.fillRect(bx, 6, bw, lines.length * 13 + 6); c.strokeStyle = '#1e4f7d'; c.strokeRect(bx, 6, bw, lines.length * 13 + 6);
+      c.textAlign = 'left'; c.fillStyle = '#dcecff'; lines.forEach((l, i) => c.fillText(l, bx + 6, 18 + i * 13));
+    }
+  }
+}
+
+/* ---------------- pressure window ---------------- */
+function drawPwin() {
+  const cv0 = $('pwin'), dpr = window.devicePixelRatio || 1, W = cv0.clientWidth, H = cv0.clientHeight;
+  if (cv0.width !== Math.round(W * dpr)) { cv0.width = Math.round(W * dpr); cv0.height = Math.round(H * dpr); }
+  const c = cv0.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, W, H);
+  const s = sim.s, z0 = 1800, z1 = Math.max(3800, Math.ceil((s.Dh + 300) / 100) * 100), e0 = 0.95, e1 = 2.10;
+  const LC = 150, L = LC + 42, Rr = 10, T = 8, B = 22;
+  const yz = z => T + (z - z0) / (z1 - z0) * (H - T - B), xe = e => L + (e - e0) / (e1 - e0) * (W - L - Rr);
+  c.font = '10.5px system-ui,sans-serif';
+  for (const f of R.formations(sim.haz)) { if (f.bot < z0 || f.top > z1) continue; const a = yz(Math.max(f.top, z0)), b = yz(Math.min(f.bot, z1)); c.fillStyle = f.col; c.fillRect(0, a, LC, b - a); c.strokeStyle = '#0006'; c.strokeRect(0, a, LC, b - a); if (b - a > 11) { c.fillStyle = '#f2ead8'; c.textAlign = 'left'; c.fillText(f.n, 4, (a + b) / 2 + 4); } }
+  c.fillStyle = '#0a1a2f'; c.fillRect(L, T, W - L - Rr, H - T - B); c.strokeStyle = '#163a5e'; c.beginPath();
+  for (let e = 1.0; e <= e1; e += 0.1) { c.moveTo(xe(e), T); c.lineTo(xe(e), H - B); }
+  for (let z = Math.ceil(z0 / 200) * 200; z <= z1; z += 200) { c.moveTo(L, yz(z)); c.lineTo(W - Rr, yz(z)); }
+  c.stroke();
+  c.fillStyle = '#7f9dbd'; c.textAlign = 'right'; for (let z = Math.ceil(z0 / 200) * 200; z <= z1; z += 200) c.fillText(fmt('len', z, 0), L - 4, yz(z) + 3);
+  c.textAlign = 'center'; for (let e = 1.0; e <= e1 + 1e-6; e += 0.2) c.fillText(fmt('dens', e, 1), xe(e), H - 8);
+  const line = (fn, col, dash, zmax) => { c.strokeStyle = col; c.lineWidth = 2; c.setLineDash(dash || []); c.beginPath(); let f = true; for (let z = z0; z <= (zmax || z1); z += 2) { const x = xe(fn(z)), yy = yz(z); if (f) { c.moveTo(x, yy); f = false; } else c.lineTo(x, yy); } c.stroke(); c.setLineDash([]); };
+  line(z => R.ppProg(z, sim.haz), '#ff7a7a', [5, 4]);
+  line(z => R.ppAt(z, sim.haz), '#ff3b3b', null, s.Dh);
+  line(z => R.fgAt(z, sim.haz), '#4f8dff');
+  const yS = yz(CFG.shoe); c.fillStyle = '#c4ced8'; c.fillRect(L, yS - 1, 30, 2); c.textAlign = 'left'; c.fillText('shoe', L + 34, yS + 4);
+  const mw = sim.d.mwIn, ecd = sim.d.ecd, yb = yz(s.Dh);
+  c.strokeStyle = '#2bd66f'; c.lineWidth = 2; c.beginPath(); c.moveTo(xe(s.rhoA), T); c.lineTo(xe(s.rhoA), yb); c.stroke();
+  c.strokeStyle = '#2bd66f88'; c.setLineDash([2, 3]); c.beginPath(); c.moveTo(xe(mw), T); c.lineTo(xe(mw), H - B); c.stroke(); c.setLineDash([]);
+  c.fillStyle = '#36c8ff'; c.beginPath(); c.arc(xe(ecd), yb, 5, 0, 7); c.fill();
+  c.strokeStyle = '#ffb627'; c.beginPath(); c.moveTo(L, yb); c.lineTo(W - Rr, yb); c.stroke();
+  c.fillStyle = '#ffb627'; c.textAlign = 'right'; c.fillText('Hole depth ' + fmt('len', s.Dh, 1), W - Rr - 4, yb - 4);
+  const lg = [['#ff7a7a', 'Pore (prognosis)'], ['#ff3b3b', 'Pore (actual, drilled)'], ['#4f8dff', 'Fracture'], ['#2bd66f', 'MW in hole'], ['#36c8ff', 'ECD @ bottom']];
+  c.textAlign = 'left'; lg.forEach((l, i) => { c.fillStyle = l[0]; c.fillRect(L + 8, T + 8 + i * 14, 14, 3); c.fillStyle = '#dcecff'; c.fillText(l[1], L + 26, T + 12 + i * 14); });
+  c.fillStyle = '#7f9dbd'; c.textAlign = 'center'; c.fillText('EMW (' + un('dens') + ')', L + (W - L) / 2, H - 8 + 0);
+}
+
+/* ---------------- periodic UI update ---------------- */
+function clockStr(ms, short) { const d = new Date(ms); const p = n => String(n).padStart(2, '0'); return short ? `${p(d.getHours())}:${p(d.getMinutes())}` : `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`; }
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function txt(id, v) { const e = $(id); if (e && e.textContent !== v) e.textContent = v; }
+function cls(id, c) { const e = $(id); if (e && e.className !== c) e.className = c; }
+function on(el, b) { if (el) el.classList.toggle('on', !!b); }
+function pillState(p, closeIsOne, armed) {
+  if (armed) return ['ARMED', 'pill a'];
+  if (p >= 0.98) return closeIsOne ? ['CLOSED', 'pill r'] : ['OPEN', 'pill g'];
+  if (p <= 0.02) return closeIsOne ? ['OPEN', 'pill g'] : ['CLOSED', 'pill r'];
+  return [closeIsOne ? 'MOVING' : 'MOVING', 'pill a'];
+}
+function wellStatus() {
+  const s = sim.s, c = sim.c;
+  if (c.esd) return ['ESD ACTIVE', 'crit']; if (c.estop) return ['E-STOP', 'crit']; if (s.bop.failed) return ['WELL CONTROL LOST', 'crit'];
+  if (s.sheared) return ['SHEARED / SECURED', 'crit'];
+  if (sim.sealed()) return [sim.pumpsOn() ? 'KILL CIRCULATION' : 'SHUT-IN', 'warn'];
+  if (sim.m.active) return ['CONNECTION', 'warn']; if (s.inSlips) return ['IN SLIPS', 'warn'];
+  if (sim.onBottom() && s.rop > 0.3) return ['DRILLING', ''];
+  if (Math.abs(s.vUp) > 0.05 && !sim.pumpsOn()) return [s.vUp > 0 ? 'TRIPPING OUT' : 'TRIPPING IN', 'warn'];
+  if (sim.pumpsOn()) return [s.rpm > 5 ? 'CIRCULATE & ROTATE' : 'CIRCULATING', ''];
+  return ['IDLE', 'idle'];
+}
+function updateUI() {
+  const s = sim.s, c = sim.c, d = sim.d, A = sim.ad;
+  // header
+  const now = new Date(sim.clockMs()); txt('dateTxt', `${String(now.getDate()).padStart(2, '0')}-${MON[now.getMonth()]}-${now.getFullYear()}`); txt('clockTxt', clockStr(sim.clockMs()));
+  const [ws, wc] = wellStatus(); txt('wellStatus', ws); cls('wellStatus', 'status-badge ' + wc);
+  const al = sim.alarmList(); const top = al[0];
+  const ban = $('alarmBanner');
+  if (top) { txt('alarmTxt', top.text); txt('alarmSub', `${top.active ? 'ACTIVE' : 'CLEARED'} · ${top.acked ? 'acknowledged' : 'unacknowledged'} · ${al.length} in list — click to ack`); ban.className = `alarm-banner p${top.prio}${top.acked ? '' : ' blink'}`; }
+  else { txt('alarmTxt', 'No active alarms'); txt('alarmSub', 'All systems normal'); ban.className = 'alarm-banner ok'; }
+  const esd = $('esdBtn'); txt('esdBtn', confirming('esd') ? 'CONFIRM?' : c.esd ? 'ACTIVE — RESET' : 'READY'); esd.className = 'btn ' + (c.esd || confirming('esd') ? 'red blink' : 'on');
+  const fire = document.querySelector('[data-fire]'); if (fire) fire.textContent = confirming('shear') ? 'Confirm' : 'Fire';
+  cls('cRig', 'dot' + (st.speed ? '' : ' amb')); txt('cRigT', st.speed ? 'Online' : 'Paused'); cls('cSat', 'dot' + (navigator.onLine ? '' : ' red')); txt('cSatT', navigator.onLine ? 'Online' : 'Offline');
+  const fm = R.formAt(s.Dh, sim.haz); txt('fmTxt', `${fm.n} · Pp ${fmt('dens', d.ppSg, 2)} / Frac ${fmt('dens', d.fgSg, 2)} ${un('dens')}`);
+  txt('unitsNote', st.units === 'si' ? 'SI units' : 'Oilfield units');
+  // params
+  const alarmRows = {}; for (const a of al) if (a.active && ALARM_ROW[a.id]) alarmRows[ALARM_ROW[a.id]] = a.prio;
+  for (const [k, , q, dec] of PARAMS) {
+    let v = d[k]; if (k === 'bitDepth') v = sim.bitDepth();
+    txt('pv_' + k, k === 'blockV' ? (Math.abs(v) < 0.05 ? '0.0' : (v > 0 ? '▲ ' : '▼ ') + fmt(q, Math.abs(v), dec)) : fmt(q, v, dec));
+    txt('pu_' + k, '(' + (UN[q] ? un(q) : q) + ')');
+    cls('pr_' + k, 'prow' + (alarmRows[k] ? (alarmRows[k] <= 2 ? ' al' : ' wn') : ''));
+  }
+  // control loop
+  txt('lb1v', `${fm.n} · ${fmt('rop', d.rop, 1)} ${un('rop')}`); txt('lb2v', `WOB ${fmt('force', d.wob, 1)} · T ${fmt('torque', d.torque, 1)} · ROP ${fmt('rop', d.rop, 1)}`);
+  txt('lb3v', A.state); txt('lb4v', `${s.dwSrc || '—'} · ${fmt('spd', d.blockV, 2)} ${un('spd')} · ${fmt('', d.rpm, 0)} rpm`);
+  txt('lb5v', sim.onBottom() ? `on bottom · MSE ${fmt('mpa', d.mse, 0)} ${un('mpa')}` : `off bottom ${fmt('len', s.Dh - sim.bitDepth(), 2)} ${un('len')}`);
+  const lb6 = $('lb6'); const loopBad = al.some(a => a.active && a.prio === 1), loopWarn = ['TORQUE LIMIT', 'STAND END', 'ROP LIMIT'].includes(A.state) || al.some(a => a.active && a.prio === 2);
+  lb6.className = 'lb ' + (loopBad ? 'bad' : loopWarn ? 'warn' : A.state === 'CONTROL' ? 'ok' : 'warn');
+  txt('lb6', loopBad ? 'Unsafe — check alarms' : A.state === 'CONTROL' ? 'Stable Drilling' : A.state === 'OFF' ? 'Manual Control' : A.state);
+  ['lb1', 'lb2', 'lb3', 'lb4', 'lb5'].forEach((id, i) => $(id).classList.toggle('act', A.state === 'CONTROL' && Math.floor(performance.now() / 600) % 5 === i));
+  // drilling control
+  const rop = c.ad.mode === 'ROP';
+  txt('adPV', rop ? fmt('rop', d.rop, 1) : fmt('force', d.wob, 1)); txt('adSP', rop ? fmt('rop', c.ad.ropTarget, 1) : fmt('force', A.sp || c.ad.wobSet, 1)); txt('adOut', A.out ? fmt('rop', A.out * 3600, 1) + ' ' + un('rop') : '—');
+  txt('adState', A.state); on($('adAuto'), c.ad.on); on($('adMan'), !c.ad.on); document.querySelectorAll('[data-admode]').forEach(b => on(b, b.dataset.admode === c.ad.mode));
+  on($('ropCapBtn'), c.ad.ropCap); txt('ropCapBtn', c.ad.ropCap ? 'On' : 'Off'); on($('autoConnBtn'), c.autoConnect); txt('autoConnBtn', c.autoConnect ? 'On' : 'Off');
+  syncSlider('sWob', 'oWob', c.ad.wobSet, 'force', 0); syncSlider('sRop', 'oRop', c.ad.ropTarget, 'rop', 1); syncSlider('sWobLim', 'oWobLim', c.ad.wobLimit, 'force', 0);
+  syncSlider('sTqLim', 'oTqLim', c.ad.torqueLimit, 'torque', 1); syncSlider('sRpmLim', 'oRpmLim', c.ad.rpmLimit, '', 0);
+  // top drive
+  txt('tdRpm', fmt('', d.rpm, 0) + ' rpm'); txt('tdTq', fu('torque', d.torque, 1));
+  document.querySelectorAll('[data-tdmode]').forEach(b => on(b, b.dataset.tdmode === c.td.mode)); document.querySelectorAll('[data-tddir]').forEach(b => on(b, b.dataset.tddir === c.td.dir));
+  syncSlider('sRpm', 'oRpm', c.td.rpmSet, '', 0); syncSlider('sTq', 'oTq', c.td.torqueSet, 'torque', 1);
+  const pw = sim.powerOK(); txt('tdMot', !pw ? 'TRIPPED' : s.rpm > 0.5 ? 'RUNNING' : 'STOPPED'); cls('tdMotD', 'dot' + (!pw ? ' red' : s.rpm > 0.5 ? '' : ' off'));
+  txt('tdTemp', fu('temp', s.tdTemp, 0)); cls('tdTempD', 'dot' + (s.tdTemp > sim.th.tdTempHi ? ' red' : s.tdTemp > 90 ? ' amb' : ''));
+  txt('tdHyd', fu('press', pw ? 165 + Math.sin(sim.s.t / 7) * 1.5 : 0, 0)); txt('tdCool', s.fault.tdCool ? 'FAULT' : 'OK'); cls('tdCoolD', 'dot' + (s.fault.tdCool ? ' red' : ''));
+  txt('tdVfd', s.tdStall ? 'TORQUE LIMIT' : pw ? 'OK' : 'TRIPPED'); cls('tdVfdD', 'dot' + (s.tdStall || !pw ? ' red' : '')); txt('tdSrc', sim.m.active && sim.m.td ? 'sequence' : c.td.mode);
+  // drawworks
+  txt('dwPos', fu('len', s.blockH, 2)); txt('dwHl', fu('force', d.hl, 1)); txt('dwSpd', (Math.abs(d.blockV) < 0.05 ? '' : d.blockV > 0 ? '▲ ' : '▼ ') + fu('spd', Math.abs(d.blockV), 2));
+  txt('dwRpm', (Math.abs(s.vUp) * CFG.dw.lines / (Math.PI * CFG.dw.drumD) * 60).toFixed(0)); txt('dwBrake', s.brake === 'SET' ? 'SET' : 'RELEASED'); cls('dwBrake', s.brake === 'SET' ? 'a' : '');
+  const dwl = clamp(s.hl * Math.abs(s.vUp) / CFG.dw.kw * 100 + (s.brake === 'SET' ? 0 : 6), 0, 150); txt('dwLoad', dwl.toFixed(0) + ' %'); txt('dwMot', !pw ? 'TRIPPED' : 'RUNNING'); txt('dwSrc', s.dwSrc || '');
+  document.querySelectorAll('[data-brake]').forEach(b => on(b, b.dataset.brake === c.dw.brakeMode)); const bs = $('brakeSetBtn'); bs.disabled = c.dw.brakeMode !== 'MANUAL'; txt('brakeSetBtn', c.dw.brakeSet ? 'Release' : 'Set');
+  syncSlider('sJog', 'oJog', c.dw.jogSpeed, 'spd', 1);
+  on($('blkUp'), c.dw.blockAuto > 0); on($('blkDn'), c.dw.blockAuto < 0);
+  // pumps
+  let tot = 0;
+  for (let i = 0; i < 3; i++) {
+    const p = s.pumps[i], pc = c.pumps[i]; tot += p.q;
+    on(document.querySelector(`[data-pon="${i}"]`), pc.on); on(document.querySelector(`[data-poff="${i}"]`), !pc.on);
+    const sl = document.querySelector(`[data-pspm="${i}"]`); if (document.activeElement !== sl) sl.value = pc.spm; txt('po' + i, pc.spm.toFixed(0));
+    const ls = document.querySelector(`[data-liner="${i}"]`); if (document.activeElement !== ls) ls.value = pc.liner;
+    txt('pS' + i, p.spm.toFixed(0)); txt('pP' + i, fu('press', p.p, 0)); txt('pK' + i, (p.spm / CFG.pump.maxSpm * 100).toFixed(0) + ' %'); txt('pQ' + i, fu('flow', p.q * 60000, 0)); txt('pL' + i, p.load.toFixed(0) + ' %'); txt('pT' + i, p.strokes.toFixed(0));
+    const stx = p.relief ? 'RELIEF' : p.effLoss > 0.1 && p.spm > 1 ? 'FAULT' : p.spm > 1 ? 'RUN' : 'STOP'; txt('pX' + i, stx); cls('pX' + i, stx === 'RUN' ? '' : stx === 'STOP' ? 'w' : 'r');
+    cls('pl' + i, 'lamp' + (p.relief || (p.effLoss > 0.1 && p.spm > 1) ? ' r' : p.spm > 1 ? ' g' : ''));
+  }
+  txt('pumpsTot', `Total ${fu('flow', tot * 60000, 0)} · ${d.spm.toFixed(0)} spm`);
+  // BOP
+  const b = s.bop, cb = c.bop;
+  for (const [k] of BOP_ROWS) { const isValve = k === 'hcr' || k === 'kill'; const [t, cl] = pillState(b[k], !isValve, k === 'shear' && cb.shearArmed && b.shear < 0.02); txt('bp_' + k, t); cls('bp_' + k, cl); }
+  document.querySelectorAll('[data-bop]').forEach(btn => on(btn, cb[btn.dataset.bop] === btn.dataset.st)); on(document.querySelector('[data-arm]'), cb.shearArmed);
+  const armB = document.querySelector('[data-arm]'); if (armB) armB.textContent = cb.shearArmed ? 'Disarm' : 'Arm';
+  syncSlider('sChoke', 'oChoke', cb.choke, '%', 1); on($('chokeAutoBtn'), cb.chokeAuto); syncSlider('sChkT', 'oChkT', cb.chokeTarget, 'press', 1);
+  txt('bcPc', fu('press', d.pc, 1)); txt('bcDp', fu('press', d.spp, 1)); txt('bcAcc', fu('press', b.accum, 0)); cls('bcAcc', b.accum < sim.th.accumLo ? 'r' : '');
+  txt('bcMaasp', fu('press', d.maasp, 1)); txt('bcBhp', `${fmt('press', d.bhp, 1)} / ${fmt('press', d.pp, 1)} ${un('press')}`);
+  txt('bopNote', sim.sealed() ? (sim.chokePath() ? 'returns via choke' : 'well shut in') : 'returns via flowline');
+  // kill sheet
+  const ks = sim.killSheet();
+  txt('kSidpp', ks ? fu('press', ks.sidpp, 1) : '—'); txt('kSicp', ks ? fu('press', ks.sicp, 1) : '—'); txt('kGain', ks ? fu('vol', ks.pitGain, 2) : '—'); txt('kKmw', ks ? fu('dens', ks.kmw, 3) : '—');
+  txt('kScr', s.scr ? `${s.scr.spm.toFixed(0)} spm @ ${fu('press', s.scr.spp, 1)}` : 'not recorded'); txt('kIcp', ks && ks.icp ? fu('press', ks.icp, 1) : '—'); txt('kFcp', ks && ks.fcp ? fu('press', ks.fcp, 1) : '—'); txt('kStk', ks ? ks.strokesToBit.toFixed(0) : '—');
+  txt('killHint', killHint(ks));
+  syncSlider('sMw', 'oMw', c.mud.mwSet, 'dens', 3);
+  txt('mMw', `${fmt('dens', d.mwIn, 3)} / ${fmt('dens', d.mwOut, 3)} ${un('dens')}`); txt('mPit', `${fmt('vol', d.pit, 1)} / ${d.pitDelta >= 0 ? '+' : ''}${fmt('vol', d.pitDelta, 2)} ${un('vol')}`); cls('mPit', Math.abs(d.pitDelta) > 1 ? 'a' : '');
+  txt('mTt', fu('vol', d.tripTank, 2)); const rh = sim.rheo(s.pitRho); txt('mRheo', `${(rh.pv * 1000).toFixed(0)} cP / ${(rh.yp / 0.4788).toFixed(0)} lbf/100ft²`); txt('mEcd', fu('dens', d.ecd, 3));
+  on($('mixBtn'), c.mud.mixing); on($('fillBtn'), c.mud.holeFill);
+  // pipe handling
+  const lamps = [['Connected', s.connected], ['In slips', s.inSlips], ['Stand on TD', s.standOnTD], ['Joint @ floor', sim.jointAtFloor()], ['On bottom', sim.onBottom()]];
+  $('phLamps').innerHTML = lamps.map(([n, v]) => `<span><i class="dot${v ? '' : ' off'}"></i>${n}</span>`).join('');
+  const M = sim.m; on($('connBtn'), M.active); txt('connBtn', M.active ? `Connection ${M.step + 1}/${R.CONN_STEPS.length}` : 'Auto Connection');
+  R.CONN_STEPS.forEach((_, i) => cls('cs' + i, M.active ? (i < M.step ? 'done' : i === M.step ? 'cur' : '') : ''));
+  txt('opTxt', s.op ? s.op.name : M.active ? M.msg : '');
+  $('opProg').style.width = (s.op ? s.op.t / s.op.dur * 100 : M.active ? M.step / R.CONN_STEPS.length * 100 : 0) + '%';
+  cls('pwrLamp', 'lamp' + (pw ? ' g' : ''));
+  cls('almLamp', 'lamp' + (al.some(a => !a.acked) ? (Math.floor(performance.now() / 500) % 2 ? ' r' : '') : al.length ? ' a' : ''));
+  // hydraulics
+  txt('hBit', `${fu('press', s.dpBit, 1)} / ${s.hsi.toFixed(2)} hp/in²`); txt('hAnn', fu('press', s.dpAnn, 1)); txt('hExp', fu('press', d.sppExp, 1));
+  txt('hDepth', `${fmt('len', s.Dh, 1)} / ${fmt('len', sim.bitDepth(), 1)} ${un('len')}`); txt('hWear', `${s.bitHours.toFixed(1)} h / ${Math.round(s.wear * 8)}-8`);
+  cls('hWear', s.wear > 0.85 ? 'r' : s.wear > 0.6 ? 'a' : ''); txt('hMse', fu('mpa', d.mse, 0)); txt('hDxc', d.dxc ? d.dxc.toFixed(2) : '—');
+  txt('hPpFg', `${fmt('dens', d.ppSg, 2)} / ${fmt('dens', d.fgSg, 2)} ${un('dens')}`); txt('hOb', fu('press', d.overbal, 1)); cls('hOb', d.overbal < 0 ? 'r' : d.overbal < 10 ? 'a' : '');
+  txt('hStands', `${s.stands} / ${s.racked}`);
+  // alarms table + log
+  $('alarmBody').innerHTML = al.length ? al.map(a => `<tr class="p${a.prio}${a.acked ? '' : ' unack'}"><td class="num">${clockStr(sim.clock0 + (a.t0 - sim.tStart) * 1000)}</td><td>${a.text}</td><td>${a.active ? '<span class="pill ' + (a.prio === 1 ? 'r' : a.prio === 2 ? 'a' : 'c') + '">ACTIVE</span>' : '<span class="pill g">CLEAR</span>'} ${a.acked ? '' : `<button class="btn sm" data-ack="${a.id}">Ack</button>`}</td></tr>`).join('') : '<tr><td colspan="3" class="hint">No alarms</td></tr>';
+  $('log').innerHTML = sim.log.slice(0, 60).map(l => `<div class="${l.type === 'EVENT' ? 'ev' : 'p' + l.prio}">${clockStr(sim.clock0 + (l.t - sim.tStart) * 1000)} ${l.type === 'EVENT' ? '•' : l.type === 'ALARM' ? '▲' : '✓'} ${l.text}</div>`).join('');
+  // toasts from sim notes
+  for (const m of sim.msg) if (m.t > st.lastMsg) { toast(m.text); st.lastMsg = m.t; }
+  // horn
+  if (st.sound) { const un1 = al.find(a => !a.acked && a.active && a.prio <= 2); if (un1 && performance.now() - st.beepT > 1400) { beep(un1.prio === 1 ? 880 : 620); st.beepT = performance.now(); } }
+  if (performance.now() - st.lastSub > 150 || !st.lastSub) { renderSub(); st.lastSub = performance.now(); }
+}
+function killHint(ks) {
+  const s = sim.s;
+  if (sim.sealed() && !ks) return 'Well is shut in — wait for pressures to stabilise, then read SIDPP / SICP.';
+  if (ks && !s.scr) return 'Record an SCR (slow-circulation rate) before the kill, or use a pre-recorded value: ICP = SIDPP + SCR pressure.';
+  if (ks && s.scr) return `Driller's method: 1st circulation with current mud — bring pump to ${s.scr.spm.toFixed(0)} spm holding casing pressure constant, then hold DPP at ICP ${fu('press', ks.icp, 1)} (Auto-choke). 2nd circulation with KMW ${fu('dens', ks.kmw, 3)}: DPP falls from ICP to FCP ${fu('press', ks.fcp, 1)} over ${ks.strokesToBit.toFixed(0)} strokes.`;
+  return 'Kick response: stop rotating, pick up to space out, stop pumps, flow-check, close annular (hard shut-in), open HCR, read pressures.';
+}
+function syncSlider(sid, oid, v, q, dec) {
+  const sl = $(sid); if (!sl) return;
+  if (document.activeElement !== sl) sl.value = v;
+  txt(oid, q === '%' ? (+v).toFixed(dec) + ' %' : q === '' ? (+v).toFixed(dec) : fu(q, v, dec));
+}
+
+/* two-step confirmation inside the page (dialogs such as confirm() are blocked in some viewers) */
+function confirm2(key, fn, msg) {
+  const now = performance.now();
+  if (st.confirm && st.confirm.key === key && now - st.confirm.t < 3000) { st.confirm = null; fn(); return; }
+  st.confirm = { key, t: now }; toast(msg);
+}
+const confirming = key => st.confirm && st.confirm.key === key && performance.now() - st.confirm.t < 3000;
+
+/* ---------------- toasts & audio ---------------- */
+function toast(t) { const e = document.createElement('div'); e.textContent = t; $('toast').appendChild(e); setTimeout(() => e.remove(), 4200); }
+let actx = null;
+function beep(f) { try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); const o = actx.createOscillator(), g = actx.createGain(); o.type = 'square'; o.frequency.value = f; g.gain.setValueAtTime(0.05, actx.currentTime); g.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime + 0.35); o.connect(g).connect(actx.destination); o.start(); o.stop(actx.currentTime + 0.36); } catch (e) { /* audio unavailable */ } }
+const res = r => { if (r && r.ok === false && r.msg) { toast(r.msg); st.lastMsg = sim.s.t; } };
+
+/* ---------------- events ---------------- */
+function bind() {
+  const q = (sel, fn, ev = 'click') => document.querySelectorAll(sel).forEach(el => el.addEventListener(ev, e => fn(el, e)));
+  q('[data-speed]', el => { st.speed = +el.dataset.speed; document.querySelectorAll('[data-speed]').forEach(b => on(b, b === el)); });
+  q('[data-units]', el => { st.units = el.dataset.units; document.querySelectorAll('[data-units]').forEach(b => on(b, b === el)); buildLegend(); buildTh(); setSliderRanges(); updateUI(); drawPwin(); });
+  $('soundBtn').onclick = () => { st.sound = !st.sound; $('soundBtn').textContent = st.sound ? '🔊 Horn' : '🔇 Horn'; on($('soundBtn'), st.sound); if (st.sound) beep(660); };
+  $('instrBtn').onclick = () => { buildTh(); $('instr').showModal(); }; $('instrClose').onclick = () => $('instr').close();
+  $('alarmBanner').onclick = () => sim.ack(); $('ackAll').onclick = () => sim.ack(); $('almBtn').onclick = () => sim.ack();
+  $('alarmBody').addEventListener('click', e => { const b = e.target.closest('[data-ack]'); if (b) sim.ack(b.dataset.ack); });
+  $('esdBtn').onclick = () => confirm2('esd', () => { if (sim.c.esd) sim.resetEsd(); else sim.esdTrip(); }, sim.c.esd ? 'Click again to reset ESD' : 'Click again to activate ESD');
+  $('estopBtn').onclick = () => sim.estop(); $('pwrBtn').onclick = () => res(sim.resetEstop());
+  // auto-driller
+  $('adAuto').onclick = () => { sim.c.ad.on = true; }; $('adMan').onclick = () => { sim.c.ad.on = false; };
+  q('[data-admode]', el => { sim.c.ad.mode = el.dataset.admode; sim.ad.capWob = sim.s.wob; });
+  $('ropCapBtn').onclick = () => { sim.c.ad.ropCap = !sim.c.ad.ropCap; }; $('autoConnBtn').onclick = () => { sim.c.autoConnect = !sim.c.autoConnect; };
+  const sl = (id, set) => $(id).addEventListener('input', e => set(+e.target.value));
+  sl('sWob', v => sim.c.ad.wobSet = v); sl('sRop', v => sim.c.ad.ropTarget = v); sl('sWobLim', v => sim.c.ad.wobLimit = v); sl('sTqLim', v => sim.c.ad.torqueLimit = v); sl('sRpmLim', v => sim.c.ad.rpmLimit = v);
+  // top drive
+  q('[data-tdmode]', el => sim.c.td.mode = el.dataset.tdmode); q('[data-tddir]', el => sim.c.td.dir = el.dataset.tddir);
+  sl('sRpm', v => sim.c.td.rpmSet = v); sl('sTq', v => sim.c.td.torqueSet = v);
+  // drawworks: hold-to-run
+  document.querySelectorAll('[data-hold]').forEach(el => {
+    const dir = +el.dataset.hold;
+    el.addEventListener('pointerdown', e => { e.preventDefault(); el.setPointerCapture && el.setPointerCapture(e.pointerId); sim.hoist(dir); el.classList.add('on'); });
+    ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(ev => el.addEventListener(ev, () => { sim.hoist(0); el.classList.remove('on'); }));
+  });
+  $('blkUp').onclick = () => sim.blockAuto(1); $('blkDn').onclick = () => sim.blockAuto(-1);
+  q('[data-brake]', el => { sim.c.dw.brakeMode = el.dataset.brake; sim.c.dw.brakeSet = true; }); $('brakeSetBtn').onclick = () => { sim.c.dw.brakeSet = !sim.c.dw.brakeSet; };
+  $('sJog').addEventListener('input', e => sim.c.dw.jogSpeed = +e.target.value);
+  window.addEventListener('keydown', e => {
+    if (e.target.matches('input,select,textarea')) return;
+    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); if (!e.repeat) sim.hoist(e.key === 'ArrowUp' ? 1 : -1); }
+    else if (e.key === ' ') { e.preventDefault(); sim.hoist(0); sim.c.dw.blockAuto = 0; }
+    else if (e.key === 'p' || e.key === 'P') { const b = document.querySelector(`[data-speed="${st.speed ? 0 : 1}"]`); b && b.click(); }
+  });
+  window.addEventListener('keyup', e => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') sim.hoist(0); });
+  window.addEventListener('blur', () => sim.hoist(0));
+  // pumps
+  $('pumps').addEventListener('click', e => { const a = e.target.closest('[data-pon]'), b = e.target.closest('[data-poff]'); if (a) { const p = sim.s.pumps[+a.dataset.pon]; p.relief = false; sim.c.pumps[+a.dataset.pon].on = true; } if (b) sim.c.pumps[+b.dataset.poff].on = false; });
+  $('pumps').addEventListener('input', e => { if (e.target.dataset.pspm !== undefined) sim.c.pumps[+e.target.dataset.pspm].spm = +e.target.value; });
+  $('pumps').addEventListener('change', e => { if (e.target.dataset.liner !== undefined) sim.c.pumps[+e.target.dataset.liner].liner = +e.target.value; });
+  $('allPumpsOn').onclick = () => sim.c.pumps.forEach((p, i) => { p.on = true; sim.s.pumps[i].relief = false; }); $('allPumpsOff').onclick = () => sim.c.pumps.forEach(p => p.on = false);
+  $('sMaster').addEventListener('input', e => { sim.c.pumps.forEach(p => p.spm = +e.target.value); txt('oMaster', e.target.value); });
+  // BOP
+  $('bopRows').addEventListener('click', e => {
+    const b = e.target.closest('[data-bop]'); if (b) res(sim.bopCmd(b.dataset.bop, b.dataset.st));
+    if (e.target.closest('[data-arm]')) sim.c.bop.shearArmed = !sim.c.bop.shearArmed;
+    if (e.target.closest('[data-fire]')) { if (!sim.c.bop.shearArmed) toast('Arm the blind/shear rams first'); else confirm2('shear', () => res(sim.bopCmd('shear')), 'Click Fire again within 3 s — the drill pipe will be cut'); }
+  });
+  $('sChoke').addEventListener('input', e => { sim.c.bop.choke = +e.target.value; sim.c.bop.chokeAuto = false; });
+  q('[data-chk]', el => { sim.c.bop.choke = clamp(sim.c.bop.choke + +el.dataset.chk, 0, 100); sim.c.bop.chokeAuto = false; });
+  $('chokeAutoBtn').onclick = () => { const b = sim.c.bop; b.chokeAuto = !b.chokeAuto; if (b.chokeAuto && !b.chokeTarget) b.chokeTarget = sim.d.spp; };
+  $('sChkT').addEventListener('input', e => sim.c.bop.chokeTarget = +e.target.value);
+  // kill / mud
+  $('scrBtn').onclick = () => { if (!sim.pumpsOn()) toast('Run a pump at slow rate first (e.g. 30–40 spm, one pump)'); else sim.recordSCR(); };
+  $('useIcp').onclick = () => { const k = sim.killSheet(); if (k && k.icp) { sim.c.bop.chokeTarget = +k.icp.toFixed(1); } else toast('Need shut-in pressures and an SCR first'); };
+  $('setKmw').onclick = () => { const k = sim.killSheet(); if (k) { sim.c.mud.mwSet = Math.ceil(k.kmw * 200) / 200; sim.c.mud.mixing = true; toast('Mixing kill mud ' + fu('dens', sim.c.mud.mwSet, 3)); } else toast('No shut-in data yet'); };
+  $('sMw').addEventListener('input', e => sim.c.mud.mwSet = +e.target.value);
+  $('mixBtn').onclick = () => sim.c.mud.mixing = !sim.c.mud.mixing; $('fillBtn').onclick = () => sim.c.mud.holeFill = !sim.c.mud.holeFill;
+  $('zeroPit').onclick = () => sim.zeroPit(); $('addMud').onclick = () => sim.addMud(20); $('dumpMud').onclick = () => sim.addMud(-20); $('lcmBtn').onclick = () => sim.pumpLCM();
+  // pipe handling
+  $('connBtn').onclick = () => res(sim.m.active ? { ok: true } : sim.startConnection()); $('connAbort').onclick = () => sim.abortConnection();
+  $('opSet').onclick = () => res(sim.setSlips()); $('opPull').onclick = () => res(sim.pullSlips()); $('opBreak').onclick = () => res(sim.breakOut());
+  $('opPick').onclick = () => res(sim.pickStand()); $('opRack').onclick = () => res(sim.rackStand()); $('opMake').onclick = () => res(sim.makeUp());
+  // trends
+  q('[data-win]', el => { st.win = +el.dataset.win; document.querySelectorAll('[data-win]').forEach(b => on(b, b === el)); drawTrend(); });
+  $('legend').addEventListener('click', e => { const s = e.target.closest('[data-ch]'); if (s) { st.hidden[s.dataset.ch] = !st.hidden[s.dataset.ch]; s.classList.toggle('off'); drawTrend(); } });
+  $('trend').addEventListener('pointermove', e => { const r = e.target.getBoundingClientRect(); st.hover = e.clientX - r.left; drawTrend(); });
+  $('trend').addEventListener('pointerleave', () => { st.hover = null; drawTrend(); });
+  // instructor
+  q('[data-sc]', el => { sim.scenario(el.dataset.sc); toast('Scenario: ' + el.textContent); });
+  $('hazBtn').onclick = () => { sim.haz = !sim.haz; txt('hazBtn', 'Geohazards: ' + (sim.haz ? 'ON' : 'OFF')); drawPwin(); };
+  const reset = hot => { const haz = sim.haz, th = sim.th; sim = new R.RigSim({ hot, haz }); sim.th = th; st.lastMsg = 0; buildTh(); $('instr').close(); drawTrend(); drawPwin(); toast(hot ? 'Reset: drilling ahead at 3125 m' : 'Reset: rig idle, bit 0.5 m off bottom'); };
+  $('resetHot').onclick = () => reset(true); $('resetCold').onclick = () => reset(false);
+  $('thGrid').addEventListener('change', e => { const k = e.target.dataset.th; if (!k) return; const qq = TH_META[k][1]; sim.th[k] = qq ? toSI(qq, +e.target.value) : +e.target.value; });
+  window.addEventListener('resize', () => { drawTrend(); drawPwin(); });
+}
+function setSliderRanges() { /* sliders operate in SI internally; labels show the selected unit system */ }
+
+/* ---------------- main loop ---------------- */
+let last = performance.now();
+function frame(now) {
+  const dtR = Math.min(0.25, (now - last) / 1000); last = now;
+  if (st.speed > 0) { const simT = dtR * st.speed, hmax = st.speed >= 20 ? 0.5 : st.speed >= 5 ? 0.25 : 0.1; const n = Math.max(1, Math.ceil(simT / hmax)); for (let i = 0; i < n; i++) sim.step(simT / n); }
+  const dA = dtR * Math.min(st.speed, 2);
+  st.anim.bit += sim.s.rpm / 60 * 360 * dA * 0.15;
+  updateScene(dA);
+  if (now - st.lastUi > 100) { updateUI(); st.lastUi = now; }
+  if (now - st.lastTrend > (st.hover !== null ? 1000 : 500)) { drawTrend(); st.lastTrend = now; }
+  if (now - st.lastPw > 2000) { drawPwin(); st.lastPw = now; }
+  requestAnimationFrame(frame);
+}
+
+buildParams(); buildPumps(); buildBop(); buildSteps(); buildScene(); buildLegend(); bind();
+txt('rigId', CFG.rigId); txt('wellId', CFG.well);
+updateUI(); drawTrend(); drawPwin();
+requestAnimationFrame(frame);
+window.__sim = () => sim;
+})();
+</script>
 </body>
 </html>
