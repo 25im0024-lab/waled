@@ -1,4 +1,4 @@
-:root{
+:root{color-scheme:dark;
   --bg:#040b15;--bg2:#071425;--panel:#0a1a2f;--panel2:#0d223d;--line:#1e4f7d;--line2:#15385b;
   --text:#dcecff;--muted:#7f9dbd;--dim:#4f6c8a;--cyan:#36c8ff;--green:#2bd66f;--green-d:#0f5c31;
   --amber:#ffb627;--red:#ff4545;--red-d:#6b1010;--purple:#b689ff;--yellow:#ffe14d;--blue:#4f8dff;
@@ -6,10 +6,10 @@
   --mono:ui-monospace,"Cascadia Mono",Consolas,"DejaVu Sans Mono",monospace;
 }
 *{box-sizing:border-box}
-html,body{margin:0;background:radial-gradient(1200px 600px at 50% -10%,#0b2340 0,var(--bg) 60%) fixed;color:var(--text);
+html,body{margin:0;background:var(--bg) radial-gradient(1200px 600px at 50% -10%,#0b2340 0,var(--bg) 60%) fixed;color:var(--text);
   font:13px/1.35 var(--num);-webkit-font-smoothing:antialiased}
 button,select,input{font:inherit;color:inherit}
-.app{padding:10px;max-width:1920px;margin:0 auto}
+.app{padding-block:10px;padding-inline:16px;max-width:1920px;margin:0 auto}
 
 /* header */
 .hdr{display:grid;grid-template-columns:minmax(150px,1fr) auto auto minmax(210px,1.4fr) auto auto auto;gap:8px;margin-bottom:8px}
@@ -46,7 +46,7 @@ button,select,input{font:inherit;color:inherit}
 .stack{display:flex;flex-direction:column;gap:8px}
 @media (max-width:1500px){.c3{grid-column:span 4}.c5{grid-column:span 8}.c6{grid-column:span 8}.c8{grid-column:span 12}.c4{grid-column:span 6}}
 @media (max-width:1100px){.c3,.c4{grid-column:span 6}.c5,.c6,.c8{grid-column:span 12}.hdr{grid-template-columns:1fr 1fr}.alarm-banner{grid-column:1/-1}}
-@media (max-width:720px){.c3,.c4,.c5,.c6,.c8{grid-column:span 12}.app{padding:6px}.title h1{font-size:17px}.hdr{grid-template-columns:1fr 1fr}.status-badge{min-width:0;font-size:16px}}
+@media (max-width:720px){.c3,.c4,.c5,.c6,.c8{grid-column:span 12}.app{padding-inline:16px}.title h1{font-size:17px}.hdr{grid-template-columns:1fr 1fr}.status-badge{min-width:0;font-size:16px}}
 
 /* cards */
 .card{background:linear-gradient(180deg,var(--panel2),var(--panel) 40%);border:1px solid var(--line);border-radius:4px;min-width:0;display:flex;flex-direction:column}

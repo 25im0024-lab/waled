@@ -362,7 +362,8 @@ function updateUI() {
   const ban = $('alarmBanner');
   if (top) { txt('alarmTxt', top.text); txt('alarmSub', `${top.active ? 'ACTIVE' : 'CLEARED'} · ${top.acked ? 'acknowledged' : 'unacknowledged'} · ${al.length} in list — click to ack`); ban.className = `alarm-banner p${top.prio}${top.acked ? '' : ' blink'}`; }
   else { txt('alarmTxt', 'No active alarms'); txt('alarmSub', 'All systems normal'); ban.className = 'alarm-banner ok'; }
-  const esd = $('esdBtn'); txt('esdBtn', c.esd ? 'ACTIVE — RESET' : 'READY'); esd.className = 'btn ' + (c.esd ? 'red blink' : 'on');
+  const esd = $('esdBtn'); txt('esdBtn', confirming('esd') ? 'CONFIRM?' : c.esd ? 'ACTIVE — RESET' : 'READY'); esd.className = 'btn ' + (c.esd || confirming('esd') ? 'red blink' : 'on');
+  const fire = document.querySelector('[data-fire]'); if (fire) fire.textContent = confirming('shear') ? 'Confirm' : 'Fire';
   cls('cRig', 'dot' + (st.speed ? '' : ' amb')); txt('cRigT', st.speed ? 'Online' : 'Paused'); cls('cSat', 'dot' + (navigator.onLine ? '' : ' red')); txt('cSatT', navigator.onLine ? 'Online' : 'Offline');
   const fm = R.formAt(s.Dh, sim.haz); txt('fmTxt', `${fm.n} · Pp ${fmt('dens', d.ppSg, 2)} / Frac ${fmt('dens', d.fgSg, 2)} ${un('dens')}`);
   txt('unitsNote', st.units === 'si' ? 'SI units' : 'Oilfield units');
@@ -471,6 +472,14 @@ function syncSlider(sid, oid, v, q, dec) {
   txt(oid, q === '%' ? (+v).toFixed(dec) + ' %' : q === '' ? (+v).toFixed(dec) : fu(q, v, dec));
 }
 
+/* two-step confirmation inside the page (dialogs such as confirm() are blocked in some viewers) */
+function confirm2(key, fn, msg) {
+  const now = performance.now();
+  if (st.confirm && st.confirm.key === key && now - st.confirm.t < 3000) { st.confirm = null; fn(); return; }
+  st.confirm = { key, t: now }; toast(msg);
+}
+const confirming = key => st.confirm && st.confirm.key === key && performance.now() - st.confirm.t < 3000;
+
 /* ---------------- toasts & audio ---------------- */
 function toast(t) { const e = document.createElement('div'); e.textContent = t; $('toast').appendChild(e); setTimeout(() => e.remove(), 4200); }
 let actx = null;
@@ -486,7 +495,7 @@ function bind() {
   $('instrBtn').onclick = () => { buildTh(); $('instr').showModal(); }; $('instrClose').onclick = () => $('instr').close();
   $('alarmBanner').onclick = () => sim.ack(); $('ackAll').onclick = () => sim.ack(); $('almBtn').onclick = () => sim.ack();
   $('alarmBody').addEventListener('click', e => { const b = e.target.closest('[data-ack]'); if (b) sim.ack(b.dataset.ack); });
-  $('esdBtn').onclick = () => { if (sim.c.esd) { if (confirm('Reset ESD?')) sim.resetEsd(); } else if (confirm('Activate rig EMERGENCY SHUTDOWN?')) sim.esdTrip(); };
+  $('esdBtn').onclick = () => confirm2('esd', () => { if (sim.c.esd) sim.resetEsd(); else sim.esdTrip(); }, sim.c.esd ? 'Click again to reset ESD' : 'Click again to activate ESD');
   $('estopBtn').onclick = () => sim.estop(); $('pwrBtn').onclick = () => res(sim.resetEstop());
   // auto-driller
   $('adAuto').onclick = () => { sim.c.ad.on = true; }; $('adMan').onclick = () => { sim.c.ad.on = false; };
@@ -524,7 +533,7 @@ function bind() {
   $('bopRows').addEventListener('click', e => {
     const b = e.target.closest('[data-bop]'); if (b) res(sim.bopCmd(b.dataset.bop, b.dataset.st));
     if (e.target.closest('[data-arm]')) sim.c.bop.shearArmed = !sim.c.bop.shearArmed;
-    if (e.target.closest('[data-fire]')) { if (!sim.c.bop.shearArmed) toast('Arm the blind/shear rams first'); else if (confirm('FIRE BLIND/SHEAR RAMS? The drill pipe will be cut.')) res(sim.bopCmd('shear')); }
+    if (e.target.closest('[data-fire]')) { if (!sim.c.bop.shearArmed) toast('Arm the blind/shear rams first'); else confirm2('shear', () => res(sim.bopCmd('shear')), 'Click Fire again within 3 s — the drill pipe will be cut'); }
   });
   $('sChoke').addEventListener('input', e => { sim.c.bop.choke = +e.target.value; sim.c.bop.chokeAuto = false; });
   q('[data-chk]', el => { sim.c.bop.choke = clamp(sim.c.bop.choke + +el.dataset.chk, 0, 100); sim.c.bop.chokeAuto = false; });

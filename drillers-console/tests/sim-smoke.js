@@ -1,4 +1,4 @@
-const { RigSim } = require('../sim.js');
+const { RigSim } = require('../src/sim.js');
 const f = (x, n = 1) => (x === undefined || x === null) ? '-' : (+x).toFixed(n);
 function snap(m, tag) {
   const s = m.s, d = m.d;
