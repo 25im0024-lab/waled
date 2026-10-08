@@ -1,0 +1,1608 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FPSO Console</title>
+<meta name="description" content="Interactive FPSO simulator: subsea wells, manifold and risers, turret mooring, 3-phase separation, gas compression, water treatment and injection, crude storage and offloading to a shuttle tanker. Arabic and English, with explanations.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="theme-color" content="#0b2340">
+<style>
+:root{color-scheme:dark;
+  --bg:#040b15;--bg2:#071425;--panel:#0a1a2f;--panel2:#0d223d;--line:#1e4f7d;--line2:#15385b;
+  --text:#dcecff;--muted:#7f9dbd;--dim:#4f6c8a;--cyan:#36c8ff;--green:#2bd66f;--green-d:#0f5c31;
+  --amber:#ffb627;--red:#ff4545;--red-d:#6b1010;--purple:#b689ff;--yellow:#ffe14d;--blue:#4f8dff;
+  --num:"Bahnschrift","DIN Alternate","Roboto Condensed","Arial Narrow",ui-sans-serif,system-ui,sans-serif;
+  --mono:ui-monospace,"Cascadia Mono",Consolas,"DejaVu Sans Mono",monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg) radial-gradient(1200px 600px at 50% -10%,#0b2340 0,var(--bg) 60%) fixed;color:var(--text);
+  font:13px/1.35 var(--num);-webkit-font-smoothing:antialiased}
+button,select,input{font:inherit;color:inherit}
+.app{padding-block:10px;padding-inline:16px;max-width:1920px;margin:0 auto}
+
+/* header */
+.hdr{display:grid;grid-template-columns:minmax(150px,1fr) auto auto minmax(210px,1.4fr) auto auto auto;gap:8px;margin-bottom:8px}
+.hdr>div{background:linear-gradient(#0d2240,#0a1a30);border:1px solid var(--line);border-radius:4px;padding:6px 10px;display:flex;flex-direction:column;justify-content:center}
+.title{grid-column:1/-1;flex-direction:row!important;align-items:center;justify-content:space-between;background:linear-gradient(90deg,#0e2a4d,#081627 70%)!important;padding:8px 14px!important}
+.title h1{margin:0;font-size:24px;letter-spacing:.06em;font-weight:700;text-transform:uppercase}
+.title h1 span{color:var(--cyan)}
+.toolbar{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:1px 12px;font-size:15px}
+.kv b{font-weight:600}
+.status-badge{font-size:20px;font-weight:700;letter-spacing:.05em;text-align:center;border-radius:3px;padding:3px 12px;background:var(--green-d);border:1px solid var(--green);color:#d9ffe7;min-width:170px}
+.status-badge.warn{background:#5a3b00;border-color:var(--amber);color:#ffe3a6}
+.status-badge.crit{background:var(--red-d);border-color:var(--red);color:#ffd6d6}
+.status-badge.idle{background:#14263d;border-color:var(--dim);color:var(--muted)}
+.clock{font:600 18px var(--mono);letter-spacing:.02em}
+.alarm-banner{cursor:pointer;flex-direction:row!important;align-items:center;gap:10px;min-height:52px}
+.alarm-banner .ico{width:34px;height:30px;flex:none}
+.alarm-banner .txt{font-size:16px;font-weight:700;text-transform:uppercase;line-height:1.1}
+.alarm-banner .sub{font-size:11px;font-weight:400;opacity:.85}
+.alarm-banner.p1{background:linear-gradient(#7c0d0d,#4d0606)!important;border-color:var(--red)!important}
+.alarm-banner.p2{background:linear-gradient(#6b4300,#3e2700)!important;border-color:var(--amber)!important}
+.alarm-banner.p3{background:linear-gradient(#063c57,#05263a)!important;border-color:var(--cyan)!important}
+.alarm-banner.ok{opacity:.75}
+.blink{animation:blink 1s steps(2) infinite}
+@keyframes blink{50%{filter:brightness(1.6)}}
+.comms{font-size:12px;display:grid;grid-template-columns:auto auto;gap:1px 10px}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);margin-right:5px;box-shadow:0 0 6px var(--green)}
+.dot.off{background:var(--dim);box-shadow:none}.dot.red{background:var(--red);box-shadow:0 0 6px var(--red)}.dot.amb{background:var(--amber);box-shadow:0 0 6px var(--amber)}
+
+/* grid */
+.grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:8px}
+.c3{grid-column:span 3}.c4{grid-column:span 4}.c5{grid-column:span 5}.c6{grid-column:span 6}.c8{grid-column:span 8}.c12{grid-column:span 12}
+.stack{display:flex;flex-direction:column;gap:8px}
+@media (max-width:1500px){.c3{grid-column:span 4}.c5{grid-column:span 8}.c6{grid-column:span 8}.c8{grid-column:span 12}.c4{grid-column:span 6}}
+@media (max-width:1100px){.c3,.c4{grid-column:span 6}.c5,.c6,.c8{grid-column:span 12}.hdr{grid-template-columns:1fr 1fr}.alarm-banner{grid-column:1/-1}}
+@media (max-width:720px){.c3,.c4,.c5,.c6,.c8{grid-column:span 12}.app{padding-inline:16px}.title h1{font-size:17px}.hdr{grid-template-columns:1fr 1fr}.status-badge{min-width:0;font-size:16px}}
+
+/* cards */
+.card{background:linear-gradient(180deg,var(--panel2),var(--panel) 40%);border:1px solid var(--line);border-radius:4px;min-width:0;display:flex;flex-direction:column}
+.card>h2{margin:0;padding:6px 10px;font-size:14px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;border-bottom:1px solid var(--line2);
+  background:linear-gradient(90deg,#123259,transparent);display:flex;align-items:center;gap:8px;justify-content:space-between}
+.card>h2 small{font-weight:400;color:var(--muted);letter-spacing:.02em;text-transform:none;font-size:11px}
+.card .body{padding:8px 10px;flex:1}
+.sub-h{font-size:11px;color:var(--cyan);text-transform:uppercase;letter-spacing:.08em;margin:8px 0 4px;border-bottom:1px dashed var(--line2);padding-bottom:2px}
+
+/* parameter rows */
+.params{display:flex;flex-direction:column}
+.prow{display:grid;grid-template-columns:1fr auto;align-items:baseline;padding:3px 2px;border-bottom:1px solid #10294433}
+.prow:nth-child(odd){background:#0c203a55}
+.prow .n{color:#c7dcf3;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prow .n i{font-style:normal;color:var(--muted);font-size:12px}
+.prow .v{font:700 19px var(--num);color:var(--green);text-align:right;font-variant-numeric:tabular-nums;min-width:74px}
+.prow.al .v{color:var(--red)}.prow.al{background:#3a080866!important}
+.prow.wn .v{color:var(--amber)}
+.v.g{color:var(--green)}.v.a{color:var(--amber)}.v.r{color:var(--red)}.v.c{color:var(--cyan)}
+.num{font-variant-numeric:tabular-nums}
+
+/* key-value mini table */
+.kvt{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:center;font-size:13px}
+.kvt>span{color:#bcd3ea}
+.kvt>b{font:700 16px var(--num);text-align:right;color:var(--green);font-variant-numeric:tabular-nums}
+.kvt>b.w{color:#fff}.kvt>b.c{color:var(--cyan)}.kvt>b.a{color:var(--amber)}.kvt>b.r{color:var(--red)}
+
+/* buttons */
+.btn{background:linear-gradient(#173556,#0f2440);border:1px solid #2b5f90;border-radius:3px;padding:5px 10px;cursor:pointer;font-weight:600;letter-spacing:.03em;
+  text-transform:uppercase;font-size:12px;color:#cfe3f7;min-height:28px;touch-action:manipulation;user-select:none}
+.btn:hover{border-color:var(--cyan)}
+.btn:active{transform:translateY(1px)}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.btn.on{background:linear-gradient(#25b45f,#0f7a3b);border-color:#5df59a;color:#fff;box-shadow:0 0 10px #2bd66f55}
+.btn.amb{background:linear-gradient(#d18d0c,#8a5600);border-color:#ffd27a;color:#fff}
+.btn.red{background:linear-gradient(#c32323,#7a0c0c);border-color:#ff8a8a;color:#fff}
+.btn.cy{background:linear-gradient(#167fb0,#0b4868);border-color:#7fdcff;color:#fff}
+.btn.sm{padding:3px 7px;min-height:24px;font-size:11px}
+.seg{display:inline-flex;gap:3px;flex-wrap:wrap}
+.pill{display:inline-block;min-width:74px;text-align:center;padding:3px 8px;border-radius:3px;font-weight:700;font-size:12px;letter-spacing:.04em;border:1px solid}
+.pill.g{background:#0f5c31;border-color:var(--green);color:#dcffe9}
+.pill.r{background:#6b1010;border-color:var(--red);color:#ffdede}
+.pill.a{background:#6a4500;border-color:var(--amber);color:#fff0cc}
+.pill.c{background:#08405d;border-color:var(--cyan);color:#dff6ff}
+.pill.d{background:#14263d;border-color:var(--dim);color:var(--muted)}
+.row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.row.sp{justify-content:space-between}
+.ctl{display:grid;grid-template-columns:auto 1fr auto;gap:2px 8px;align-items:center;margin:4px 0;font-size:12px}
+.ctl label{color:#bcd3ea;white-space:nowrap}
+.ctl output{font:700 14px var(--num);color:var(--cyan);min-width:72px;text-align:right}
+input[type=range]{width:100%;accent-color:var(--cyan);height:22px;min-width:60px}
+select{background:#0f2440;border:1px solid #2b5f90;border-radius:3px;padding:2px 4px}
+
+/* scene */
+.scene-card .body{padding:0;position:relative}
+#scene{width:100%;height:auto;display:block;max-height:880px}
+.scene-legend{position:absolute;right:8px;top:6px;font-size:11px;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap;pointer-events:none}
+.scene-legend i{display:inline-block;width:14px;height:3px;margin-right:4px;vertical-align:middle}
+.flow{stroke-dasharray:7 7;animation:flow 1s linear infinite}
+@keyframes flow{to{stroke-dashoffset:-28}}
+
+/* control loop */
+.loop{display:flex;flex-direction:column;align-items:stretch;gap:0}
+.lb{border:1px solid #2b5f90;background:#0d2441;border-radius:3px;padding:5px 8px;text-align:center;font-size:12.5px;line-height:1.25}
+.lb small{display:block;color:var(--cyan);font:600 12px var(--num)}
+.lb.act{border-color:var(--cyan);box-shadow:0 0 8px #36c8ff44}
+.lb.ok{background:linear-gradient(#22b05b,#0e6a35);border-color:#6dfaa5;color:#fff;font-weight:700;font-size:14px}
+.lb.warn{background:linear-gradient(#c7860b,#7f5000);border-color:#ffd27a;color:#fff;font-weight:700}
+.lb.bad{background:linear-gradient(#b51f1f,#6d0b0b);border-color:#ff8a8a;color:#fff;font-weight:700}
+.arr{text-align:center;color:var(--muted);height:13px;line-height:13px;font-size:12px}
+.pvsp{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-bottom:6px}
+.pvsp div{background:#081830;border:1px solid var(--line2);border-radius:3px;padding:3px 6px;text-align:center}
+.pvsp b{display:block;font:700 18px var(--num);color:var(--green)}
+
+/* pumps */
+.pumps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.pump{border:1px solid var(--line2);border-radius:3px;padding:6px;background:#091a30}
+.pump h3{margin:0 0 4px;font-size:13px;letter-spacing:.05em;display:flex;justify-content:space-between;align-items:center}
+.lamp{width:14px;height:14px;border-radius:50%;background:#28384b;border:1px solid #4d6683;display:inline-block}
+.lamp.r{background:var(--red);box-shadow:0 0 8px var(--red)}.lamp.g{background:var(--green);box-shadow:0 0 8px var(--green)}.lamp.a{background:var(--amber);box-shadow:0 0 8px var(--amber)}
+@media (max-width:560px){.pumps{grid-template-columns:1fr}}
+
+/* driller panel */
+.dpanel{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.big{min-height:56px;font-size:15px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.big svg{width:20px;height:20px}
+.estop{width:64px;height:64px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ff8080,#d10f0f 55%,#7a0000);border:4px solid #f6d33f;box-shadow:0 0 0 3px #222,0 4px 12px #000;cursor:pointer;color:#fff;font-weight:800;font-size:11px}
+.estop:active{transform:scale(.96)}
+.lampbtn{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:var(--muted);background:none;border:0;cursor:pointer}
+.lampbtn .lamp{width:26px;height:26px}
+
+/* steps */
+.steps{list-style:none;margin:4px 0 0;padding:0;font-size:12px;max-height:190px;overflow:auto}
+.steps li{padding:2px 6px;border-left:3px solid transparent;color:var(--muted)}
+.steps li.done{color:#8fd8ab}.steps li.cur{color:#fff;border-left-color:var(--cyan);background:#0e2b4a}
+.prog{height:6px;background:#0a1f38;border:1px solid var(--line2);border-radius:3px;overflow:hidden;margin-top:4px}
+.prog>i{display:block;height:100%;background:var(--cyan);width:0}
+
+/* trends */
+.trend-wrap{position:relative}
+#trend{width:100%;height:430px;display:block;cursor:crosshair}
+.legend{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:11.5px;padding:2px 2px 6px}
+.legend span{display:inline-flex;align-items:center;gap:5px;cursor:pointer;user-select:none}
+.legend span.off{opacity:.35}
+.legend i{width:14px;height:3px;display:inline-block}
+
+/* alarms */
+.atable{width:100%;border-collapse:collapse;font-size:12.5px}
+.atable th{text-align:left;color:var(--muted);font-weight:500;border-bottom:1px solid var(--line2);padding:3px 4px;font-size:11px;text-transform:uppercase}
+.atable td{padding:4px;border-bottom:1px solid #10294466;vertical-align:middle}
+.atable tr.p1 td:nth-child(2){color:#ff8f8f}.atable tr.p2 td:nth-child(2){color:#ffcf73}.atable tr.p3 td:nth-child(2){color:#8fe1ff}
+.atable tr.unack td:nth-child(2){animation:blink 1s steps(2) infinite;font-weight:700}
+.alist{max-height:260px;overflow:auto}
+.log{font:12px var(--mono);max-height:220px;overflow:auto;color:#a9c3de}
+.log div{padding:1px 0;border-bottom:1px solid #0f243c}
+.log .p1{color:#ff9494}.log .p2{color:#ffcf73}.log .ev{color:#8fb2d6}
+
+/* toasts / dialog */
+#toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);display:flex;flex-direction:column;gap:6px;z-index:50;pointer-events:none;width:min(560px,92vw)}
+#toast div{background:#2a1d00;border:1px solid var(--amber);color:#ffe5a8;padding:8px 12px;border-radius:4px;box-shadow:0 6px 24px #000a;font-size:13px;animation:fade 4s forwards}
+@keyframes fade{0%,85%{opacity:1}100%{opacity:0}}
+dialog{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:0;width:min(860px,96vw);max-height:90vh}
+dialog::backdrop{background:#000a}
+dialog .body{padding:12px 14px;overflow:auto;max-height:calc(90vh - 50px)}
+.thgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:6px 14px}
+.thgrid label{display:grid;grid-template-columns:1fr 84px;gap:6px;align-items:center;font-size:12px;color:#bcd3ea}
+.thgrid input{background:#081830;border:1px solid var(--line);border-radius:3px;padding:3px 6px;text-align:right}
+.note{font-size:11.5px;color:var(--muted);line-height:1.45}
+.hint{font-size:11px;color:var(--dim)}
+canvas{display:block}
+#pwin{width:100%;height:360px}
+kbd{font:11px var(--mono);border:1px solid var(--line);border-radius:3px;padding:0 4px;background:#081830}
+
+/* mud circulation */
+.circ{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(280px,1fr);gap:12px;align-items:start}
+#circ{width:100%;height:640px;display:block;border:1px solid var(--line2);border-radius:3px;background:#06111f}
+.circ-side .kvt{font-size:12.5px}
+.circ-side .kvt>b{font-size:14.5px}
+.hc{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:2px 10px;border:1px solid var(--line2);border-radius:3px;padding:6px 10px;margin-bottom:8px;background:#081830}
+.hc b{font:700 18px var(--num);color:var(--green)}.hc small{grid-column:1/-1;color:var(--muted);font-size:11.5px}
+.hc.warn b{color:var(--amber)}.hc.bad b{color:var(--red)}.hc.idle b{color:var(--muted)}
+a.btn{text-decoration:none;display:inline-flex;align-items:center}
+@media (max-width:1100px){.circ{grid-template-columns:1fr}#circ{height:560px}}
+@media (max-width:660px){#circ{height:860px}}
+
+/* right-to-left (Arabic) */
+[dir=rtl] body,[dir=rtl] button,[dir=rtl] select,[dir=rtl] input{font-family:"Noto Sans Arabic","Segoe UI","Tahoma",var(--num)}
+[dir=rtl] .title h1,[dir=rtl] .card>h2,[dir=rtl] .btn,[dir=rtl] .lbl,[dir=rtl] .sub-h,[dir=rtl] .alarm-banner .txt{letter-spacing:0}
+[dir=rtl] .prow .v,[dir=rtl] .kvt>b,[dir=rtl] .ctl output{text-align:left}
+[dir=rtl] .prow .v,[dir=rtl] .kvt>b,[dir=rtl] .ctl output,[dir=rtl] .pvsp b,[dir=rtl] .lb small,[dir=rtl] #fmTxt,[dir=rtl] .log div,[dir=rtl] .atable td,[dir=rtl] .hc b{unicode-bidi:plaintext}
+[dir=rtl] .dot{margin-right:0;margin-left:5px}
+[dir=rtl] .atable th{text-align:right}
+[dir=rtl] .steps li{border-left:0;border-right:3px solid transparent}[dir=rtl] .steps li.cur{border-right-color:var(--cyan)}
+[dir=rtl] .scene-legend{right:auto;left:8px}
+[dir=rtl] .scene-legend i,[dir=rtl] .legend i{margin-right:0;margin-left:4px}
+[dir=rtl] input[type=range]{direction:ltr}
+[dir=rtl] .clock,[dir=rtl] .num{direction:ltr;unicode-bidi:isolate}
+[dir=rtl] .card>h2 small,[dir=rtl] .hc small,[dir=rtl] #opTxt{unicode-bidi:plaintext}
+#scene,#scene *,canvas{direction:ltr;unicode-bidi:isolate}
+
+/* ---- FPSO additions ---- */
+.info-card .body{max-height:880px;overflow:auto;font-size:13px;line-height:1.55}
+.ih{margin:0 0 2px;font-size:17px;color:var(--amber)}.is{margin:0 0 8px;color:var(--cyan);font-size:12.5px}
+.info-card p,.info-card li{color:#d6e6f7}.info-card ul,.info-card ol{padding-inline-start:18px;margin:6px 0}.info-card b{color:#fff}
+.itags{display:flex;flex-wrap:wrap;gap:4px;margin-top:10px;border-top:1px solid var(--line2);padding-top:8px}
+.itags .btn{text-transform:none;letter-spacing:0;font-weight:500}
+.prow{cursor:pointer}
+.wells{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.well{border:1px solid var(--line2);border-radius:3px;padding:6px;background:#091a30}
+.well h3{margin:0 0 4px;font-size:13px;display:flex;justify-content:space-between;align-items:center}
+.well .ctl{grid-template-columns:1fr;gap:0}.well .ctl output{text-align:start;min-width:0;font-size:12.5px}
+.well .kvt{font-size:12px}.well .kvt>b{font-size:13.5px}
+@media (max-width:900px){.wells{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.proc{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:800px){.proc{grid-template-columns:1fr}}
+.vessel{position:relative;height:54px;border:2px solid #8fa2b5;border-radius:27px;background:#0a1626;overflow:hidden;margin-bottom:6px}
+.vessel .vl{position:absolute;inset-inline:0;bottom:0;background:linear-gradient(#c98b24,#7a4c12);transition:height .3s}
+.vessel .vw{position:absolute;inset-inline:0;bottom:0;background:linear-gradient(#2d7fc4,#164a7a);transition:height .3s}
+.vessel span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:700 13px var(--num);color:#fff;text-shadow:0 1px 2px #000}
+.comp{display:flex;align-items:center;gap:6px;margin-inline-end:10px}
+.bars{display:flex;flex-direction:column;gap:3px;margin:6px 0}
+.bar{display:grid;grid-template-columns:96px 1fr 96px;align-items:center;gap:6px;font-size:12px}
+.bar i{display:block;height:10px;border-radius:2px;min-width:1px}.bar b{text-align:end;font:600 12.5px var(--num);color:#dcecff}
+.tank{position:relative;height:28px;border:1px solid var(--line);border-radius:4px;background:#0a1626;overflow:hidden}
+.tank i{display:block;height:100%;background:linear-gradient(90deg,#7a4c12,#c98b24);width:0;transition:width .4s}.tank i.a{background:linear-gradient(90deg,#8a5a00,#ffb627)}.tank i.r{background:linear-gradient(90deg,#7a0c0c,#ff4545)}
+.tank span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:700 13px var(--num)}
+#plan{width:100%;height:290px;display:block;border-radius:3px;margin-bottom:6px}
+#trend{height:470px}
+#scene{max-height:none}
+
+.scene-card .scene-legend{top:auto;bottom:8px;left:8px;right:auto}
+[dir=rtl] .scene-card .scene-legend{left:auto;right:8px}
+</style>
+</head>
+<body>
+<div class="app">
+<header class="hdr">
+  <div class="title">
+    <h1>FPSO Console <span>— Floating Production, Storage &amp; Offloading</span></h1>
+    <div class="toolbar">
+      <span class="lbl">Sim</span>
+      <span class="seg" id="speedSeg">
+        <button class="btn sm" data-speed="0" title="Pause">❚❚</button>
+        <button class="btn sm on" data-speed="1">1×</button>
+        <button class="btn sm" data-speed="10">10×</button>
+        <button class="btn sm" data-speed="60">60×</button>
+        <button class="btn sm" data-speed="600">600×</button>
+        <button class="btn sm" data-speed="3600">3600×</button>
+      </span>
+      <span class="lbl">Units</span>
+      <span class="seg"><button class="btn sm on" data-units="si">SI</button><button class="btn sm" data-units="fd">Field</button></span>
+      <span class="lbl">Language</span>
+      <span class="seg" data-i18n-skip><button class="btn sm on" data-lang="en">English</button><button class="btn sm" data-lang="ar">العربية</button></span>
+      <button class="btn sm" id="soundBtn" title="Alarm horn">🔇 Horn</button>
+      <button class="btn sm cy" id="instrBtn">Instructor / Setup</button>
+      <a class="btn sm" href="../">Home</a>
+    </div>
+  </div>
+  <div><div class="kv"><span class="lbl">Unit</span><b id="unitName">—</b><span class="lbl">Field</span><b id="fieldName">—</b></div></div>
+  <div><span class="lbl">Plant status</span><div class="status-badge" id="plantStatus">PRODUCING</div></div>
+  <div><span class="lbl" id="dateTxt">—</span><span class="clock" id="clockTxt">--:--:--</span></div>
+  <div class="alarm-banner ok" id="alarmBanner" title="Click to acknowledge">
+    <svg class="ico" viewBox="0 0 34 30"><path d="M17 2L32 28H2Z" fill="#ffcc00" stroke="#000" stroke-width="1.5"/><path d="M17 11v8" stroke="#000" stroke-width="3"/><circle cx="17" cy="23.5" r="1.8"/></svg>
+    <div><div class="txt" id="alarmTxt">No active alarms</div><div class="sub" id="alarmSub">—</div></div>
+  </div>
+  <div><span class="lbl">ESD / PSD</span><div class="row"><button class="btn on" id="esdBtn">ESD READY</button><button class="btn sm" id="psdBtn">PSD reset</button></div></div>
+</header>
+
+<main class="grid">
+  <section class="card c3">
+    <h2>Key Parameters <small id="unitsNote">SI</small></h2>
+    <div class="body"><div class="params" id="params"></div></div>
+  </section>
+
+  <section class="card c6 scene-card">
+    <h2>Field Layout — From Subsea Wells to Offloading <small>tap any part for an explanation</small></h2>
+    <div class="body"><svg id="scene" viewBox="0 0 1000 760" aria-label="Animated FPSO field layout"></svg>
+      <div class="scene-legend"><span><i style="background:#ffb627"></i>Oil</span><span><i style="background:#ffe14d"></i>Gas</span><span><i style="background:#3fb0ff"></i>Water</span><span><i style="background:#9b7cff"></i>Lift gas</span></div>
+    </div>
+  </section>
+
+  <section class="card c3 info-card">
+    <h2>Explanation <small id="infoTag">overview</small></h2>
+    <div class="body" id="info"></div>
+  </section>
+
+  <section class="card c6">
+    <h2>Wells, Manifold &amp; Risers <small id="subseaNote"></small></h2>
+    <div class="body">
+      <div class="wells" id="wells"></div>
+      <div class="kvt" style="margin-top:8px">
+        <span>Manifold pressure</span><b id="sPman">—</b>
+        <span>Arrival temperature / hydrate temp.</span><b id="sTemp">—</b>
+        <span>Cooldown margin to hydrates</span><b id="sCool" class="w">—</b>
+        <span>Riser slugging index</span><b id="sSlug">—</b>
+        <span>Reservoir pressure / bubble point</span><b id="sPr" class="w">—</b>
+        <span>Voidage replacement ratio (VRR)</span><b id="sVrr">—</b>
+      </div>
+      <div class="row" style="margin-top:6px"><button class="btn sm" id="megBtn">MEG injection</button><button class="btn sm" id="allOpen">Open all wells</button><button class="btn sm" id="allShut">Shut all wells</button></div>
+    </div>
+  </section>
+
+  <section class="card c6">
+    <h2>Topsides Process <small id="procNote"></small></h2>
+    <div class="body proc">
+      <div>
+        <div class="sub-h">HP 3-phase separator</div>
+        <div class="vessel"><div class="vl" id="vLT"></div><div class="vw" id="vLI"></div><span id="vTxt"></span></div>
+        <div class="ctl"><label>Pressure set-point</label><input type="range" id="sPset" min="8" max="22" step="0.5"><output id="oPset"></output></div>
+        <div class="ctl"><label>Level set-point</label><input type="range" id="sLT" min="30" max="75" step="1"><output id="oLT"></output></div>
+        <div class="kvt">
+          <span>Pressure</span><b id="pP">—</b><span>Liquid / interface level</span><b id="pL">—</b>
+          <span>Oil to stabilisation</span><b id="pQo">—</b><span>Water to treatment</span><b id="pQw">—</b><span>Gas to compressors</span><b id="pQg">—</b>
+          <span>Crude BS&amp;W (spec ≤ 0.5 %)</span><b id="pBsw">—</b>
+        </div>
+      </div>
+      <div>
+        <div class="sub-h">Gas compression &amp; use</div>
+        <div class="row" id="compRow"></div>
+        <div class="bars" id="gasBars"></div>
+        <div class="ctl"><label>Reinjection share</label><input type="range" id="sRoute" min="0" max="100" step="5"><output id="oRoute"></output></div>
+        <div class="sub-h">Water</div>
+        <div class="kvt"><span>Oil-in-water (limit 30 mg/L)</span><b id="pOiw">—</b><span>Produced water overboard</span><b id="pPw">—</b><span>Seawater injection</span><b id="pWi">—</b></div>
+        <div class="row"><button class="btn sm" id="wiBtn">WI pumps</button><button class="btn sm" id="cleanBtn">Clean hydrocyclones</button></div>
+        <div class="ctl"><label>Injection rate</label><input type="range" id="sWi" min="0" max="32000" step="500"><output id="oWi"></output></div>
+        <div class="sub-h">Power</div>
+        <div class="kvt"><span>Demand / available</span><b id="pPow">—</b><span>Compression / water injection</span><b id="pPow2" class="w">—</b><span>Fuel gas</span><b id="pFuel">—</b></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card c4">
+    <h2>Storage &amp; Offloading <small id="tkState"></small></h2>
+    <div class="body">
+      <div class="tank"><i id="cargoBar"></i><span id="cargoTxt"></span></div>
+      <div class="kvt" style="margin-top:6px">
+        <span>Cargo on board</span><b id="oCargo">—</b><span>Days to tanks full</span><b id="oDays">—</b><span>Draft</span><b id="oDraft" class="w">—</b>
+        <span>Shuttle tanker</span><b id="oTk">—</b><span>Tanker cargo</span><b id="oTkC">—</b><span>Offloading weather limit</span><b id="oHs" class="w">—</b>
+      </div>
+      <div class="ctl"><label>Offloading rate</label><input type="range" id="sOff" min="1000" max="8000" step="100"><output id="oOff"></output></div>
+      <div class="row"><button class="btn sm cy" id="tkBtn">Call shuttle tanker</button><button class="btn sm" id="tkStop">Stop offloading</button></div>
+      <div class="prog"><i id="tkProg"></i></div>
+    </div>
+  </section>
+
+  <section class="card c4">
+    <h2>Turret Mooring &amp; Weather <small id="moorNote"></small></h2>
+    <div class="body">
+      <canvas id="plan" dir="ltr"></canvas>
+      <div class="ctl"><label>Wind</label><input type="range" id="sWind" min="0" max="40" step="1"><output id="oWind"></output></div>
+      <div class="ctl"><label>Wind from</label><input type="range" id="sWindDir" min="0" max="355" step="5"><output id="oWindDir"></output></div>
+      <div class="ctl"><label>Significant wave height</label><input type="range" id="sHs" min="0" max="9" step="0.1"><output id="oHs2"></output></div>
+      <div class="ctl"><label>Waves from</label><input type="range" id="sWaveDir" min="0" max="355" step="5"><output id="oWaveDir"></output></div>
+      <div class="ctl"><label>Current</label><input type="range" id="sCur" min="0" max="2" step="0.05"><output id="oCur"></output></div>
+      <div class="ctl"><label>Current from</label><input type="range" id="sCurDir" min="0" max="355" step="5"><output id="oCurDir"></output></div>
+      <div class="kvt"><span>Heading</span><b id="mHead">—</b><span>Offset (% of water depth)</span><b id="mOff">—</b><span>Max line tension (% MBL)</span><b id="mT">—</b></div>
+    </div>
+  </section>
+
+  <section class="card c4">
+    <h2>Alarm / Safety <span class="seg"><button class="btn sm" id="ackAll">Ack all</button></span></h2>
+    <div class="body">
+      <div class="alist"><table class="atable"><thead><tr><th>Time</th><th>Alarm</th><th>Status</th></tr></thead><tbody id="alarmBody"></tbody></table></div>
+      <div class="sub-h">Event log</div>
+      <div class="log" id="log"></div>
+    </div>
+  </section>
+
+  <section class="card c12">
+    <h2>Trends <small id="trendWin"></small>
+      <span class="seg"><button class="btn sm" data-win="3600">1 h</button><button class="btn sm on" data-win="21600">6 h</button><button class="btn sm" data-win="86400">24 h</button><button class="btn sm" data-win="259200">3 d</button></span></h2>
+    <div class="body trend-wrap"><div class="legend" id="legend"></div><canvas id="trend" dir="ltr"></canvas></div>
+  </section>
+</main>
+</div>
+<div id="toast"></div>
+
+<dialog id="instr">
+  <h2 class="card" style="margin:0;border:0;border-bottom:1px solid var(--line);padding:8px 14px;display:flex;justify-content:space-between;flex-direction:row;align-items:center">INSTRUCTOR / SETUP <button class="btn sm" id="instrClose">Close</button></h2>
+  <div class="body">
+    <div class="sub-h">Scenarios</div>
+    <div class="row">
+      <button class="btn sm amb" data-sc="comptrip">Compressor train A trip</button>
+      <button class="btn sm amb" data-sc="water3">Water breakthrough in P-3</button>
+      <button class="btn sm red" data-sc="line">Mooring line failure</button>
+      <button class="btn sm red" data-sc="storm">Storm</button>
+      <button class="btn sm amb" data-sc="foul">Hydrocyclone fouling</button>
+      <button class="btn sm amb" data-sc="lcv">Separator oil level valve stuck</button>
+      <button class="btn sm amb" data-sc="decline">Fast reservoir depletion (×200)</button>
+      <button class="btn sm on" data-sc="clear">Clear all faults</button>
+    </div>
+    <div class="sub-h">Reset</div>
+    <div class="row"><button class="btn sm cy" id="resetHot">Reset — producing (hot start)</button><button class="btn sm" id="resetCold">Reset — wells shut in (cold start)</button></div>
+    <div class="sub-h">What is modelled</div>
+    <p class="note">The model includes the following:</p>
+    <ul class="note">
+      <li>Reservoir material balance with voidage replacement (water injection and gas reinjection).</li>
+      <li>Composite IPR: straight line above the bubble point, Vogel below it.</li>
+      <li>Wells solved by nodal analysis: tubing hydrostatic head with gas lightening and friction, plus the subsea choke.</li>
+      <li>Gas lift, and water-cut growth with cumulative production.</li>
+      <li>Manifold and riser pressure (hydrostatic + friction), a severe-slugging indicator, and arrival-temperature cooldown against a hydrate curve, with MEG.</li>
+      <li>3-phase separator with level and pressure control, PCV/PSV to flare.</li>
+      <li>2×50 % compressor trains (adiabatic multi-stage power); gas allocated to fuel, lift, export and reinjection; gas-turbine power balance with diesel fallback.</li>
+      <li>Hydrocyclone oil-in-water; crude BS&amp;W.</li>
+      <li>Cargo storage and draft; the shuttle-tanker sequence with weather limits.</li>
+      <li>Turret weathervaning, mooring offset and line tensions; ESD/PSD.</li>
+    </ul>
+    <p class="note">This is a training model: the coefficients are illustrative and not from a specific FPSO.</p>
+  </div>
+</dialog>
+
+<script>
+/* Driller's Console — language layer (English / Arabic). English is the source text; AR maps it to Arabic.
+   Technical terms (WOB, ROP, SPP, ECD, BOP, SIDPP ...) are kept in English on purpose.
+   I18N.t(s)        -> translated string (exact match, then regex patterns for messages carrying numbers)
+   I18N.f(tpl, vars)-> translated template with {placeholders}
+   I18N.setLang(l)  -> switches <html lang/dir> and the static text of the page */
+(function (root) {
+'use strict';
+const AR = {
+  // header / toolbar
+  "Driller's Console": 'لوحة تحكم الحفّار', '— Drilling Rig Control': '— Driller\'s Console', Sim: 'المحاكاة', Units: 'الوحدات', SI: 'SI', Field: 'Field',
+  Pause: 'إيقاف مؤقت', 'Alarm horn': 'صفارة الإنذار', '🔇 Horn': '🔇 الصفارة', '🔊 Horn': '🔊 الصفارة', 'Instructor / Setup': 'المدرّب / الإعداد',
+  Language: 'اللغة', Guide: 'الدليل (PDF)', 'Field Hydraulics': 'حاسبة البيانات الحقلية', 'Hydraulics calculator for real well data (API RP 13D)': 'حاسبة هيدروليكا لبيانات الآبار الحقيقية (API RP 13D)', 'Parameter guide (PDF, Arabic + English)': 'دليل البارامترات (PDF، عربي + إنجليزي)',
+  'Rig ID': 'رقم المنصة', Well: 'البئر', 'Well status': 'حالة البئر', ESD: 'ESD', Comms: 'الاتصال', Rig: 'المنصة', TVD: 'TVD', Sat: 'القمر',
+  Online: 'متصل', Offline: 'غير متصل', Paused: 'متوقف', 'Bit / Formation': 'البت / التكوين', 'Click to acknowledge': 'اضغط للإقرار',
+  'No active alarms': 'لا توجد إنذارات', 'All systems normal': 'كل الأنظمة طبيعية', READY: 'جاهز', 'CONFIRM?': 'تأكيد؟', 'ACTIVE — RESET': 'مفعّل — إعادة ضبط',
+  'SI units': 'وحدات SI', 'Oilfield units': 'وحدات حقلية',
+  // well status
+  'ESD ACTIVE': 'ESD مفعّل', 'E-STOP': 'E-STOP', 'WELL CONTROL LOST': 'فقدان السيطرة على البئر', 'SHEARED / SECURED': 'قُطع الأنبوب / البئر مؤمَّن',
+  'KILL CIRCULATION': 'تدوير القتل (Kill)', 'SHUT-IN': 'البئر مغلق', CONNECTION: 'وصلة (Connection)', 'IN SLIPS': 'على الـ Slips', DRILLING: 'حفر',
+  'TRIPPING OUT': 'سحب الأنابيب (POOH)', 'TRIPPING IN': 'إنزال الأنابيب (RIH)', 'CIRCULATE & ROTATE': 'تدوير ودوران', CIRCULATING: 'تدوير', IDLE: 'خامل',
+  // cards
+  'Primary Parameters': 'البارامترات الأساسية', 'Rig & Well Schematic': 'مخطط المنصة والبئر', live: 'مباشر', 'Mud in': 'طين داخل', Returns: 'الراجع',
+  'Choke line': 'خط الـ Choke', Gas: 'غاز', 'Drilling Control Loop': 'حلقة التحكم بالحفر', 'Formation / Bit Interaction': 'تفاعل التكوين / البت',
+  'WOB / Torque / ROP Measurement': 'قياس WOB / العزم / ROP', 'Drilling Controller / Auto-Driller': 'المتحكم / Auto-Driller',
+  'Drawworks / Top Drive Command': 'أوامر Drawworks / Top Drive', 'Bit Response': 'استجابة البت', 'Stable Drilling': 'حفر مستقر',
+  'Unsafe — check alarms': 'غير آمن — راجع الإنذارات', 'Manual Control': 'تحكم يدوي',
+  'Drilling Control': 'التحكم بالحفر', 'Out (DW cmd)': 'المخرج (أمر DW)', Mode: 'الوضع', Auto: 'آلي', Manual: 'يدوي', 'Control variable': 'المتغير المتحكَّم به',
+  'ROP cap (WOB mode)': 'سقف ROP (وضع WOB)', On: 'تشغيل', Off: 'إيقاف', 'WOB setpoint': 'WOB المطلوب', 'ROP target': 'ROP المستهدف', 'WOB limit': 'حد WOB',
+  'Torque limit': 'حد العزم', 'RPM limit': 'حد RPM', 'Auto connection at stand end': 'وصلة آلية عند نهاية الـ stand',
+  'Top Drive': 'Top Drive', Torque: 'العزم', 'FWD / OFF / REV': 'أمامي / إيقاف / عكسي', Drill: 'حفر', Spin: 'لفّ', Fwd: 'أمامي', Rev: 'عكسي',
+  'RPM setpoint': 'RPM المطلوب', 'Torque setpoint': 'العزم المطلوب', 'Motor status': 'حالة المحرك', 'Motor temperature': 'حرارة المحرك',
+  'Hydraulic pressure': 'الضغط الهيدروليكي', Lubrication: 'التزييت', OK: 'سليم', Cooling: 'التبريد', VFD: 'VFD', FAULT: 'عطل',
+  TRIPPED: 'فصل (Trip)', RUNNING: 'يعمل', STOPPED: 'متوقف', 'TORQUE LIMIT': 'حد العزم', sequence: 'تسلسل آلي',
+  Drawworks: 'Drawworks', 'Hoist / Lower': 'رفع / إنزال', '(hold)': '(اضغط باستمرار)', Hoist: 'رفع', Lower: 'إنزال', 'Block position': 'موضع البلوك',
+  'Hook load': 'حمل الخطاف', 'Block speed': 'سرعة البلوك', 'Drum RPM': 'دوران الطبلة', 'Brake status': 'حالة الفرامل', 'Motor load': 'حمل المحرك',
+  'Brake mode': 'وضع الفرامل', Set: 'تثبيت', Release: 'تحرير', SET: 'مثبّتة', RELEASED: 'محرّرة', 'Jog speed': 'سرعة التحريك',
+  'Keyboard: hold': 'لوحة المفاتيح: اضغط', 'hoist,': 'للرفع،', 'lower,': 'للإنزال،', 'stop block,': 'لإيقاف البلوك،', 'pause.': 'للإيقاف المؤقت.',
+  MANUAL: 'يدوي', STOP: 'إيقاف', 'AUTO-DRILLER': 'Auto-Driller', SEQUENCE: 'تسلسل آلي',
+  'Mud Pumps 1 / 2 / 3': 'مضخات الطين 1 / 2 / 3', 'All On': 'تشغيل الكل', 'All Off': 'إيقاف الكل', 'Master SPM': 'SPM للكل', PUMP: 'مضخة',
+  liner: 'liner', 'Liner size': 'قطر الـ liner', Pressure: 'الضغط', Stroke: 'الشوط', Flow: 'التدفق', Strokes: 'الضربات', Status: 'الحالة', Alarm: 'إنذار',
+  RUN: 'يعمل', RELIEF: 'Relief',
+  'BOP / Well Control': 'BOP / السيطرة على البئر', 'Choke manifold': 'Choke manifold', 'Choke position': 'فتحة الـ Choke', 'Auto (hold DPP)': 'آلي (تثبيت DPP)',
+  'Auto-choke holds drill-pipe pressure at the target (constant BHP method)': 'الـ Auto-choke يثبّت ضغط الـ drill pipe عند الهدف (طريقة BHP الثابت)',
+  'DPP target': 'هدف DPP', 'Choke (casing) pressure': 'ضغط الـ Choke (casing)', 'Drill-pipe pressure': 'ضغط الـ drill pipe', 'Accumulator pressure': 'ضغط الـ Accumulator',
+  'MAASP (shoe @ 2000 m)': 'MAASP (الـ shoe عند 2000 m)', 'BHP / Pore pressure': 'BHP / ضغط المسام', 'Annular BOP': 'Annular BOP', 'Pipe rams': 'Pipe rams',
+  'Blind / shear rams': 'Blind / shear rams', 'HCR (choke line)': 'HCR (خط الـ choke)', 'Kill line': 'Kill line', Open: 'فتح', Close: 'إغلاق', Arm: 'تسليح', Disarm: 'إلغاء التسليح',
+  Fire: 'إطلاق', Confirm: 'تأكيد', OPEN: 'مفتوح', CLOSED: 'مغلق', MOVING: 'يتحرك', ARMED: 'مسلّح',
+  'returns via choke': 'الراجع عبر الـ choke', 'well shut in': 'البئر مغلق', 'returns via flowline': 'الراجع عبر الـ flowline',
+  'Kill Sheet & Mud': 'Kill sheet والطين', "Driller's / Wait-&-Weight": "Driller's / Wait-&-Weight", 'Pit gain at shut-in': 'زيادة الحوض عند الإغلاق',
+  'Kill mud weight': 'وزن طين القتل (KMW)', 'SCR (slow circ. rate)': 'SCR (معدل التدوير البطيء)', 'ICP (initial circ.)': 'ICP (ضغط التدوير الأولي)',
+  'FCP (final circ.)': 'FCP (ضغط التدوير النهائي)', 'Strokes surface→bit': 'ضربات السطح ← البت', 'Record SCR': 'سجّل SCR', 'DPP target = ICP': 'هدف DPP = ICP',
+  'Mix KMW': 'اخلط KMW', 'Active mud system': 'نظام الطين الفعّال', 'MW setpoint (mixing)': 'MW المطلوب (الخلط)', 'MW in / out': 'MW داخل / خارج',
+  'Pit volume / Δ': 'حجم الحوض / Δ', 'Trip tank': 'Trip tank', 'PV / YP': 'PV / YP', 'ECD @ bit': 'ECD عند البت', Mixing: 'الخلط', 'Hole fill': 'ملء البئر',
+  'Zero pit Δ': 'تصفير Δ الحوض', 'LCM pill': 'LCM pill', 'not recorded': 'غير مسجّل',
+  "Pipe Handling & Driller's Panel": 'مناولة الأنابيب ولوحة الحفّار', 'Auto Connection': 'وصلة آلية', Abort: 'إلغاء', 'Set slips': 'ضع الـ slips',
+  'Pull slips': 'ارفع الـ slips', 'Break out': 'فكّ الوصلة', 'Pick stand': 'التقط stand', 'Rack stand': 'أعد الـ stand', 'Make up': 'اربط الوصلة',
+  "Driller's panel": 'لوحة الحفّار', '▲ Block up': '▲ البلوك لأعلى', '▼ Block down': '▼ البلوك لأسفل', 'PWR ON': 'الطاقة', ALARM: 'إنذار',
+  'Reset E-STOP / power': 'إعادة ضبط E-STOP / الطاقة', 'Acknowledge alarms': 'الإقرار بالإنذارات', 'Emergency stop: top drive, drawworks, pumps': 'إيقاف طوارئ: top drive و drawworks والمضخات',
+  Connected: 'متصل', 'In slips': 'على الـ slips', 'Stand on TD': 'Stand على الـ TD', 'Joint @ floor': 'وصلة عند الأرضية', 'On bottom': 'على القاع',
+  'Real-Time Trends': 'المنحنيات اللحظية', 'Alarm / Safety': 'الإنذارات / السلامة', 'Ack all': 'إقرار الكل', Time: 'الوقت', 'Event log': 'سجل الأحداث',
+  ACTIVE: 'نشط', CLEAR: 'زال', CLEARED: 'زال', Ack: 'إقرار', 'No alarms': 'لا إنذارات', acknowledged: 'مُقَرّ', unacknowledged: 'غير مُقَرّ',
+  'Pressure Window & Lithology': 'نافذة الضغط والطبقات', 'EMW (sg) vs depth — pore (prognosis dashed), fracture, MW, ECD': 'EMW (sg) مقابل العمق — المسام (المتوقع متقطع)، التكسير، MW، ECD',
+  'Hydraulics & Bit': 'الهيدروليكا والبت', 'Bit ΔP / HSI': 'ΔP البت / HSI', 'Annular friction': 'احتكاك الحلقي', 'SPP expected (clean)': 'SPP المتوقع (نظيف)',
+  'Hole depth / bit': 'عمق البئر / البت', 'Bit hours / wear (IADC)': 'ساعات البت / التآكل (IADC)', MSE: 'MSE', 'd-exponent (dxc)': 'd-exponent (dxc)',
+  'Pore / Frac @ bottom': 'المسام / التكسير عند القاع', Overbalance: 'Overbalance', 'Stands added / racked': 'Stands مضافة / مُعادة',
+  '12¼" PDC, 6×14/32" nozzles · 5½" 21.9 ppf DP + 200 m BHA · 13⅜" shoe 2000 m · vertical well (MD = TVD). Values are a simplified training model, not calibrated to a specific rig.':
+    'بت PDC قطر 12¼"، 6 nozzles 14/32" · DP 5½" 21.9 ppf + BHA بطول 200 m · shoe 13⅜" عند 2000 m · بئر عمودي (MD = TVD). القيم من نموذج تدريبي مبسّط وغير معايَر على منصة محددة.',
+  // primary parameters
+  'Hole Depth': 'عمق البئر', 'Bit Depth': 'عمق البت', 'Block Position': 'موضع البلوك', 'Block Speed': 'سرعة البلوك', 'Hook Load': 'حمل الخطاف',
+  WOB: 'WOB', ROP: 'ROP', 'Top Drive RPM': 'RPM الـ Top Drive', 'Top Drive Torque': 'عزم الـ Top Drive', 'Standpipe Pressure': 'ضغط الـ Standpipe (SPP)',
+  'Casing Pressure': 'ضغط الـ Casing', 'Pump Strokes': 'ضربات المضخات', 'Pump Pressure': 'ضغط المضخة', 'Mud Flow In': 'تدفق الطين الداخل',
+  'Mud Flow Out': 'تدفق الطين الخارج', 'Mud Pit Volume': 'حجم أحواض الطين', 'Pit Gain / Loss': 'زيادة / نقص الحوض', 'Differential Pressure': 'الضغط التفاضلي',
+  'Rotary Torque': 'عزم الدوران',
+  // trends / pressure window
+  'Block pos': 'موضع البلوك', 'Casing P': 'ضغط الـ Casing', 'Flow in': 'تدفق داخل', 'Flow out': 'تدفق خارج', 'Pit Δ': 'Δ الحوض',
+  'Pore (prognosis)': 'المسام (المتوقع)', 'Pore (actual, drilled)': 'المسام (الفعلي المحفور)', Fracture: 'التكسير', 'MW in hole': 'MW في البئر',
+  'ECD @ bottom': 'ECD عند القاع', 'Hole depth': 'عمق البئر', shoe: 'shoe',
+  // formations
+  'Clay / Silt': 'طين / غرين', 'Sand / Shale': 'رمل / طفل', Claystone: 'حجر طيني', Shale: 'طفل (Shale)', 'Silty sandstone': 'حجر رملي غريني',
+  'Limestone stringer': 'شريط حجر جيري', 'Shale (transition)': 'طفل (منطقة انتقالية)', 'Gas sand': 'رمل غازي', 'Vugular limestone': 'حجر جيري كهفي',
+  'Sandstone / Shale': 'حجر رملي / طفل', Sandstone: 'حجر رملي', Limestone: 'حجر جيري', GAS: 'غاز', LOSS: 'فقد',
+  // auto-driller states
+  OFF: 'إيقاف', 'HOLD (CONNECTION)': 'انتظار (وصلة)', STANDBY: 'استعداد', 'STAND END': 'نهاية الـ stand', 'SEEK BOTTOM': 'البحث عن القاع',
+  'SEEK': 'البحث عن القاع', CONTROL: 'تحكم', 'ROP LIMIT': 'حد ROP',
+  // floor operations / connection steps
+  'SET SLIPS': 'وضع الـ slips', 'PULL SLIPS': 'رفع الـ slips', 'BREAK OUT': 'فكّ الوصلة', 'PICK UP STAND': 'التقاط stand', 'RACK BACK STAND': 'إعادة الـ stand',
+  'SPIN-IN & TORQUE UP': 'لفّ وشدّ الوصلة', 'Stop rotation, pick up off bottom': 'أوقف الدوران وارفع عن القاع', 'Stop mud pumps (flow-check)': 'أوقف المضخات (flow-check)',
+  'Set slips': 'ضع الـ slips', 'Break out top-drive connection': 'فكّ وصلة الـ top drive', 'Raise top drive to racking board': 'ارفع الـ top drive إلى الـ racking board',
+  'Latch new stand': 'التقط stand جديد', 'Stab, spin-in and torque up': 'أدخل الوصلة ولفّها وشدّها', 'Take string weight': 'احمل وزن الـ string',
+  'Pull slips': 'ارفع الـ slips', 'Restart pumps (staged)': 'أعد تشغيل المضخات تدريجياً', 'Start rotation': 'ابدأ الدوران', 'Run to bottom': 'انزل إلى القاع',
+  // alarms
+  'EMERGENCY SHUTDOWN ACTIVE': 'إيقاف الطوارئ ESD مفعّل', 'DRILLER E-STOP ACTIVE': 'E-STOP الحفّار مفعّل', 'WELL CONTROL LOST — WELLHEAD PRESSURE EXCEEDED': 'فقدان السيطرة — تجاوز ضغط رأس البئر',
+  'FLOW OUT > FLOW IN — POSSIBLE KICK': 'التدفق الخارج > الداخل — kick محتمل', 'WELL FLOWING WITH PUMPS OFF': 'البئر يتدفق والمضخات متوقفة', 'PIT GAIN': 'زيادة في الحوض',
+  'HIGH CASING PRESSURE (> % MAASP)': 'ضغط casing مرتفع (> % من MAASP)', 'CROWN-O-MATIC — BLOCK AT UPPER LIMIT': 'Crown-o-matic — البلوك عند الحد العلوي',
+  'HIGH STANDPIPE PRESSURE': 'ضغط standpipe مرتفع', 'LOW STANDPIPE PRESSURE — POSSIBLE WASHOUT': 'ضغط standpipe منخفض — washout محتمل', 'HIGH TORQUE': 'عزم مرتفع',
+  'TOP DRIVE STALLED': 'توقف الـ Top Drive (stall)', 'HIGH HOOK LOAD': 'حمل خطاف مرتفع', 'OVERPULL — EXCESS DRAG': 'Overpull — سحب زائد', 'HIGH WOB': 'WOB مرتفع',
+  'HIGH RPM': 'RPM مرتفع', 'LOW MUD FLOW — FLOW OUT < FLOW IN': 'تدفق منخفض — الخارج < الداخل', 'PIT LOSS': 'نقص في الحوض', 'HIGH GAS': 'غاز مرتفع',
+  'LOW ACCUMULATOR PRESSURE': 'ضغط accumulator منخفض', 'HIGH BLOCK SPEED': 'سرعة بلوك مرتفعة', 'TOP DRIVE MOTOR HIGH TEMPERATURE': 'حرارة محرك الـ Top Drive مرتفعة',
+  'MUD PUMP RELIEF / TRIP': 'Relief / فصل مضخة الطين', 'MUD PUMP FAULT — LOW VOLUMETRIC EFFICIENCY': 'عطل مضخة — كفاءة حجمية منخفضة',
+  'STAND DRILLED DOWN — CONNECTION REQUIRED': 'انتهى الـ stand — يلزم connection', 'BIT WORN — CONSIDER TRIP': 'البت متآكل — فكّر في الـ trip',
+  'ROTATING / MOVING WITH BOP CLOSED': 'دوران / حركة والـ BOP مغلق', 'POOR HOLE CLEANING — HIGH CUTTINGS LOAD': 'تنظيف بئر ضعيف — حمل cuttings مرتفع',
+  // events / notes
+  'E-STOP pressed': 'ضُغط E-STOP', 'ESD activated': 'تفعيل ESD', 'E-STOP reset, power restored': 'إعادة ضبط E-STOP وعودة الطاقة', 'ESD reset': 'إعادة ضبط ESD', 'Reset ESD first': 'أعد ضبط ESD أولاً',
+  'Auto connection started': 'بدأت الوصلة الآلية', 'BLIND/SHEAR RAMS FIRED': 'أُطلقت الـ BLIND/SHEAR RAMS', 'WELLHEAD/BOP FAILURE — LOSS OF CONTAINMENT': 'فشل رأس البئر/BOP — فقدان الاحتواء',
+  'LCM pill pumped (8 m³)': 'ضُخّت LCM pill (8 m³)', 'Another floor operation is in progress': 'هناك عملية أخرى جارية على الأرضية', 'Slips already set': 'الـ slips موضوعة مسبقاً',
+  'String not on the top drive': 'الـ string غير متصل بالـ top drive', 'Stop the block before setting slips': 'أوقف البلوك قبل وضع الـ slips',
+  'Pick up off bottom before setting slips': 'ارفع عن القاع قبل وضع الـ slips', 'No tool joint at slip height — position the block (saver sub 1.5 m above floor ± stand length)': 'لا توجد tool joint عند ارتفاع الـ slips — حرّك البلوك (الـ saver sub 1.5 m فوق الأرضية ± طول الـ stand)',
+  'Slips are not set': 'الـ slips غير موضوعة', 'Make up the top drive to the string first': 'اربط الـ top drive بالـ string أولاً', 'Take string weight on the hook before pulling slips': 'احمل وزن الـ string على الخطاف قبل رفع الـ slips',
+  'Break-out needs the string in slips and connected': 'فكّ الوصلة يتطلب الـ string على الـ slips ومتصلاً', 'Stop top drive rotation first': 'أوقف دوران الـ top drive أولاً',
+  'Stop the mud pumps first': 'أوقف مضخات الطين أولاً', 'Top drive must be empty and disconnected': 'يجب أن يكون الـ top drive فارغاً وغير متصل', 'No free stand on the top drive': 'لا يوجد stand حر على الـ top drive',
+  'Already connected': 'متصل مسبقاً', 'String must be in slips': 'يجب أن يكون الـ string على الـ slips', 'Connection already running': 'الوصلة جارية مسبقاً',
+  'String must be connected and out of slips': 'يجب أن يكون الـ string متصلاً وخارج الـ slips', 'Drill the stand down first (saver sub ≤ 3 m above floor)': 'احفر الـ stand حتى نهايته أولاً (الـ saver sub ≤ 3 m فوق الأرضية)',
+  'Arm the blind/shear rams first': 'سلّح الـ blind/shear rams أولاً', 'Click again to reset ESD': 'اضغط مرة أخرى لإعادة ضبط ESD', 'Click again to activate ESD': 'اضغط مرة أخرى لتفعيل ESD',
+  'Click Fire again within 3 s — the drill pipe will be cut': 'اضغط إطلاق مرة أخرى خلال 3 ثوانٍ — سيُقطع الـ drill pipe',
+  'Run a pump at slow rate first (e.g. 30–40 spm, one pump)': 'شغّل مضخة بمعدل بطيء أولاً (مثلاً 30–40 spm، مضخة واحدة)', 'Need shut-in pressures and an SCR first': 'تحتاج ضغوط الإغلاق و SCR أولاً',
+  'No shut-in data yet': 'لا توجد بيانات إغلاق بعد', 'Reset: drilling ahead at 3125 m': 'إعادة ضبط: حفر عند 3125 m', 'Reset: rig idle, bit 0.5 m off bottom': 'إعادة ضبط: المنصة خاملة، البت 0.5 m فوق القاع',
+  'Tracer injected at pump suction': 'حُقن الـ tracer عند سحب المضخة', 'Start the mud pumps before injecting the tracer': 'شغّل مضخات الطين قبل حقن الـ tracer',
+  'String not connected — no circulation path': 'الـ string غير متصل — لا يوجد مسار تدوير',
+  // kill hints
+  'Well is shut in — wait for pressures to stabilise, then read SIDPP / SICP.': 'البئر مغلق — انتظر استقرار الضغوط ثم اقرأ SIDPP / SICP.',
+  'Record an SCR (slow-circulation rate) before the kill, or use a pre-recorded value: ICP = SIDPP + SCR pressure.': 'سجّل SCR (معدل التدوير البطيء) قبل القتل أو استخدم قيمة مسجّلة مسبقاً: ICP = SIDPP + ضغط SCR.',
+  "Driller's method: 1st circulation with current mud — bring pump to {spm} spm holding casing pressure constant, then hold DPP at ICP {icp} (Auto-choke). 2nd circulation with KMW {kmw}: DPP falls from ICP to FCP {fcp} over {stk} strokes.":
+    "Driller's method: التدوير الأول بالطين الحالي — ارفع المضخة إلى {spm} spm مع تثبيت ضغط الـ casing، ثم ثبّت DPP عند ICP {icp} (Auto-choke). التدوير الثاني بـ KMW {kmw}: ينخفض DPP من ICP إلى FCP {fcp} خلال {stk} ضربة.",
+  'Kick response: stop rotating, pick up to space out, stop pumps, flow-check, close annular (hard shut-in), open HCR, read pressures.': 'الاستجابة للـ kick: أوقف الدوران، ارفع للـ space-out، أوقف المضخات، flow-check، أغلق الـ annular (hard shut-in)، افتح HCR، اقرأ الضغوط.',
+  // templates
+  '{n} in list — click to ack': '{n} في القائمة — اضغط للإقرار', 'Total {q} · {spm} spm': 'الإجمالي {q} · {spm} spm', 'Connection {i}/{n}': 'الوصلة {i}/{n}',
+  'on bottom · MSE {v}': 'على القاع · MSE {v}', 'off bottom {v}': 'فوق القاع {v}', 'Scenario: {n}': 'سيناريو: {n}', 'Geohazards: {s}': 'المخاطر الجيولوجية: {s}', ON: 'تشغيل',
+  'Mixing kill mud {v}': 'خلط طين القتل {v}',
+  // instructor
+  'INSTRUCTOR / SETUP': 'المدرّب / الإعداد', 'Scenarios (fault injection)': 'السيناريوهات (حقن الأعطال)', 'Kick (overpressured pocket)': 'Kick (جيب عالي الضغط)',
+  'Lost circulation': 'فقدان التدوير (Losses)', 'Pack-off': 'Pack-off', 'String washout': 'Washout في الـ string', 'Plugged nozzle': 'Nozzle مسدودة',
+  'Pump 2 valve/liner failure': 'عطل صمام/liner المضخة 2', 'TD cooling failure': 'عطل تبريد الـ TD', 'Accumulator leak': 'تسريب الـ Accumulator',
+  'Accelerated bit wear': 'تآكل بت متسارع', 'Clear all faults': 'إزالة كل الأعطال', 'Well / simulation': 'البئر / المحاكاة', 'Reset — drilling (hot start)': 'إعادة — حفر (hot start)',
+  'Reset — rig idle (cold start)': 'إعادة — منصة خاملة (cold start)', 'Alarm set-points': 'حدود الإنذارات', 'What is modelled': 'ما الذي يُحاكى',
+  'High SPP': 'SPP مرتفع', 'Low SPP (fraction of expected)': 'SPP منخفض (نسبة من المتوقع)', 'High hook load': 'حمل خطاف مرتفع', Overpull: 'Overpull',
+  'Flow deviation': 'انحراف التدفق', 'Flow deviation (% of in)': 'انحراف التدفق (% من الداخل)', 'Flow-check (pumps off)': 'Flow-check (المضخات متوقفة)',
+  'Pit gain': 'زيادة الحوض', 'Pit loss': 'نقص الحوض', 'Casing P (% of MAASP)': 'ضغط الـ casing (% من MAASP)', 'Low accumulator': 'Accumulator منخفض',
+  'High gas (units)': 'غاز مرتفع (وحدات)', 'High block speed': 'سرعة بلوك مرتفعة', 'TD motor temperature': 'حرارة محرك الـ TD',
+  // circulation card
+  'Mud Circulation': 'دورة سائل الحفر (Mud Circulation)', 'Flow in / out': 'التدفق داخل / خارج', 'Pipe velocity (vp)': 'سرعة الطين في الأنبوب (vp)',
+  'Annular velocity (va)': 'السرعة الحلقية (va)', 'Nozzle jet velocity (vn)': 'سرعة نفث الـ nozzles (vn)', 'Cuttings slip velocity (vs, Moore)': 'سرعة انزلاق الـ cuttings (vs، Moore)',
+  'Transport ratio (Ft)': 'نسبة النقل (Ft)', 'Cuttings concentration (Ca)': 'تركيز الـ cuttings (Ca)', 'Surface → bit': 'السطح ← البت', 'Bottoms-up': 'Bottoms-up',
+  'Full circulation': 'دورة كاملة', 'Cuttings lag time': 'زمن تأخر الـ cuttings', 'Lag depth (cuttings at shaker)': 'Lag depth (cuttings عند الـ shaker)',
+  'Cuttings over shakers': 'Cuttings على الـ shakers', 'Cuttings in annulus': 'Cuttings في الحلقي', 'Apparent viscosity (annulus)': 'اللزوجة الظاهرية (الحلقي)',
+  'Lag test & bottoms-up': 'اختبار الـ lag و bottoms-up', 'Inject tracer': 'احقن tracer', 'Count bottoms-up': 'عُدّ bottoms-up', Tracer: 'Tracer',
+  'Bottoms-up count': 'عداد bottoms-up', 'Hole cleaning': 'تنظيف البئر', GOOD: 'جيد', MARGINAL: 'حدّي', POOR: 'ضعيف', 'NO CIRCULATION': 'لا تدوير',
+  'in surface lines': 'في الخطوط السطحية', 'in string': 'داخل الـ string', 'in annulus': 'في الحلقي', 'at shakers': 'عند الـ shakers', 'not injected': 'لم يُحقن',
+  'done': 'اكتمل', 'not started': 'لم يبدأ',
+  'Active pit': 'الحوض الفعّال', 'Mud pump': 'مضخة الطين', Standpipe: 'Standpipe', Flowline: 'Flowline', 'Shale shaker': 'Shale shaker', 'Return tanks': 'أحواض الراجع',
+  'lag depth': 'lag depth', 'Bit close-up': 'البت عن قرب (PDC)', 'side view': 'منظر جانبي', 'face view': 'منظر الوجه (من الأسفل)', 'on bottom': 'على القاع', 'off bottom': 'فوق القاع', 'bit jets': 'نفث البت', 'MW scale': 'مقياس MW', 'rising': 'صاعد',
+  'Radial scale exaggerated. Mud fronts, gas, cuttings and tracer are drawn at their true depth; flow arrows show relative speed. Use 20×–60× to watch transport.':
+    'المقياس العرضي مكبَّر. جبهات الطين والغاز والـ cuttings والـ tracer مرسومة على عمقها الحقيقي؛ أسهم التدفق تبيّن السرعة النسبية. استخدم 20×–60× لمشاهدة النقل.',
+  'Ft {ft} < 0.5': 'Ft {ft} < 0.5', 'Ca {ca} > 5 %': 'Ca {ca} > 5 %', 'Ca {ca} > 3 %': 'Ca {ca} > 3 %', 'Ft {ft} < 0.7': 'Ft {ft} < 0.7',
+  'Tracer at shakers after {min} min / {stk} strokes (calculated {exp} strokes)': 'وصل الـ tracer إلى الـ shakers بعد {min} دقيقة / {stk} ضربة (المحسوب {exp} ضربة)',
+};
+// messages coming from the physics core with numbers inside
+const PAT = [
+  [/^Raise the block to the racking board \(≥ (.+) m\)$/, 'ارفع البلوك إلى الـ racking board (≥ $1 m)'],
+  [/^Position block at (.+) m to stab$/, 'ضع البلوك عند $1 m لإدخال الوصلة'],
+  [/^Connection step timed out: (.+)$/, (m, a) => 'انتهت مهلة خطوة الوصلة: ' + t(a)],
+  [/^Auto connection aborted at step (\d+)$/, 'أُلغيت الوصلة الآلية عند الخطوة $1'],
+  [/^Connection complete — stand #(\d+)$/, 'اكتملت الوصلة — stand رقم $1'],
+  [/^Instructor: (.+)$/, 'المدرّب: $1'],
+  [/^([A-Z]+) → (OPEN|CLOSED)$/, (m, a, b) => a + ' ← ' + t(b)],
+  [/^SCR recorded: (.+)$/, 'سُجّل SCR: $1'],
+  [/^Pump (\d) pop-off relief opened @ (.+)$/, 'فُتح pop-off relief للمضخة $1 عند $2'],
+  [/^Added (.+)$/, 'أُضيف $1'], [/^Transferred out (.+)$/, 'نُقل خارجاً $1'],
+  [/^Tracer at shakers after (.+) min \/ (.+) strokes \(calculated (.+) strokes\)$/, 'وصل الـ tracer إلى الـ shakers بعد $1 دقيقة / $2 ضربة (المحسوب $3 ضربة)'],
+  [/^Bottoms-up count started: (.+) strokes$/, 'بدأ عدّ bottoms-up: $1 ضربة'],
+  [/^Bottoms-up complete \((.+) strokes\)$/, 'اكتمل bottoms-up ($1 ضربة)'],
+];
+let lang = 'en';
+function t(s) {
+  if (lang !== 'ar' || s === undefined || s === null) return s;
+  const k = String(s); if (Object.prototype.hasOwnProperty.call(AR, k)) return AR[k];
+  for (const [re, r] of PAT) if (re.test(k)) return k.replace(re, r);
+  return k;
+}
+function f(tpl, v) { const s = lang === 'ar' && AR[tpl] ? AR[tpl] : tpl; return s.replace(/\{(\w+)\}/g, (m, key) => v[key] === undefined ? m : v[key]); }
+// static page text: translate text nodes / titles; keep the English originals to switch back
+const orig = new WeakMap();
+function applyStatic(rootEl) {
+  const w = document.createTreeWalker(rootEl, NodeFilter.SHOW_TEXT, { acceptNode: n => n.parentElement && n.parentElement.closest('script,style,svg,[data-i18n-skip]') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT });
+  const nodes = []; while (w.nextNode()) nodes.push(w.currentNode);
+  for (const n of nodes) {
+    let en = orig.get(n); if (en === undefined) { en = n.data; orig.set(n, en); }
+    const k = en.trim(); if (!k) continue;
+    const tr = lang === 'ar' && Object.prototype.hasOwnProperty.call(AR, k) ? en.replace(k, AR[k]) : en;
+    if (n.data !== tr) n.data = tr;
+  }
+  rootEl.querySelectorAll('[title]').forEach(el => { if (el.closest('[data-i18n-skip]')) return; if (!el.dataset.enTitle) el.dataset.enTitle = el.title; el.title = t(el.dataset.enTitle); });
+}
+function setLang(l) {
+  lang = l === 'ar' ? 'ar' : 'en';
+  const h = document.documentElement; h.lang = lang; h.dir = lang === 'ar' ? 'rtl' : 'ltr';
+  applyStatic(document.body);
+  try { localStorage.setItem('dc-lang', lang); } catch (e) { /* storage unavailable */ }
+}
+function init() {
+  let l = 'en';
+  try { const q = new URLSearchParams(location.search).get('lang'); l = q || localStorage.getItem('dc-lang') || 'en'; } catch (e) { /* default */ }
+  setLang(l);
+}
+// other pages (e.g. hydraulics/) add their own strings and message patterns
+function add(dict, pats) { Object.assign(AR, dict || {}); if (pats) PAT.push(...pats); }
+root.I18N = { t, f, setLang, init, add, get lang() { return lang; }, AR };
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+<script>
+/* FPSO Console — Arabic strings, added to the shared I18N layer (technical terms kept in English). */
+(function () {
+'use strict';
+if (!window.I18N || !window.I18N.add) return;
+window.I18N.add({
+  'FPSO Console': 'محاكي وحدة FPSO', '— Floating Production, Storage & Offloading': '— وحدة إنتاج وتخزين وتفريغ عائمة', Home: 'الرئيسية',
+  Unit: 'الوحدة', 'Plant status': 'حالة المنشأة', 'ESD / PSD': 'ESD / PSD', 'PSD reset': 'إعادة ضبط PSD', 'ESD READY': 'ESD جاهز', 'ESD ACTIVE — RESET': 'ESD مفعّل — إعادة ضبط',
+  'Block 7 (training field)': 'البلوك 7 (حقل تدريبي)',
+  PRODUCING: 'إنتاج', 'PRODUCING + OFFLOADING': 'إنتاج + تفريغ', 'PRODUCING — FLARING': 'إنتاج — مع حرق', 'SHUT IN': 'الآبار مغلقة', 'PROCESS SHUTDOWN': 'إيقاف العملية (PSD)', ESD: 'ESD',
+  'Key Parameters': 'البارامترات الرئيسية', 'Field Layout — From Subsea Wells to Offloading': 'مخطط الحقل — من الآبار تحت البحر إلى التفريغ', 'tap any part for an explanation': 'اضغط أي جزء لترى شرحه',
+  Oil: 'نفط', Water: 'ماء', 'Lift gas': 'غاز الرفع', Explanation: 'الشرح', overview: 'نظرة عامة',
+  'Wells, Manifold & Risers': 'الآبار والـ Manifold والـ Risers', 'Manifold pressure': 'ضغط الـ manifold', 'Arrival temperature / hydrate temp.': 'حرارة الوصول / حرارة الهيدرات',
+  'Cooldown margin to hydrates': 'هامش التبريد قبل الهيدرات', 'Riser slugging index': 'مؤشر الـ slugging في الـ riser', 'Reservoir pressure / bubble point': 'ضغط المكمن / نقطة الفقاعة',
+  'Voidage replacement ratio (VRR)': 'نسبة تعويض الفراغ (VRR)', 'MEG injection': 'حقن MEG', 'Open all wells': 'فتح كل الآبار', 'Shut all wells': 'إغلاق كل الآبار',
+  'Topsides Process': 'عمليات المنشآت العلوية', 'HP 3-phase separator': 'الفاصل ثلاثي الأطوار عالي الضغط', 'Pressure set-point': 'الضغط المطلوب', 'Level set-point': 'المستوى المطلوب',
+  'Liquid / interface level': 'مستوى السائل / السطح الفاصل', 'Oil to stabilisation': 'نفط إلى التثبيت', 'Water to treatment': 'ماء إلى المعالجة', 'Gas to compressors': 'غاز إلى الضواغط',
+  'Crude BS&W (spec ≤ 0.5 %)': 'BS&W النفط (المواصفة ≤ 0.5 %)', 'Gas compression & use': 'ضغط الغاز واستخدامه', 'Reinjection share': 'حصة إعادة الحقن',
+  'Oil-in-water (limit 30 mg/L)': 'النفط في الماء (الحد 30 mg/L)', 'Produced water overboard': 'الماء المنتج المصرَّف للبحر', 'Seawater injection': 'حقن ماء البحر',
+  'WI pumps': 'مضخات الحقن', 'Clean hydrocyclones': 'تنظيف الـ hydrocyclones', 'Injection rate': 'معدل الحقن', Power: 'الطاقة', 'Demand / available': 'الطلب / المتاح',
+  'Compression / water injection': 'الضغط / حقن الماء', 'Fuel gas': 'غاز الوقود', 'Gas lift': 'غاز الرفع', Export: 'تصدير', Reinjection: 'إعادة حقن', Flare: 'الشعلة',
+  'DIESEL (fuel gas short)': 'ديزل (نقص غاز الوقود)', separator: 'الفاصل', Train: 'قطار', Run: 'تشغيل', Stop: 'إيقاف',
+  'Storage & Offloading': 'التخزين والتفريغ', 'Cargo on board': 'الحمولة على متن الوحدة', 'Days to tanks full': 'أيام حتى امتلاء الخزانات', Draft: 'الغاطس', 'Shuttle tanker': 'الناقلة المكوكية',
+  'Tanker cargo': 'حمولة الناقلة', 'Offloading weather limit': 'حد الطقس للتفريغ', 'Offloading rate': 'معدل التفريغ', 'Call shuttle tanker': 'استدعاء ناقلة مكوكية', 'Stop offloading': 'إيقاف التفريغ', days: 'يوم',
+  'No tanker': 'لا توجد ناقلة', Approaching: 'تقترب', 'Connecting hawser & hose': 'ربط الحبل والخرطوم', Offloading: 'تفريغ', Disconnecting: 'فصل', Departing: 'تغادر',
+  'Turret Mooring & Weather': 'التثبيت بالـ Turret والطقس', Wind: 'الرياح', 'Wind from': 'اتجاه الرياح (من)', 'Significant wave height': 'ارتفاع الموج المعنوي', 'Waves from': 'اتجاه الأمواج (من)',
+  Current: 'التيار', 'Current from': 'اتجاه التيار (من)', Heading: 'اتجاه المقدمة', 'Offset (% of water depth)': 'الإزاحة (% من عمق الماء)', 'Max line tension (% MBL)': 'أقصى شدّ خط (% من MBL)',
+  'water depth': 'عمق الماء', wind: 'رياح', waves: 'أمواج', current: 'تيار', 'offset ×3 for visibility': 'الإزاحة مكبّرة ×3 للوضوح', 'anchor radius': 'نصف قطر المراسي', offset: 'الإزاحة', level: 'المستوى',
+  Trends: 'المنحنيات', Gas: 'غاز', 'Separator P': 'ضغط الفاصل', 'Manifold P': 'ضغط الـ manifold', Cargo: 'الحمولة', Offset: 'الإزاحة', 'Reservoir P': 'ضغط المكمن', 'Power (MW)': 'الطاقة (MW)',
+  'TURRET MOORING': 'التثبيت بالـ Turret', 'Keeps the FPSO on station': 'يُبقي الـ FPSO في موقعها', PROCESSING: 'المعالجة', 'Separates oil, gas and water': 'يفصل النفط والغاز والماء',
+  'GAS COMPRESSION': 'ضغط الغاز', 'Export, lift and fuel gas': 'غاز التصدير والرفع والوقود', 'SHUTTLE TANKER': 'الناقلة المكوكية', 'Receives crude oil': 'تستلم النفط الخام',
+  'CRUDE OIL STORAGE': 'تخزين النفط الخام', 'Stored in the hull tanks': 'في خزانات البدن', RISERS: 'الـ Risers', 'Well fluids to the FPSO': 'موائع الآبار إلى الـ FPSO',
+  'SUBSEA MANIFOLD': 'الـ Manifold تحت البحر', 'Combines production from wells': 'يجمع إنتاج الآبار', FLOWLINES: 'الـ Flowlines', 'Connect wells to the manifold': 'تربط الآبار بالـ manifold',
+  'SUBSEA WELLHEADS': 'رؤوس الآبار تحت البحر', 'Control production from the reservoir': 'تتحكم بالإنتاج من المكمن', RESERVOIR: 'المكمن', 'Oil, gas and water': 'نفط وغاز وماء',
+  FLARE: 'الشعلة', 'Safe disposal of excess gas': 'التخلص الآمن من الغاز الفائض', SEPARATION: 'الفصل', POWER: 'الطاقة', WATER: 'الماء', 'CARGO TANKS': 'خزانات الحمولة',
+  // key parameters
+  'Oil production': 'إنتاج النفط', 'Water production': 'إنتاج الماء', 'Gas production': 'إنتاج الغاز', 'Water cut': 'نسبة الماء', 'Producing GOR': 'GOR الإنتاج', 'Separator pressure': 'ضغط الفاصل',
+  'Reservoir pressure': 'ضغط المكمن', 'Voidage replacement': 'تعويض الفراغ', 'Oil in water': 'النفط في الماء', 'Power demand': 'الطلب على الطاقة', 'Vessel offset': 'إزاحة السفينة', 'Max mooring tension': 'أقصى شدّ للتثبيت', d: 'يوم',
+  // wells
+  Open: 'فتح', Shut: 'إغلاق', Choke: 'الـ Choke', Status: 'الحالة', FLOWING: 'يتدفق', SHUT: 'مغلق', 'NOT FLOWING': 'لا يتدفق', 'SHUT (ESD/PSD)': 'مغلق (ESD/PSD)', liquid: 'سائل',
+  'flowing — no cooldown': 'يتدفق — لا تبريد', 'protected (MEG)': 'محمي (MEG)', '{h} h until hydrate zone': '{h} ساعة حتى منطقة الهيدرات',
+  // instructor
+  'INSTRUCTOR / SETUP': 'المدرّب / الإعداد', Scenarios: 'السيناريوهات', 'Compressor train A trip': 'توقف قطار الضاغط A', 'Water breakthrough in P-3': 'وصول الماء إلى البئر P-3',
+  'Mooring line failure': 'انقطاع خط تثبيت', Storm: 'عاصفة', 'Hydrocyclone fouling': 'اتساخ الـ hydrocyclones', 'Separator oil level valve stuck': 'تعطّل صمام مستوى النفط في الفاصل',
+  'Fast reservoir depletion (×200)': 'استنزاف سريع للمكمن (×200)', 'Clear all faults': 'إزالة كل الأعطال', Reset: 'إعادة التشغيل', 'Reset — producing (hot start)': 'إعادة — إنتاج (hot start)',
+  'Reset — wells shut in (cold start)': 'إعادة — آبار مغلقة (cold start)', 'Reset: producing': 'إعادة: إنتاج', 'Reset: wells shut in': 'إعادة: آبار مغلقة',
+  'The model includes the following:': 'يتضمن النموذج ما يلي:',
+  'Reservoir material balance with voidage replacement (water injection and gas reinjection).': 'موازنة مادية للمكمن مع تعويض الفراغ (حقن الماء وإعادة حقن الغاز).',
+  'Composite IPR: straight line above the bubble point, Vogel below it.': 'IPR مركّب: خط مستقيم فوق نقطة الفقاعة، و Vogel تحتها.',
+  'Wells solved by nodal analysis: tubing hydrostatic head with gas lightening and friction, plus the subsea choke.': 'الآبار تُحلّ بالتحليل العُقدي: الضغط الهيدروستاتيكي في أنبوب الإنتاج مع تخفيف الغاز والاحتكاك، إضافة إلى الـ choke تحت البحر.',
+  'Gas lift, and water-cut growth with cumulative production.': 'الرفع بالغاز، وازدياد نسبة الماء مع الإنتاج التراكمي.',
+  'Manifold and riser pressure (hydrostatic + friction), a severe-slugging indicator, and arrival-temperature cooldown against a hydrate curve, with MEG.': 'ضغط الـ manifold والـ riser (هيدروستاتيكي + احتكاك)، ومؤشر للـ slugging الشديد، وتبريد حرارة الوصول مقابل منحنى الهيدرات، مع MEG.',
+  '3-phase separator with level and pressure control, PCV/PSV to flare.': 'فاصل ثلاثي الأطوار مع تحكم بالمستوى والضغط، وصمامات PCV/PSV إلى الشعلة.',
+  '2×50 % compressor trains (adiabatic multi-stage power); gas allocated to fuel, lift, export and reinjection; gas-turbine power balance with diesel fallback.': 'قطارا ضغط 2×50 % (قدرة أديباتية متعددة المراحل)؛ وتوزيع الغاز على الوقود والرفع والتصدير وإعادة الحقن؛ وموازنة طاقة التوربينات الغازية مع الديزل احتياطاً.',
+  'Hydrocyclone oil-in-water; crude BS&W.': 'النفط في الماء في الـ hydrocyclones؛ و BS&W النفط.',
+  'Cargo storage and draft; the shuttle-tanker sequence with weather limits.': 'تخزين الحمولة والغاطس؛ وتسلسل الناقلة المكوكية مع حدود الطقس.',
+  'Turret weathervaning, mooring offset and line tensions; ESD/PSD.': 'دوران السفينة حول الـ turret، وإزاحة التثبيت وشدّ الخطوط؛ و ESD/PSD.',
+  'This is a training model: the coefficients are illustrative and not from a specific FPSO.': 'هذا نموذج تدريبي: المعاملات توضيحية وليست من وحدة FPSO محددة.',
+  // alarms
+  'EMERGENCY SHUTDOWN ACTIVE': 'الإيقاف الطارئ ESD مفعّل', 'PROCESS SHUTDOWN — WELLS SHUT IN': 'إيقاف العملية — الآبار مغلقة', 'HP SEPARATOR LIQUID LEVEL HIGH-HIGH': 'مستوى السائل في الفاصل مرتفع جداً',
+  'HP SEPARATOR LIQUID LEVEL LOW-LOW': 'مستوى السائل في الفاصل منخفض جداً', 'HP SEPARATOR PRESSURE HIGH': 'ضغط الفاصل مرتفع', 'SEPARATOR PSV LIFTING — RELIEF TO FLARE': 'صمام أمان الفاصل يفتح — تنفيس إلى الشعلة',
+  'GAS COMPRESSOR TRAIN TRIPPED': 'توقف قطار ضاغط الغاز', 'HIGH FLARING': 'حرق مرتفع', 'FUEL GAS SHORT — TURBINES ON DIESEL': 'نقص غاز الوقود — التوربينات على الديزل',
+  'POWER DEMAND ABOVE AVAILABLE GENERATION': 'الطلب على الطاقة أعلى من التوليد المتاح', 'PRODUCED WATER OIL-IN-WATER ABOVE LIMIT': 'النفط في الماء المنتج فوق الحد', 'OFF-SPEC CRUDE — BS&W ABOVE 0.5 %': 'نفط خارج المواصفة — BS&W فوق 0.5 %',
+  'RISER SLUGGING': 'slugging في الـ riser', 'HYDRATE RISK IN FLOWLINES — INJECT MEG OR DEPRESSURIZE': 'خطر هيدرات في الـ flowlines — احقن MEG أو خفّض الضغط', 'WELL UNABLE TO FLOW — CONSIDER GAS LIFT': 'بئر لا يستطيع التدفق — فكّر في الرفع بالغاز',
+  'CARGO TANKS HIGH — ARRANGE OFFLOADING': 'خزانات الحمولة مرتفعة — رتّب التفريغ', 'CARGO TANKS FULL — PRODUCTION MUST STOP': 'خزانات الحمولة ممتلئة — يجب إيقاف الإنتاج', 'OFFLOADING EMERGENCY DISCONNECT': 'فصل طارئ للتفريغ',
+  'MOORING LINE TENSION HIGH (> 55 % MBL)': 'شدّ خط التثبيت مرتفع (> 55 % من MBL)', 'MOORING LINE FAILURE': 'انقطاع خط تثبيت', 'VESSEL OFFSET HIGH (> 4 % OF WATER DEPTH)': 'إزاحة السفينة مرتفعة (> 4 % من عمق الماء)',
+  'VOIDAGE REPLACEMENT BELOW 0.9 — RESERVOIR PRESSURE FALLING': 'تعويض الفراغ أقل من 0.9 — ضغط المكمن ينخفض', 'RESERVOIR PRESSURE BELOW BUBBLE POINT': 'ضغط المكمن تحت نقطة الفقاعة',
+  // events
+  'ESD activated — wells shut in, blowdown to flare': 'تفعيل ESD — إغلاق الآبار والتنفيس إلى الشعلة', 'ESD reset': 'إعادة ضبط ESD', 'PSD reset — open wells gradually': 'إعادة ضبط PSD — افتح الآبار تدريجياً',
+  'Lower the separator level before resetting PSD': 'اخفض مستوى الفاصل قبل إعادة ضبط PSD', 'Cargo tanks full — offload first': 'خزانات الحمولة ممتلئة — فرّغ أولاً',
+  'A tanker is already in the offloading sequence': 'توجد ناقلة في تسلسل التفريغ مسبقاً', 'Shuttle tanker approaching': 'الناقلة المكوكية تقترب', 'Hawser and hose connected — offloading': 'تم ربط الحبل والخرطوم — بدأ التفريغ',
+  'Emergency disconnect (weather / ESD)': 'فصل طارئ (الطقس / ESD)', 'Click again to reset ESD': 'اضغط مرة أخرى لإعادة ضبط ESD', 'Click again to activate ESD': 'اضغط مرة أخرى لتفعيل ESD',
+}, [
+  [/^Process shutdown: (.+)$/, 'إيقاف العملية: $1'], [/^Compressor train ([AB]) restarted$/, 'أُعيد تشغيل قطار الضاغط $1'],
+  [/^Offloading complete — (.+) m3$/, 'اكتمل التفريغ — $1 m³'],
+]);
+})();
+</script>
+<script>
+/* FPSO Console — explanations shown when a part of the field layout (or a panel) is tapped. [English, Arabic].
+   Typical values are indicative ranges, not data of a specific unit. */
+window.FPSO_INFO = (function () {
+const E = (t, s, b) => ({ t, s, b });
+return {
+overview: E(['How an FPSO works', 'كيف تعمل وحدة FPSO'], ['From subsea wells to oil offloading', 'من الآبار تحت البحر إلى تفريغ النفط'], [
+`<p>An <b>FPSO</b> (Floating Production, Storage and Offloading unit) is a ship-shaped facility moored above a subsea field. It brings well fluids up through risers, separates oil, gas and water, stores the stabilised crude in its hull, and offloads it to shuttle tankers. It is used where pipelines to shore are impractical: deep water, remote or small fields.</p>
+<ol><li>Reservoir → subsea wells (trees, chokes)</li><li>Flowlines → manifold → risers → turret and swivel</li><li>Topsides: separation, gas compression, water treatment, power</li><li>Crude stored in cargo tanks → offloaded to a shuttle tanker</li><li>Gas: fuel, gas lift, export or reinjection; produced water treated; seawater injected for pressure support</li></ol>
+<p class="note">Tap any part of the drawing, or any parameter, for its explanation. Typical sizes: storage around 1–2 million bbl, production from tens to a few hundred thousand bbl/d.</p>`,
+`<p><b>الـ FPSO</b> (وحدة إنتاج وتخزين وتفريغ عائمة) منشأة على شكل سفينة مثبّتة فوق حقل تحت البحر. ترفع موائع الآبار عبر الـ risers، وتفصل النفط والغاز والماء، وتخزّن النفط المستقر في خزانات بدنها، ثم تفرّغه إلى ناقلات مكوكية. تُستخدم حيث يصعب مدّ خطوط أنابيب إلى الشاطئ: المياه العميقة، أو الحقول البعيدة أو الصغيرة.</p>
+<ol><li>المكمن ← الآبار تحت البحر (الـ trees والـ chokes)</li><li>الـ flowlines ← الـ manifold ← الـ risers ← الـ turret والـ swivel</li><li>المنشآت العلوية: الفصل، وضغط الغاز، ومعالجة الماء، والطاقة</li><li>النفط يُخزَّن في خزانات الحمولة ← يُفرَّغ إلى ناقلة مكوكية</li><li>الغاز: وقود، و gas lift، وتصدير أو إعادة حقن؛ والماء المنتج يُعالَج؛ وماء البحر يُحقن لدعم الضغط</li></ol>
+<p class="note">اضغط على أي جزء من الرسم أو أي بارامتر لترى شرحه. أحجام نموذجية: تخزين بحدود 1–2 مليون برميل، وإنتاج من عشرات إلى بضع مئات آلاف برميل يومياً.</p>`]),
+reservoir: E(['Reservoir', 'المكمن'], ['Oil, gas and water in porous rock', 'نفط وغاز وماء في صخر مسامي'], [
+`<p>Hydrocarbons sit in the pores of the rock above the <b>oil–water contact (OWC)</b>. Reservoir pressure pushes fluid into the wells. The rate each well can deliver is its <b>inflow performance (IPR)</b>: straight line above the bubble point, Vogel curve below it.</p>
+<ul><li><b>Bubble point (Pb)</b>: below it, gas comes out of solution in the reservoir. GOR rises and oil recovery suffers.</li><li><b>Voidage replacement ratio (VRR)</b> = injected volume / produced volume at reservoir conditions. VRR ≈ 1 holds pressure; &lt; 1 lets it fall.</li><li><b>Water cut</b> rises with time as injected or aquifer water reaches the wells.</li></ul>
+<p class="note">In the simulator: a material balance with total compressibility. Use the “fast reservoir depletion” scenario to see pressure fall without water injection.</p>`,
+`<p>توجد الهيدروكربونات في مسام الصخر فوق <b>سطح تماس النفط والماء (OWC)</b>. ضغط المكمن يدفع المائع إلى الآبار. المعدل الذي يعطيه كل بئر هو <b>أداء التدفق الداخلي (IPR)</b>: خط مستقيم فوق نقطة الفقاعة، ومنحنى Vogel تحتها.</p>
+<ul><li><b>نقطة الفقاعة (Pb)</b>: تحتها يخرج الغاز من المحلول داخل المكمن، فيرتفع الـ GOR ويتضرر الاستخلاص.</li><li><b>نسبة تعويض الفراغ (VRR)</b> = الحجم المحقون / الحجم المنتج بظروف المكمن. VRR ≈ 1 يحافظ على الضغط؛ و &lt; 1 يتركه ينخفض.</li><li><b>نسبة الماء (water cut)</b> تزداد مع الزمن عندما يصل ماء الحقن أو الطبقة المائية إلى الآبار.</li></ul>
+<p class="note">في المحاكي: موازنة مادية مع الانضغاطية الكلية. استخدم سيناريو "استنزاف سريع للمكمن" لترى انخفاض الضغط دون حقن ماء.</p>`]),
+wells: E(['Subsea wells & trees', 'الآبار وأشجار الإنتاج تحت البحر'], ['Control production from the reservoir', 'تتحكم بالإنتاج من المكمن'], [
+`<p>Each well has a <b>subsea christmas tree</b> on the seabed. It carries the master and wing valves, a <b>subsea choke</b>, and pressure and temperature sensors. A safety valve sits down the tubing. It is all controlled from the FPSO through an <b>umbilical</b> (hydraulics, power, signals, chemicals).</p>
+<ul><li><b>Choke</b>: sets the rate. Opening it lowers the wellhead pressure (WHP) and raises flow.</li><li><b>Nodal analysis</b>: the rate is where the reservoir inflow (IPR) meets the outflow (tubing + choke + manifold back-pressure).</li><li><b>Gas lift</b>: injecting gas into the tubing lightens the fluid column and revives wells with a high water cut. Too much lift gas adds friction, so there is an optimum.</li><li>“Not flowing” means the reservoir pressure cannot lift the column against the back-pressure.</li></ul>`,
+`<p>لكل بئر <b>شجرة إنتاج (christmas tree)</b> على قاع البحر. تحمل صمامات master و wing، و<b>choke تحت البحر</b>، وحساسات للضغط والحرارة. وفي أنبوب الإنتاج صمام أمان. كل ذلك يُتحكَّم به من الـ FPSO عبر <b>umbilical</b> (هيدروليك، وكهرباء، وإشارات، وكيماويات).</p>
+<ul><li><b>الـ Choke</b>: يحدد المعدل. فتحه يخفض ضغط رأس البئر (WHP) ويرفع التدفق.</li><li><b>التحليل العُقدي (nodal analysis)</b>: المعدل هو نقطة التقاء تدفق المكمن الداخل (IPR) مع منحنى الخروج (الأنبوب + الـ choke + الضغط المعاكس للـ manifold).</li><li><b>رفع بالغاز (gas lift)</b>: حقن غاز في أنبوب الإنتاج يخفّف عمود المائع ويعيد الحياة للآبار ذات نسبة الماء العالية. وزيادة غاز الرفع أكثر من اللازم تضيف احتكاكاً، فهناك قيمة مثلى.</li><li>"لا يتدفق" تعني أن ضغط المكمن لا يكفي لرفع العمود أمام الضغط المعاكس.</li></ul>`]),
+flowlines: E(['Flowlines & hydrates', 'الـ Flowlines والهيدرات'], ['Connect wells to the manifold', 'تربط الآبار بالـ manifold'], [
+`<p>Insulated flowlines carry the well fluids on the seabed, where the water is near 4 °C. While flowing, the fluid stays warm. After a shutdown it cools. When the temperature falls below the <b>hydrate curve</b> at that pressure, gas and water can form <b>ice-like hydrate plugs</b>.</p>
+<ul><li>The <b>cooldown time</b> is how long you have after a shutdown before reaching the hydrate zone.</li><li>Protection: inject <b>MEG/methanol</b> (this shifts the hydrate curve), depressurise the line, or restart before the cooldown time runs out.</li><li>Other flow-assurance issues: wax, asphaltenes, scale, slugging.</li></ul>
+<p class="note">In the simulator: the hydrate curve is a simplified fit. MEG lowers it by a fixed amount.</p>`,
+`<p>خطوط معزولة تنقل موائع الآبار على قاع البحر، حيث حرارة الماء قرب 4 °م. أثناء التدفق يبقى المائع دافئاً، وبعد الإيقاف يبرد. عندما تنخفض حرارته تحت <b>منحنى الهيدرات</b> عند ذلك الضغط، يمكن أن يكوّن الغاز والماء <b>سدادات هيدرات تشبه الجليد</b>.</p>
+<ul><li><b>زمن التبريد (cooldown)</b> هو الوقت المتاح بعد الإيقاف قبل الدخول في منطقة الهيدرات.</li><li>الحماية: حقن <b>MEG/ميثانول</b> (يزيح منحنى الهيدرات)، أو تخفيض ضغط الخط، أو إعادة التشغيل قبل انتهاء زمن التبريد.</li><li>تحديات أخرى لضمان التدفق: الشمع، والأسفلتين، والترسبات، والـ slugging.</li></ul>
+<p class="note">في المحاكي: منحنى الهيدرات تقريب مبسّط، والـ MEG يخفضه بمقدار ثابت.</p>`]),
+manifold: E(['Subsea manifold', 'الـ Manifold تحت البحر'], ['Combines production from wells', 'يجمع إنتاج الآبار'], [
+`<p>A seabed structure of headers and valves. It gathers the flowlines from several wells into production headers that feed the risers. It can route a well to a test line and distribute gas lift, water injection and chemicals.</p>
+<ul><li><b>Manifold pressure</b> = separator pressure + riser hydrostatic head + friction. It is the back-pressure the wells must overcome.</li><li>Lower manifold pressure (lighter riser, lower separator pressure) means more production.</li></ul>`,
+`<p>هيكل على قاع البحر من مجمّعات (headers) وصمامات. يجمع الـ flowlines القادمة من عدة آبار في مجمّعات إنتاج تغذّي الـ risers. ويمكنه توجيه بئر إلى خط الاختبار، وتوزيع غاز الرفع وماء الحقن والكيماويات.</p>
+<ul><li><b>ضغط الـ manifold</b> = ضغط الفاصل + الضغط الهيدروستاتيكي في الـ riser + الاحتكاك. وهو الضغط المعاكس الذي يجب أن تتغلب عليه الآبار.</li><li>ضغط manifold أقل (riser أخف، أو ضغط فاصل أقل) يعني إنتاجاً أكبر.</li></ul>`]),
+risers: E(['Risers', 'الـ Risers'], ['Well fluids to the FPSO', 'موائع الآبار إلى الـ FPSO'], [
+`<p>Flexible pipes from the seabed up to the turret. They carry production, gas lift and water injection. Here they hang in a <b>lazy-wave</b> shape: buoyancy modules make a hump that absorbs the vessel's motions and offset.</p>
+<ul><li>The riser's hydrostatic head is the largest part of the back-pressure in deep water.</li><li><b>Severe slugging</b>: at low rates, liquid collects at the riser base and is then pushed up in large slugs. Pressure and level cycle at the separator. Remedies: more rate, gas lift at the riser base, a topside choke.</li><li>The vessel's offset must stay within the riser's design limits.</li></ul>`,
+`<p>أنابيب مرنة من قاع البحر حتى الـ turret، تنقل الإنتاج وغاز الرفع وماء الحقن. هنا تتدلى بشكل <b>lazy-wave</b>: وحدات طفو تصنع حدبة تمتص حركة السفينة وإزاحتها.</p>
+<ul><li>الضغط الهيدروستاتيكي في الـ riser هو أكبر جزء من الضغط المعاكس في المياه العميقة.</li><li><b>الـ slugging الشديد</b>: عند المعدلات المنخفضة يتجمع السائل عند قاعدة الـ riser ثم يندفع إلى الأعلى في دفعات كبيرة، فيتذبذب الضغط والمستوى في الفاصل. العلاج: معدل أعلى، أو gas lift عند قاعدة الـ riser، أو choke على السطح.</li><li>يجب أن تبقى إزاحة السفينة ضمن حدود تصميم الـ risers.</li></ul>`]),
+turret: E(['Turret mooring', 'التثبيت بالـ Turret'], ['Keeps the FPSO on station', 'يُبقي الـ FPSO في موقعها'], [
+`<p>The mooring lines (chain–wire–chain, in bundles, to anchors or piles) are attached to a <b>turret</b> that is fixed to the seabed. The ship rotates freely around it: <b>weathervaning</b>. It turns its bow into the combined wind, waves and current, which minimises loads. A <b>swivel stack</b> passes fluids, power and signals from the fixed turret to the rotating ship.</p>
+<ul><li><b>Offset</b> = horizontal excursion. It is kept to a few percent of water depth to protect the risers.</li><li><b>Line tension</b> is compared with the minimum breaking load (MBL). The design keeps the system safe even with one line broken.</li></ul>
+<p class="note">In the simulator: quasi-static mooring stiffness plus a dynamic wave term; the plan view exaggerates the offset ×3. Try the “storm” and “mooring line failure” scenarios.</p>`,
+`<p>خطوط التثبيت (سلسلة–سلك–سلسلة، في مجموعات، إلى مراسٍ أو أوتاد) مربوطة بـ <b>turret</b> ثابت بالنسبة لقاع البحر. وتدور السفينة حوله بحرية: <b>weathervaning</b>، فتوجّه مقدمتها نحو محصلة الرياح والأمواج والتيار، فتقل الأحمال. و<b>الـ swivel</b> ينقل الموائع والكهرباء والإشارات من الـ turret الثابت إلى السفينة الدوّارة.</p>
+<ul><li><b>الإزاحة (offset)</b> = الانحراف الأفقي، وتُبقى ضمن نسبة صغيرة من عمق الماء لحماية الـ risers.</li><li><b>شدّ الخطوط</b> يُقارن بحمل الكسر الأدنى (MBL). والتصميم يُبقي النظام آمناً حتى مع انقطاع خط واحد.</li></ul>
+<p class="note">في المحاكي: صلابة تثبيت شبه ساكنة مع حد ديناميكي للأمواج، والمنظر العلوي يكبّر الإزاحة ×3. جرّب سيناريو "عاصفة" و"انقطاع خط تثبيت".</p>`]),
+separator: E(['Processing — HP separator', 'المعالجة — الفاصل عالي الضغط'], ['Separates oil, gas and water', 'يفصل النفط والغاز والماء'], [
+`<p>A large horizontal 3-phase vessel. Gas rises to the top, water settles at the bottom, and oil floats between them. Liquid retention is a few minutes. Three controllers keep it steady:</p>
+<ul><li><b>Pressure control</b>: gas is sent to the compressors. A PCV sends excess to the flare and a PSV protects the vessel.</li><li><b>Liquid level</b> (oil outlet) and <b>interface level</b> (water outlet). A high-high level trips the wells (process shutdown).</li><li>Downstream: heating, LP separation and stabilisation bring the crude to <b>export spec</b>, commonly BS&amp;W ≤ 0.5 % and a vapour-pressure limit, before storage.</li></ul>
+<p class="note">Lower separator pressure gives more production (less back-pressure) but costs more compression power. Try changing the pressure set-point.</p>`,
+`<p>وعاء أفقي كبير ثلاثي الأطوار: يصعد الغاز إلى الأعلى، ويترسّب الماء في الأسفل، ويطفو النفط بينهما. زمن بقاء السائل بضع دقائق، وتحافظ ثلاثة متحكمات على استقراره:</p>
+<ul><li><b>التحكم بالضغط</b>: يُرسل الغاز إلى الضواغط. وصمام PCV يرسل الفائض إلى الشعلة، وصمام PSV يحمي الوعاء.</li><li><b>مستوى السائل</b> (مخرج النفط) و<b>مستوى السطح الفاصل</b> (مخرج الماء). والمستوى المرتفع جداً (high-high) يوقف الآبار (process shutdown).</li><li>بعده: تسخين، وفصل منخفض الضغط، وتثبيت، حتى يصل النفط إلى <b>مواصفة التصدير</b> قبل التخزين، وعادةً BS&amp;W ≤ 0.5 % وحدّ لضغط البخار.</li></ul>
+<p class="note">ضغط فاصل أقل يعطي إنتاجاً أكبر (ضغط معاكس أقل) لكنه يكلّف طاقة ضغط أكبر. جرّب تغيير قيمة الضغط المطلوبة.</p>`]),
+compression: E(['Gas compression', 'ضغط الغاز'], ['Export, lift, fuel and reinjection gas', 'غاز التصدير والرفع والوقود وإعادة الحقن'], [
+`<p>Separator gas is compressed in several stages, with coolers and scrubbers between stages, and dehydrated (glycol/TEG) for:</p>
+<ul><li><b>Fuel gas</b> for the gas-turbine generators: first priority.</li><li><b>Gas lift</b> to the wells.</li><li><b>Export</b> through a pipeline, or <b>reinjection</b> into the reservoir, which supports pressure and stores gas when there is no export route.</li></ul>
+<p>Compressor power follows the adiabatic equation: it rises with gas rate and pressure ratio. A <b>train trip</b> sends the surplus gas to the <b>flare</b>. Operators then cut back the high-GOR wells to stop flaring.</p>
+<p class="note">The simulator has 2 × 50 % trains. Try the “compressor trip” scenario.</p>`,
+`<p>يُضغط غاز الفاصل على عدة مراحل، مع مبرّدات وفواصل (scrubbers) بين المراحل، ويُجفَّف (glycol/TEG)، ثم يُستخدم في:</p>
+<ul><li><b>غاز الوقود</b> لمولدات التوربينات الغازية: الأولوية الأولى.</li><li><b>غاز الرفع</b> للآبار.</li><li><b>التصدير</b> عبر خط أنابيب، أو <b>إعادة الحقن</b> في المكمن، فتدعم الضغط وتخزّن الغاز عند عدم وجود طريق للتصدير.</li></ul>
+<p>قدرة الضاغط تتبع المعادلة الأديباتية: تزداد مع معدل الغاز ونسبة الضغط. و<b>توقف قطار ضاغط</b> يرسل الغاز الفائض إلى <b>الشعلة</b>، فيخفّض المشغّلون إنتاج الآبار ذات الـ GOR العالي لإيقاف الحرق.</p>
+<p class="note">في المحاكي قطاران بسعة 50 % لكل منهما. جرّب سيناريو "توقف الضاغط".</p>`]),
+flare: E(['Flare', 'الشعلة'], ['Safe disposal of excess gas', 'التخلص الآمن من الغاز الفائض'], [
+`<p>The flare is a <b>safety system</b>. It burns gas released by pressure control, relief valves (PSV) and <b>blowdown</b> during an emergency shutdown. A small continuous purge and pilot keep it ready.</p>
+<ul><li>Routine flaring wastes resources and is increasingly regulated. High flaring is an alarm here.</li><li>Large flares appear on a compressor trip, during blowdown, or when gas exceeds compression and export capacity.</li></ul>`,
+`<p>الشعلة <b>نظام أمان</b>: تحرق الغاز المنطلق من التحكم بالضغط، ومن صمامات الأمان (PSV)، ومن <b>التنفيس (blowdown)</b> أثناء الإيقاف الطارئ. وتُبقيها جاهزة كميةُ تطهير مستمرة صغيرة مع لهب دليلي.</p>
+<ul><li>الحرق الروتيني هدر للموارد ويخضع لقيود متزايدة، والحرق المرتفع إنذار هنا.</li><li>تظهر الشعلات الكبيرة عند توقف ضاغط، أو أثناء التنفيس، أو عندما يتجاوز الغاز سعة الضغط والتصدير.</li></ul>`]),
+water: E(['Produced water treatment', 'معالجة الماء المنتج'], ['Clean water before discharge', 'تنظيف الماء قبل التصريف'], [
+`<p>Water from the separator passes through <b>hydrocyclones</b> and a degasser or flotation unit. These remove oil droplets until the <b>oil-in-water (OIW)</b> content meets the discharge limit. The limit is set by the regulator; around 30 mg/L as an average is common (e.g. OSPAR). The water is then discharged overboard or reinjected.</p>
+<ul><li>OIW rises with hydraulic overload, interface upsets in the separator, and fouling.</li><li>As water cut grows, water handling often becomes the bottleneck of an ageing field.</li></ul>`,
+`<p>يمر ماء الفاصل عبر <b>الـ hydrocyclones</b> ووحدة نزع الغاز أو التعويم. وهي تزيل قطرات النفط حتى يحقق محتوى <b>النفط في الماء (OIW)</b> حدّ التصريف. يحدد الحدَّ المنظِّم، وحدود بحدود 30 mg/L كمعدل شائعة (مثل OSPAR). ثم يُصرف الماء إلى البحر أو يُعاد حقنه.</p>
+<ul><li>يرتفع الـ OIW مع زيادة الحمل الهيدروليكي، واضطراب السطح الفاصل في الفاصل، والاتساخ.</li><li>مع ازدياد نسبة الماء، تصبح معالجة الماء غالباً عنق الزجاجة في الحقول القديمة.</li></ul>`]),
+injection: E(['Water injection', 'حقن الماء'], ['Pressure support for the reservoir', 'دعم ضغط المكمن'], [
+`<p>Seawater is filtered and deaerated, often sulphate-reduced to avoid scale and souring. It is then pumped at high pressure down injection wells below the oil zone. This maintains reservoir pressure and sweeps oil towards the producers.</p>
+<ul><li>Track the <b>VRR</b>: about 1 keeps the pressure stable.</li><li>Water injection pumps are one of the largest power users after gas compression.</li></ul>`,
+`<p>يُرشَّح ماء البحر ويُنزع منه الأكسجين، وكثيراً ما تُخفَّض كبريتاته لتجنّب الترسبات والتحمّض. ثم يُضخ بضغط عالٍ في آبار حقن تحت منطقة النفط، فيحافظ على ضغط المكمن ويدفع النفط نحو آبار الإنتاج.</p>
+<ul><li>راقب <b>الـ VRR</b>: قيمة قريبة من 1 تُبقي الضغط مستقراً.</li><li>مضخات حقن الماء من أكبر مستهلكي الطاقة بعد ضغط الغاز.</li></ul>`]),
+power: E(['Power generation', 'توليد الطاقة'], ['Gas-turbine generators', 'مولدات بتوربينات غازية'], [
+`<p>Several dual-fuel gas-turbine generators, with N+1 redundancy, burn the field's own <b>fuel gas</b>. They switch to <b>diesel</b> when gas is short. Gas compression and water injection are the largest loads.</p>
+<ul><li>Fuel gas ≈ power ÷ (turbine efficiency × gas heating value).</li><li>If demand exceeds the available generation, load shedding trips equipment.</li></ul>`,
+`<p>عدة مولدات بتوربينات غازية ثنائية الوقود، مع احتياط N+1، تحرق <b>غاز الوقود</b> من الحقل نفسه، وتتحول إلى <b>الديزل</b> عند نقص الغاز. ضغط الغاز وحقن الماء هما أكبر الأحمال.</p>
+<ul><li>غاز الوقود ≈ القدرة ÷ (كفاءة التوربين × القيمة الحرارية للغاز).</li><li>إذا تجاوز الطلب التوليدَ المتاح، يفصل نظام تخفيف الأحمال (load shedding) بعض المعدات.</li></ul>`]),
+storage: E(['Crude oil storage', 'تخزين النفط الخام'], ['Stored in the hull tanks', 'يُخزَّن في خزانات البدن'], [
+`<p>Stabilised crude is stored in the cargo tanks of the hull, under an <b>inert-gas blanket</b> so that no explosive atmosphere forms. As tanks fill, the <b>draft</b> increases. Storage typically holds one or two weeks of production, so offloading must be planned before the tanks are full. When they are full, production stops.</p>`,
+`<p>يُخزَّن النفط المستقر في خزانات الحمولة داخل البدن، تحت <b>غطاء من الغاز الخامل</b> حتى لا يتكوّن جو قابل للانفجار. ومع امتلاء الخزانات يزداد <b>الغاطس</b>. يتسع التخزين عادةً لإنتاج أسبوع أو أسبوعين، لذا يجب التخطيط للتفريغ قبل الامتلاء. وعند امتلاء الخزانات يتوقف الإنتاج.</p>`]),
+tanker: E(['Shuttle tanker & offloading', 'الناقلة المكوكية والتفريغ'], ['Receives crude oil', 'تستلم النفط الخام'], [
+`<p>In <b>tandem offloading</b>, a dynamically positioned shuttle tanker approaches the stern. It connects a <b>hawser</b> (mooring rope) and a <b>floating hose</b>, and receives a parcel of crude, often around 0.5–1 million bbl, over about a day.</p>
+<ul><li>Sequence: approach → hook-up → offloading → disconnect → depart.</li><li>Offloading is limited by weather (significant wave height). Above the limit it stops; in a storm the tanker disconnects in an emergency.</li></ul>`,
+`<p>في <b>التفريغ الترادفي (tandem)</b> تقترب ناقلة مكوكية ذات تموضع ديناميكي (DP) من مؤخرة الـ FPSO. تربط <b>حبل قطر (hawser)</b> و<b>خرطوماً عائماً</b>، وتستلم شحنة نفط، غالباً بحدود 0.5–1 مليون برميل، خلال يوم تقريباً.</p>
+<ul><li>التسلسل: اقتراب ← ربط ← تفريغ ← فصل ← مغادرة.</li><li>التفريغ محدود بالطقس (ارتفاع الموج المعنوي). فوق الحد يتوقف، وفي العاصفة تنفصل الناقلة فصلاً طارئاً.</li></ul>`]),
+accommodation: E(['Accommodation & control room', 'السكن وغرفة التحكم'], ['People, control and safety', 'الأفراد والتحكم والسلامة'], [
+`<p>Living quarters for the crew, the central control room, the helideck and the lifeboats. The control room runs the <b>process control</b> and <b>safety</b> systems: fire and gas detection, <b>PSD</b> (process shutdown) and <b>ESD</b> (emergency shutdown: wells isolated, blowdown to flare).</p>`,
+`<p>مساكن الطاقم، وغرفة التحكم المركزية، ومهبط المروحيات، وقوارب النجاة. من غرفة التحكم تُدار أنظمة <b>التحكم بالعملية</b> و<b>السلامة</b>: كشف الحريق والغاز، و<b>PSD</b> (إيقاف العملية)، و<b>ESD</b> (الإيقاف الطارئ: عزل الآبار والتنفيس إلى الشعلة).</p>`]),
+};
+})();
+</script>
+<script>
+/* FPSO Console — physics core (no DOM). Runs in the browser (window.FPSO) and in Node (module.exports).
+   Coupled models: reservoir (material balance) -> wells (composite Vogel IPR, tubing, subsea choke; nodal solution)
+   -> manifold & riser (hydrostatic + friction, slugging, hydrate cooldown) -> 3-phase HP separator (levels, pressure)
+   -> gas compression (adiabatic, multi-stage), fuel gas / gas lift / export / reinjection, flare
+   -> produced water (hydrocyclones, OIW) and seawater injection -> crude storage, draft, offloading to a shuttle tanker
+   -> turret mooring (weathervaning, offset, line tensions) -> power balance, alarms, trends.
+   Units inside: bar, m, s, Sm3 (liquid at standard conditions), Sm3 gas, °C, kN, MW. Rates in the public state are per day. */
+(function (root) {
+'use strict';
+const G = 9.80665, PI = Math.PI, DAY = 86400, PSTD = 1.01325, TSTD = 288.15;
+const clamp = (x, a, b) => x < a ? a : x > b ? b : x;
+const lag = (c, t, tau, dt) => c + (t - c) * (1 - Math.exp(-dt / tau));
+const approach = (c, t, r, dt) => { const d = t - c, m = r * dt; return Math.abs(d) <= m ? t : c + Math.sign(d) * m; };
+const wrap = a => ((a % 360) + 540) % 360 - 180;          // -180..180
+const rad = d => d * PI / 180;
+
+const CFG = {
+  name: 'FPSO Al-Waha', field: 'Block 7 (training field)',
+  wd: 1200,                                   // water depth, m
+  rhoO: 850, rhoW: 1030, rhoSW: 1025,         // stock-tank oil, produced water, seawater (kg/m3)
+  Bo: 1.30, Bg: 0.0045, Pb: 220,              // oil FVF (rm3/Sm3), gas FVF at reservoir (rm3/Sm3), bubble point (bar)
+  ctVp: 140000,                               // total compressibility x pore volume, rm3/bar
+  wells: [
+    { id: 'P-1', J: 80, wc: 0.08, wcMax: 0.70, Nb: 4e6, gor: 190, tvd: 1850, dPr: 0 },
+    { id: 'P-2', J: 62, wc: 0.22, wcMax: 0.80, Nb: 3e6, gor: 170, tvd: 1820, dPr: -6 },
+    { id: 'P-3', J: 95, wc: 0.04, wcMax: 0.65, Nb: 5e6, gor: 230, tvd: 1900, dPr: 4 },
+    { id: 'P-4', J: 45, wc: 0.48, wcMax: 0.90, Nb: 2e6, gor: 140, tvd: 1800, dPr: -12 },
+  ],
+  Pr0: 300,                                   // initial reservoir pressure, bar
+  choke: 1350,                                // Sm3/d per √bar at 100 % opening
+  tub: { kf: 5.0e-7, a: 0.0035, b: 0.004 },   // tubing friction coeff, gas lightening, gas friction factor
+  riser: { len: 1230, kr: 2.2e-8, a: 0.006 },
+  sep: { V: 150, Vliq: 80, Pset: 15, LTsp: 55, LIsp: 30, psv: 24, pcv: 2.0 },
+  comp: { train: 2.4, Pd: 180, stages: 3, k: 1.28, M: 19, T1: 313, eta: 0.75, rhoStd: 0.80 }, // MSm3/d per train
+  exportCap: 5.0,                             // MSm3/d export + reinjection capacity
+  power: { base: 12, gtUnit: 25, gts: 4, etaGT: 0.32, LHV: 36e6 },  // MW, J/Sm3
+  wi: { cap: 32000, dP: 260, eta: 0.75 },     // seawater injection, Sm3/d, bar
+  pw: { cap: 30000, base: 12, limit: 30 },    // produced-water treatment capacity Sm3/d, base OIW mg/L, discharge limit mg/L
+  cargo: { cap: 254000, min: 0.05, lightDraft: 9.0, wpa: 16240 },   // m3 (≈1.6 MMbbl), m, m2
+  tanker: { cap: 159000, rate: 6360, hsLimit: 4.0, approach: 7200, hookup: 5400, disconnect: 3600, depart: 3600 },
+  moor: { lines: 9, kl: 18, T0: 1500, MBL: 8000, Af: 3200, As: 9500, Cdw: 0.9, Ccur: 0.6, AcF: 1300, AcS: 5600, cw: 8, dyn: 55 },
+};
+
+/* Composite IPR (straight line above Pb, Vogel below): liquid rate Sm3/d at flowing bottom-hole pressure Pwf */
+function ipr(J, Pr, Pwf, Pb) {
+  if (Pwf >= Pr) return 0;
+  if (Pr <= Pb) { const qmax = J * Pr / 1.8, x = Pwf / Pr; return qmax * (1 - 0.2 * x - 0.8 * x * x); }
+  if (Pwf >= Pb) return J * (Pr - Pwf);
+  const qb = J * (Pr - Pb), x = Pwf / Pb; return qb + J * Pb / 1.8 * (1 - 0.2 * x - 0.8 * x * x);
+}
+const chokeCv = u => Math.pow(clamp(u, 0, 100) / 100, 1.6);  // equal-percentage-like trim
+
+const ALARMS = [
+  // id, text, priority (1 crit, 2 high, 3 advisory), on-delay s, test
+  ['ESD', 'EMERGENCY SHUTDOWN ACTIVE', 1, 0, m => m.c.esd],
+  ['PSD', 'PROCESS SHUTDOWN — WELLS SHUT IN', 1, 0, m => m.c.psd],
+  ['SEP_LTHH', 'HP SEPARATOR LIQUID LEVEL HIGH-HIGH', 1, 2, m => m.s.sep.LT > 90],
+  ['SEP_LTLL', 'HP SEPARATOR LIQUID LEVEL LOW-LOW', 1, 5, m => m.s.sep.LT < 10 && m.d.qL > 500],
+  ['SEP_PH', 'HP SEPARATOR PRESSURE HIGH', 2, 3, m => m.s.sep.P > m.c.sep.Pset + 3],
+  ['PSV', 'SEPARATOR PSV LIFTING — RELIEF TO FLARE', 1, 0, m => m.s.sep.psvQ > 0.01],
+  ['COMP_TRIP', 'GAS COMPRESSOR TRAIN TRIPPED', 2, 0, m => m.s.comp.tripped.some(Boolean)],
+  ['FLARE', 'HIGH FLARING', 2, 30, m => m.d.flare > 0.5],
+  ['DIESEL', 'FUEL GAS SHORT — TURBINES ON DIESEL', 2, 10, m => m.s.power.diesel],
+  ['LOADSHED', 'POWER DEMAND ABOVE AVAILABLE GENERATION', 1, 5, m => m.d.powerDemand > m.d.powerAvail],
+  ['OIW', 'PRODUCED WATER OIL-IN-WATER ABOVE LIMIT', 2, 60, m => m.d.oiw > m.c.pw.limit && m.d.qw > 100],
+  ['BSW', 'OFF-SPEC CRUDE — BS&W ABOVE 0.5 %', 2, 60, m => m.d.bsw > 0.5 && m.d.qo > 100],
+  ['SLUG', 'RISER SLUGGING', 3, 120, m => m.s.slug > 0.25],
+  ['HYD', 'HYDRATE RISK IN FLOWLINES — INJECT MEG OR DEPRESSURIZE', 1, 30, m => m.d.Tarr < m.d.Thyd + 3 && m.d.Pman > 20],
+  ['DEAD', 'WELL UNABLE TO FLOW — CONSIDER GAS LIFT', 3, 60, m => m.s.wells.some((w, i) => m.c.wells[i].open && m.c.wells[i].choke > 5 && w.q < 50)],
+  ['CARGO_H', 'CARGO TANKS HIGH — ARRANGE OFFLOADING', 2, 0, m => m.s.cargo > 0.92 * CFG.cargo.cap],
+  ['CARGO_HH', 'CARGO TANKS FULL — PRODUCTION MUST STOP', 1, 0, m => m.s.cargo > 0.985 * CFG.cargo.cap],
+  ['OFF_DISC', 'OFFLOADING EMERGENCY DISCONNECT', 1, 0, m => m.s.tanker.emergency],
+  ['MOOR_T', 'MOORING LINE TENSION HIGH (> 55 % MBL)', 2, 10, m => m.d.Tmax > 0.55 * CFG.moor.MBL],
+  ['MOOR_FAIL', 'MOORING LINE FAILURE', 1, 0, m => m.s.moor.failed.some(Boolean)],
+  ['OFFSET', 'VESSEL OFFSET HIGH (> 4 % OF WATER DEPTH)', 2, 10, m => m.d.offset > 0.04 * CFG.wd],
+  ['VRR', 'VOIDAGE REPLACEMENT BELOW 0.9 — RESERVOIR PRESSURE FALLING', 3, 600, m => m.d.vrr < 0.9 && m.d.qL > 1000],
+  ['PR_LOW', 'RESERVOIR PRESSURE BELOW BUBBLE POINT', 3, 0, m => m.s.Pr < CFG.Pb],
+];
+
+class FpsoSim {
+  constructor(opts) { opts = opts || {}; this.seed = opts.seed || 20261008; this.reset(opts.hot !== false); }
+  rnd() { this.rs = (this.rs * 1664525 + 1013904223) >>> 0; return this.rs / 4294967296; }
+  gauss() { return (this.rnd() + this.rnd() + this.rnd() - 1.5) * 2; }
+
+  reset(hot) {
+    this.rs = this.seed; const on = !!hot;
+    this.c = {
+      wells: CFG.wells.map((w, i) => ({ open: on, choke: on ? 75 : 0, lift: on && i === 3 ? 0.25 : 0 })),     // lift: MSm3/d per well
+      sep: { Pset: CFG.sep.Pset, LTsp: CFG.sep.LTsp, LIsp: CFG.sep.LIsp, lcvStuck: null },
+      comp: [on, on], route: 0.5,                 // fraction of surplus gas to reinjection (rest export)
+      wi: { on: on, rate: on ? 21000 : 0 },
+      meg: false, esd: false, psd: false,
+      env: { wind: 12, windDir: 0, hs: 2.0, waveDir: 10, cur: 0.5, curDir: 30 },
+      tankerReq: false, offRate: CFG.tanker.rate,
+    };
+    this.s = {
+      t: 0, Pr: CFG.Pr0, Np: CFG.wells.map(() => 0),
+      wells: CFG.wells.map(w => ({ q: 0, qo: 0, qw: 0, qg: 0, Pwf: 0, Pwh: 0, wc: w.wc, ch: on ? 75 : 0 })),
+      Pman: 80, Tarr: on ? 55 : 6, slug: 0, slugPh: 0,
+      sep: { P: CFG.sep.Pset, Vo: 0.32 * CFG.sep.Vliq, Vw: 0.22 * CFG.sep.Vliq, LT: 54, LI: 27, qoOut: 0, qwOut: 0, qgComp: 0, flareQ: 0, psvQ: 0 },
+      comp: { tripped: [false, false], q: 0, power: 0 }, gasUse: { fuel: 0, lift: 0, exp: 0, reinj: 0 },
+      power: { diesel: false, demand: 0 },
+      wi: { q: 0 }, cargo: 0.55 * CFG.cargo.cap, oiwFoul: 0, wellsQin: { o: 0, w: 0, g: 0 },
+      tanker: { st: 'none', t: 0, cargo: 0, emergency: false },
+      moor: { heading: 0, offset: 0, offDir: 180, failed: new Array(CFG.moor.lines).fill(false) },
+      cum: { oil: 0, gas: 0, water: 0, flare: 0, offloaded: 0 },
+    };
+    this.d = {}; this.log = []; this.msg = [];
+    this.alarm = {}; for (const a of ALARMS) this.alarm[a[0]] = { id: a[0], text: a[1], prio: a[2], delay: a[3], t: 0, active: false, acked: true, t0: 0 };
+    this.trend = { n: 0, N: 4320, dt: 60, last: -1e9, t: new Float64Array(4320), ch: {} };
+    for (const k of TREND_KEYS) this.trend.ch[k] = new Float32Array(4320);
+    this.tStart = 0; this.clock0 = Date.now();
+    if (on) { for (let i = 0; i < 1800; i++) this.step(2); this.tStart = this.s.t; this.log = []; for (const a of Object.values(this.alarm)) { a.active = false; a.acked = true; a.t = 0; } }
+    else this._sense(1);
+  }
+  get c_() { return this.c; }
+  note(text) { this.msg.push({ t: this.s.t, text }); if (this.msg.length > 30) this.msg.shift(); return { ok: false, msg: text }; }
+  clockMs() { return this.clock0 + (this.s.t - this.tStart) * 1000; }
+
+  step(dt) {
+    this.s.t += dt;
+    this._reservoir(dt); this._subsea(dt); this._separator(dt); this._gas(dt); this._water(dt); this._cargo(dt);
+    this._mooring(dt); this._sense(dt); this._alarms(dt); this._record();
+  }
+
+  /* ---------- wells: nodal solution for each well at the current manifold pressure ---------- */
+  _well(i, Pman) {
+    const w = CFG.wells[i], s = this.s.wells[i], c = this.c.wells[i];
+    const u = this.c.esd || this.c.psd || !c.open ? 0 : s.ch;
+    if (u < 0.5) return { q: 0, Pwf: this.s.Pr + w.dPr, Pwh: 0 };
+    const Pr = Math.max(this.s.Pr + w.dPr, 1), wc = s.wc, rhoL = (1 - wc) * CFG.rhoO + wc * CFG.rhoW;
+    const liftSm3 = (this.d.liftAvail === undefined ? 1 : this.d.liftAvail) * c.lift * 1e6;
+    const Kc = CFG.choke * chokeCv(u), tb = CFG.tub;
+    let lo = 0, hi = Pr, q = 0, Pwh = 0;
+    for (let it = 0; it < 40; it++) {
+      const Pwf = (lo + hi) / 2; q = ipr(w.J, Pr, Pwf, CFG.Pb);
+      const glr = (1 - wc) * w.gor + liftSm3 / Math.max(q, 50);
+      const rhoM = rhoL / (1 + tb.a * glr);
+      Pwh = Pwf - rhoM * G * w.tvd / 1e5 - tb.kf * q * q * (1 + tb.b * glr);
+      const qc = Kc * Math.sqrt(Math.max(Pwh - Pman, 0));
+      if (q > qc) lo = Pwf; else hi = Pwf;
+    }
+    return { q, Pwf: (lo + hi) / 2, Pwh };
+  }
+  _reservoir(dt) {
+    const s = this.s;
+    // voidage (rm3/d): oil + water + free gas below Pb; replaced by water injection and gas reinjection
+    let qo = 0, qw = 0, qg = 0; s.wells.forEach(w => { qo += w.qo; qw += w.qw; qg += w.qg; });
+    const Rs = (gor) => gor * Math.min(1, s.Pr / CFG.Pb);
+    let free = 0; s.wells.forEach((w, i) => { free += w.qo * Math.max(0, CFG.wells[i].gor - Rs(CFG.wells[i].gor)); });
+    const vout = qo * CFG.Bo + qw + free * CFG.Bg, vin = s.wi.q + s.gasUse.reinj * 1e6 * CFG.Bg;
+    this.d.vrr = vout > 1 ? vin / vout : 0;
+    s.Pr = Math.max(20, s.Pr - (vout - vin) / CFG.ctVp * (dt / DAY) * (this.c.decline || 1));
+    // water cut rises with cumulative production (water breakthrough)
+    s.wells.forEach((w, i) => { const W = CFG.wells[i]; s.Np[i] += w.qo * dt / DAY; const base = W.wc + (W.wcMax - W.wc) * (1 - Math.exp(-s.Np[i] / W.Nb)); w.wc = Math.max(base, w.wcBoost || 0); });
+  }
+  _subsea(dt) {
+    const s = this.s, c = this.c;
+    // choke actuators move at 2 %/s (stepping chokes are slower in reality)
+    s.wells.forEach((w, i) => { const tgt = c.esd || c.psd || !c.wells[i].open ? 0 : c.wells[i].choke; w.ch = approach(w.ch, tgt, c.esd || c.psd ? 10 : 2, dt); });
+    // fixed point on manifold pressure: wells <-> riser
+    let Pman = s.Pman, res = [];
+    for (let k = 0; k < 3; k++) {
+      res = s.wells.map((w, i) => this._well(i, Pman));
+      let qL = 0, qOil = 0, gas = 0, rhoSum = 0;
+      res.forEach((r, i) => { const wc = s.wells[i].wc; qL += r.q; qOil += r.q * (1 - wc); gas += r.q * (1 - wc) * CFG.wells[i].gor + (r.q > 1 ? c.wells[i].lift * 1e6 * (this.d.liftAvail ?? 1) : 0); rhoSum += r.q * ((1 - wc) * CFG.rhoO + wc * CFG.rhoW); });
+      const rhoL = qL > 1 ? rhoSum / qL : 900, glr = qL > 1 ? gas / qL : 0, R = CFG.riser;
+      const Ptarget = s.sep.P + rhoL / (1 + R.a * glr) * G * R.len / 1e5 + R.kr * qL * qL * (1 + 0.004 * glr);
+      Pman = Pman + 0.6 * (Ptarget - Pman);
+    }
+    s.Pman = Pman;
+    let qo = 0, qw = 0, qg = 0, qL = 0;
+    res.forEach((r, i) => {
+      const w = s.wells[i], W = CFG.wells[i], lift = r.q > 1 ? c.wells[i].lift * 1e6 * (this.d.liftAvail ?? 1) : 0;
+      w.q = r.q; w.Pwf = r.Pwf; w.Pwh = r.q > 0 ? r.Pwh : Math.max(Pman, s.Pr + W.dPr - ((1 - w.wc) * CFG.rhoO + w.wc * CFG.rhoW) / (1 + CFG.tub.a * (1 - w.wc) * W.gor * 0.3) * G * W.tvd / 1e5);
+      w.qo = r.q * (1 - w.wc); w.qw = r.q * w.wc; w.qg = w.qo * W.gor; w.lift = lift;
+      qo += w.qo; qw += w.qw; qg += w.qg + lift; qL += r.q;
+    });
+    // severe slugging at low riser velocity (model indicator): liquid/gas arrive in cycles
+    const slugT = qL > 1 ? clamp(1 - qL / 7000, 0, 1) : 0; s.slug = lag(s.slug, slugT, 600, dt); s.slugPh += dt * 2 * PI / 900;
+    const sl = 1 + 0.9 * s.slug * Math.sin(s.slugPh), sg = 1 - 0.9 * s.slug * Math.sin(s.slugPh);
+    s.wellsQin = { o: qo * sl, w: qw * sl, g: qg * sg, L: qL };
+    // arrival temperature and hydrate equilibrium (model fit to a natural-gas hydrate curve)
+    const Tflow = 4 + 58 * (1 - Math.exp(-qL / 5000));
+    s.Tarr = qL > 50 ? lag(s.Tarr, Tflow, 3600, dt) : lag(s.Tarr, 4, 8 * 3600, dt);
+    this.d.Thyd = -14 + 6.95 * Math.log(Math.max(Pman, 2)) - (c.meg ? 14 : 0);
+  }
+  /* ---------- 3-phase HP separator ---------- */
+  _separator(dt) {
+    const s = this.s, sp = s.sep, c = this.c, C = CFG.sep;
+    const qoIn = s.wellsQin.o / DAY, qwIn = s.wellsQin.w / DAY, qgIn = s.wellsQin.g / DAY;      // m3/s, Sm3/s
+    // level controllers (feed-forward + proportional), valves limited to 2.5x nominal
+    const LT = (sp.Vo + sp.Vw) / C.Vliq * 100, LI = sp.Vw / C.Vliq * 100;
+    let qwOut = clamp(qwIn + 0.0025 * C.Vliq * (LI - c.sep.LIsp) / 100 * 10, 0, 2.5 * 30000 / DAY);
+    let qoOut = clamp(qoIn + 0.0025 * C.Vliq * (LT - c.sep.LTsp) / 100 * 10, 0, 2.5 * 25000 / DAY);
+    if (c.sep.lcvStuck !== null) qoOut = c.sep.lcvStuck;
+    if (c.esd) { qoOut = 0; qwOut = 0; }
+    sp.Vo = clamp(sp.Vo + (qoIn - qoOut) * dt, 0, C.Vliq * 1.15); sp.Vw = clamp(sp.Vw + (qwIn - qwOut) * dt, 0, C.Vliq);
+    if (sp.Vo <= 0) qoOut = Math.min(qoOut, qoIn); if (sp.Vw <= 0) qwOut = Math.min(qwOut, qwIn);
+    sp.LT = (sp.Vo + sp.Vw) / C.Vliq * 100; sp.LI = sp.Vw / C.Vliq * 100; sp.qoOut = qoOut * DAY; sp.qwOut = qwOut * DAY;
+    // high-high level trips the wells (PSD)
+    if (sp.LT > 95 && !c.psd) this.psd('HP separator level high-high');
+    // gas: pressure controller sends gas to the compressors; PCV to flare above Pset + 2 bar; PSV at 24 bar
+    const capComp = (c.comp[0] && !s.comp.tripped[0] ? CFG.comp.train : 0) + (c.comp[1] && !s.comp.tripped[1] ? CFG.comp.train : 0);
+    const qComp = c.esd ? 0 : clamp(qgIn + 25 * (sp.P - c.sep.Pset), 0, capComp * 1e6 / DAY);
+    let qFlare = clamp(8 * (sp.P - c.sep.Pset - C.pcv), 0, 60) + 0.25;            // + purge, Sm3/s
+    if (c.esd) qFlare += clamp(6 * (sp.P - 1.5), 0, 120);                        // blowdown
+    const psv = sp.P > C.psv ? 40 * (sp.P - C.psv) : 0;
+    const Vg = Math.max(C.V - sp.Vo - sp.Vw, 10), T = 273.15 + Math.max(s.Tarr, 20);
+    sp.P = Math.max(1.0, sp.P + (qgIn - qComp - qFlare - psv) * PSTD * (T / TSTD) / Vg * dt);
+    sp.qgComp = qComp * DAY / 1e6; sp.flareQ = (qFlare + psv) * DAY / 1e6; sp.psvQ = psv * DAY / 1e6;
+  }
+  /* ---------- gas compression and allocation, power ---------- */
+  _gas(dt) {
+    const s = this.s, c = this.c, C = CFG.comp, P = CFG.power;
+    const Q = s.sep.qgComp;                                       // MSm3/d through the compressors
+    // adiabatic power, N equal-ratio stages with intercooling: W = N·k/(k−1)·(R·T1/M)·[(r^(1/N))^((k−1)/k) − 1]/η
+    const r = C.Pd / Math.max(s.sep.P, 2), rs = Math.pow(r, 1 / C.stages), e = (C.k - 1) / C.k;
+    const wkg = C.stages * (C.k / (C.k - 1)) * (8314 * C.T1 / C.M) * (Math.pow(rs, e) - 1) / C.eta;   // J/kg
+    const mdot = Q * 1e6 / DAY * C.rhoStd;
+    s.comp.power = Q > 0.01 ? wkg * mdot / 1e6 : 0; s.comp.q = Q;
+    const wiPower = s.wi.q / DAY * CFG.wi.dP * 1e5 / CFG.wi.eta / 1e6;
+    const demand = P.base + s.comp.power + wiPower + (s.tanker.st === 'offloading' ? 2.5 : 0);
+    const fuelNeed = demand * 1e6 / (P.etaGT * P.LHV) * DAY / 1e6;   // MSm3/d
+    // priority: fuel gas -> gas lift -> export / reinjection (surplus beyond export capacity is flared via the PCV)
+    let left = Q; const fuel = Math.min(fuelNeed, left); left -= fuel;
+    const liftReq = c.wells.reduce((a, w, i) => a + (w.open && s.wells[i].ch > 1 ? w.lift : 0), 0);
+    const lift = Math.min(liftReq, left); left -= lift;
+    this.d.liftAvail = liftReq > 0 ? lift / liftReq : 1;
+    const out = Math.min(left, CFG.exportCap); left -= out;
+    s.gasUse = { fuel, lift, exp: out * (1 - c.route), reinj: out * c.route, excess: left };
+    if (left > 0.01) s.sep.flareQ += left;                         // compressors cannot export it: recycle -> flare
+    s.power = { diesel: fuel < fuelNeed - 1e-3, demand, wiPower };
+    this.d.powerDemand = demand; this.d.powerAvail = P.gtUnit * P.gts * (c.esd ? 0.3 : 1);
+    if (c.esd) { s.wi.q = 0; }
+  }
+  _water(dt) {
+    const s = this.s, c = this.c, W = CFG.pw;
+    // seawater injection pumps
+    s.wi.q = approach(s.wi.q, c.wi.on && !c.esd ? clamp(c.wi.rate, 0, CFG.wi.cap) : 0, 2000 / 60, dt);
+    // hydrocyclones: OIW rises with hydraulic load, interface upsets and fouling (model)
+    const load = s.sep.qwOut / W.cap, iface = Math.abs(s.sep.LI - c.sep.LIsp) / 30;
+    this.d.oiwRaw = W.base + 22 * load * load + 25 * iface * iface + 60 * s.oiwFoul;
+    if (c.cleanCyclones) { s.oiwFoul = Math.max(0, s.oiwFoul - dt / 1800); }
+  }
+  _cargo(dt) {
+    const s = this.s, c = this.c, T = CFG.tanker, tk = s.tanker;
+    // crude to cargo tanks (stabilised stock-tank oil)
+    s.cargo = Math.min(CFG.cargo.cap, s.cargo + s.sep.qoOut * dt / DAY);
+    if (s.cargo >= 0.995 * CFG.cargo.cap && !c.psd) this.psd('Cargo tanks full');
+    // shuttle tanker sequence
+    tk.emergency = false;
+    if (tk.st === 'none' && c.tankerReq) { tk.st = 'approaching'; tk.t = 0; this._log('TANKER', 'Shuttle tanker approaching', 3, 'EVENT'); }
+    tk.t += dt;
+    const hs = c.env.hs;
+    if (tk.st === 'approaching' && tk.t > T.approach) { tk.st = 'hookup'; tk.t = 0; }
+    if (tk.st === 'hookup') { if (hs > T.hsLimit) tk.t = Math.min(tk.t, 0); else if (tk.t > T.hookup) { tk.st = 'offloading'; tk.t = 0; this._log('TANKER', 'Hawser and hose connected — offloading', 3, 'EVENT'); } }
+    if (tk.st === 'offloading') {
+      const minC = CFG.cargo.min * CFG.cargo.cap;
+      if (hs > T.hsLimit + 0.5 || c.esd) { tk.emergency = true; tk.st = 'disconnect'; tk.t = 0; this._log('TANKER', 'Emergency disconnect (weather / ESD)', 1, 'EVENT'); }
+      else {
+        const q = Math.min(c.offRate * dt / 3600, s.cargo - minC, T.cap - tk.cargo);
+        if (q > 0) { s.cargo -= q; tk.cargo += q; s.cum.offloaded += q; }
+        if (tk.cargo >= T.cap - 1 || s.cargo <= minC + 1 || !c.tankerReq) { tk.st = 'disconnect'; tk.t = 0; this._log('TANKER', 'Offloading complete — ' + tk.cargo.toFixed(0) + ' m3', 3, 'EVENT'); }
+      }
+    }
+    if (tk.st === 'disconnect' && tk.t > T.disconnect) { tk.st = 'departing'; tk.t = 0; c.tankerReq = false; }
+    if (tk.st === 'departing' && tk.t > T.depart) { tk.st = 'none'; tk.t = 0; tk.cargo = 0; }
+    s.cum.oil += s.sep.qoOut * dt / DAY; s.cum.water += s.sep.qwOut * dt / DAY; s.cum.gas += s.comp.q * dt / DAY; s.cum.flare += s.sep.flareQ * dt / DAY;
+  }
+  /* ---------- turret mooring: weathervaning, mean offset and line tensions (quasi-static) ---------- */
+  envForces(heading) {
+    const e = this.c.env, M = CFG.moor; let fx = 0, fy = 0;
+    const add = (fromDeg, mag) => { const to = rad(fromDeg + 180); fx += mag * Math.cos(to); fy += mag * Math.sin(to); };
+    const proj = (fromDeg, Af, As) => { const a = rad(fromDeg - heading); return Af * Math.abs(Math.cos(a)) + As * Math.abs(Math.sin(a)); };
+    add(e.windDir, 0.5 * 1.225 * M.Cdw * proj(e.windDir, M.Af, M.As) * e.wind * e.wind / 1000);
+    add(e.curDir, 0.5 * CFG.rhoSW * M.Ccur * proj(e.curDir, M.AcF, M.AcS) * e.cur * e.cur / 1000);
+    const wa = rad(e.waveDir - heading); add(e.waveDir, M.cw * e.hs * e.hs * (1 + 2.5 * Math.abs(Math.sin(wa))) * 10);
+    return { fx, fy, F: Math.hypot(fx, fy), dir: Math.atan2(fy, fx) * 180 / PI };   // dir: direction the force acts towards
+  }
+  lineAz(j) { return Math.floor(j / 3) * 120 + (j % 3 - 1) * 5 + 30; }
+  _mooring(dt) {
+    const m = this.s.moor, M = CFG.moor;
+    const f = this.envForces(m.heading);
+    // bow turns to face the resultant: equilibrium heading = direction the force comes from
+    const hEq = f.dir + 180; m.heading = (m.heading + clamp(wrap(hEq - m.heading), -180, 180) * (1 - Math.exp(-dt / 600)) + 360) % 360;
+    let K = 0; for (let j = 0; j < M.lines; j++) if (!m.failed[j]) K += M.kl * Math.cos(rad(this.lineAz(j) - f.dir)) ** 2;
+    const target = f.F / Math.max(K, 1);
+    m.offset = lag(m.offset, target, 120, dt); m.offDir = f.dir; m.F = f.F;
+    // mean tension from the offset, plus a wave-frequency dynamic part on the loaded (upstream) lines
+    const hs = this.c.env.hs; m.T = [];
+    for (let j = 0; j < M.lines; j++) { const cs = Math.cos(rad(this.lineAz(j) - m.offDir)); m.T.push(m.failed[j] ? 0 : Math.max(0.3 * M.T0, M.T0 - M.kl * m.offset * cs + M.dyn * hs * hs * Math.max(0, -cs))); }
+  }
+  /* ---------- sensors ---------- */
+  _sense(dt) {
+    const s = this.s, d = this.d, n = () => this.gauss();
+    const set = (k, v, noise, tau) => { const x = v + noise * n(); d[k] = d[k] === undefined || tau <= 0 ? x : lag(d[k], x, tau, Math.min(dt, tau)); };
+    const qo = s.sep.qoOut, qw = s.sep.qwOut;
+    set('qo', qo, qo > 10 ? qo * 0.003 : 0, 30); set('qw', qw, qw > 10 ? qw * 0.003 : 0, 30); set('qL', s.wellsQin.L, 0, 30);
+    set('qg', s.wellsQin.g / 1e6, 0.003, 30); set('psep', s.sep.P, 0.03, 2); set('pman', s.Pman, 0.1, 5);
+    set('flare', s.sep.flareQ, 0.002, 20); set('cargo', s.cargo, 0, 0); set('pr', s.Pr, 0, 0);
+    d.Pman = s.Pman; d.Tarr = s.Tarr; d.wc = s.wellsQin.L > 1 ? s.wellsQin.w / Math.max(s.wellsQin.o + s.wellsQin.w, 1) : 0;
+    d.gor = s.wellsQin.o > 1 ? (s.wellsQin.g - s.wells.reduce((a, w) => a + (w.lift || 0), 0)) / Math.max(s.wellsQin.o, 1) : 0;
+    set('oiw', this.d.oiwRaw || 0, 0.6, 60);
+    d.bsw = 0.12 + 0.9 * Math.max(0, d.wc - 0.45) + 1.4 * (Math.abs(s.sep.LI - this.c.sep.LIsp) / 30) ** 2 + (s.slug > 0.3 ? 0.3 * s.slug : 0);
+    d.offset = s.moor.offset; d.Tmax = Math.max(...(s.moor.T || [0])); d.power = s.power.demand;
+    d.draft = CFG.cargo.lightDraft + s.cargo * CFG.rhoO / (CFG.cargo.wpa * CFG.rhoSW);
+    d.daysFull = qo > 1 ? (CFG.cargo.cap - s.cargo) / qo : Infinity;
+  }
+  _alarms(dt) {
+    for (const def of ALARMS) {
+      const a = this.alarm[def[0]]; let cond = false;
+      try { cond = !!def[4](this); } catch (e) { cond = false; }
+      if (cond) { a.t += dt; if (!a.active && a.t >= a.delay) { a.active = true; a.acked = false; a.t0 = this.s.t; this._log(a.id, a.text, a.prio, 'ALARM'); } }
+      else { a.t = 0; if (a.active) { a.active = false; this._log(a.id, a.text, a.prio, 'CLEAR'); } }
+    }
+  }
+  _log(id, text, prio, type) { this.log.unshift({ t: this.s.t, id, text, prio, type }); if (this.log.length > 200) this.log.pop(); }
+  ack(id) { for (const a of Object.values(this.alarm)) if (!id || a.id === id) a.acked = true; }
+  alarmList() { return Object.values(this.alarm).filter(a => a.active || !a.acked).sort((x, y) => x.prio - y.prio || (y.t0 - x.t0)); }
+  _record() {
+    const T = this.trend; if (this.s.t - T.last < T.dt) return; T.last = this.s.t;
+    const i = T.n % T.N; T.t[i] = this.s.t; for (const k of TREND_KEYS) T.ch[k][i] = this.d[k] === undefined ? 0 : this.d[k]; T.n++;
+  }
+
+  /* ---------- operator commands ---------- */
+  esd() { this.c.esd = true; this._log('ESD', 'ESD activated — wells shut in, blowdown to flare', 1, 'EVENT'); }
+  resetEsd() { this.c.esd = false; this._log('ESD', 'ESD reset', 3, 'EVENT'); }
+  psd(why) { this.c.psd = true; this._log('PSD', 'Process shutdown: ' + why, 1, 'EVENT'); }
+  resetPsd() { if (this.s.sep.LT > 92) return this.note('Lower the separator level before resetting PSD'); if (this.s.cargo > 0.99 * CFG.cargo.cap) return this.note('Cargo tanks full — offload first'); this.c.psd = false; this._log('PSD', 'PSD reset — open wells gradually', 3, 'EVENT'); return { ok: true }; }
+  restartComp(i) { if (this.s.comp.tripped[i]) { this.s.comp.tripped[i] = false; this._log('COMP', 'Compressor train ' + (i ? 'B' : 'A') + ' restarted', 3, 'EVENT'); } this.c.comp[i] = true; }
+  callTanker() { if (this.s.tanker.st !== 'none') return this.note('A tanker is already in the offloading sequence'); this.c.tankerReq = true; return { ok: true }; }
+  stopOffload() { this.c.tankerReq = false; }
+  scenario(name) {
+    const s = this.s, c = this.c;
+    switch (name) {
+      case 'comptrip': s.comp.tripped[0] = true; break;
+      case 'water3': s.wells[2].wcBoost = 0.55; break;
+      case 'line': s.moor.failed[1] = true; break;
+      case 'storm': Object.assign(c.env, { wind: 28, hs: 6.5, cur: 1.0 }); break;
+      case 'foul': s.oiwFoul = 1; c.cleanCyclones = false; break;
+      case 'lcv': c.sep.lcvStuck = s.sep.qoOut / DAY * 0.6; break;
+      case 'decline': c.decline = 200; break;
+      case 'clear':
+        s.comp.tripped = [false, false]; s.wells.forEach(w => { w.wcBoost = 0; }); s.moor.failed.fill(false); s.oiwFoul = 0;
+        c.sep.lcvStuck = null; c.decline = 1; Object.assign(c.env, { wind: 12, hs: 2.0, cur: 0.5 }); break;
+    }
+    this._log('SCENARIO', 'Instructor: ' + name, 3, 'EVENT');
+  }
+}
+const TREND_KEYS = ['qo', 'qw', 'qg', 'psep', 'pman', 'flare', 'cargo', 'pr', 'offset', 'power', 'oiw'];
+const api = { FpsoSim, CFG, ALARMS, TREND_KEYS, ipr };
+if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.FPSO = api;
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+<script>
+/* FPSO Console — UI layer: binds the FpsoSim physics core to the panels, the animated field layout, the turret plan view and trends. */
+(function () {
+'use strict';
+const F_ = window.FPSO, CFG = F_.CFG, INFO = window.FPSO_INFO || {};
+let sim = new F_.FpsoSim();
+const $ = id => document.getElementById(id);
+const I = window.I18N || { t: x => x, f: (x, v) => x.replace(/\{(\w+)\}/g, (m, k) => v[k]), lang: 'en' };
+const T = x => I.t(x), F = (x, v) => I.f(x, v);
+const st = { units: 'si', speed: 1, win: 21600, sound: false, hover: null, lastUi: 0, lastTrend: 0, lastMsg: 0, hidden: {}, beepT: 0, info: 'overview', anim: { flow: 0, wave: 0 } };
+const clamp = (x, a, b) => x < a ? a : x > b ? b : x;
+
+/* ---------------- units ---------------- */
+const UN = {
+  liq: { si: ['Sm³/d', 1], fd: ['bbl/d', 6.2898, 0] }, gas: { si: ['MSm³/d', 1], fd: ['MMscf/d', 35.3147] },
+  press: { si: ['bar', 1], fd: ['psi', 14.5038, 0] }, vol: { si: ['m³', 1], fd: ['bbl', 6.2898, 0] }, len: { si: ['m', 1], fd: ['ft', 3.28084] },
+  force: { si: ['kN', 1], fd: ['klbf', 0.224809] }, temp: { si: ['°C', 1], fd: ['°F', 1] }, gor: { si: ['Sm³/Sm³', 1], fd: ['scf/bbl', 5.6146, 0] },
+  spd: { si: ['m/s', 1], fd: ['kn', 1.94384] }, ofh: { si: ['m³/h', 1], fd: ['bbl/h', 6.2898, 0] },
+};
+const cv = (q, v) => q === 'temp' ? (st.units === 'si' ? v : v * 1.8 + 32) : (UN[q] ? v * UN[q][st.units][1] : v);
+const un = q => UN[q] ? UN[q][st.units][0] : (q || '');
+function fmt(q, v, dec) { if (v === undefined || v === null || !isFinite(v)) return '—'; const u = UN[q]; const d = u && st.units === 'fd' && u.fd[2] !== undefined ? u.fd[2] : dec; return cv(q, v).toFixed(d); }
+const fu = (q, v, dec) => fmt(q, v, dec) + ' ' + un(q);
+const nf = (v, d) => v === undefined || v === null || !isFinite(v) ? '—' : (+v).toFixed(d);
+
+/* ---------------- key parameters ---------------- */
+const PARAMS = [
+  ['qo', 'Oil production', 'liq', 0], ['qw', 'Water production', 'liq', 0], ['qg', 'Gas production', 'gas', 2], ['wc', 'Water cut', '%', 1], ['gor', 'Producing GOR', 'gor', 0],
+  ['psep', 'Separator pressure', 'press', 2], ['pman', 'Manifold pressure', 'press', 1], ['flare', 'Flare', 'gas', 2], ['cargo', 'Cargo on board', 'vol', 0], ['daysFull', 'Days to tanks full', 'd', 1],
+  ['draft', 'Draft', 'len', 1], ['pr', 'Reservoir pressure', 'press', 1], ['vrr', 'Voidage replacement', '', 2], ['oiw', 'Oil in water', 'mg/L', 1], ['power', 'Power demand', 'MW', 1],
+  ['offset', 'Vessel offset', 'len', 1], ['Tmax', 'Max mooring tension', 'force', 0],
+];
+const ALARM_ROW = { SEP_PH: 'psep', PSV: 'psep', FLARE: 'flare', COMP_TRIP: 'flare', OIW: 'oiw', CARGO_H: 'cargo', CARGO_HH: 'cargo', OFFSET: 'offset', MOOR_T: 'Tmax', MOOR_FAIL: 'Tmax', VRR: 'vrr', PR_LOW: 'pr', LOADSHED: 'power', DIESEL: 'power', HYD: 'pman' };
+function buildParams() { $('params').innerHTML = PARAMS.map(p => `<div class="prow" id="pr_${p[0]}" data-info="${INFO_OF[p[0]] || 'overview'}"><span class="n">${T(p[1])} <i id="pu_${p[0]}"></i></span><span class="v" id="pv_${p[0]}">—</span></div>`).join(''); }
+const INFO_OF = { qo: 'separator', qw: 'water', qg: 'compression', wc: 'wells', gor: 'wells', psep: 'separator', pman: 'risers', flare: 'flare', cargo: 'storage', daysFull: 'storage', draft: 'storage', pr: 'reservoir', vrr: 'injection', oiw: 'water', power: 'power', offset: 'turret', Tmax: 'turret' };
+
+/* ---------------- wells & compressors ---------------- */
+function buildWells() {
+  $('wells').innerHTML = CFG.wells.map((w, i) => `<div class="well" data-info="wells">
+    <h3>${w.id} <span class="lamp" id="wl${i}"></span></h3>
+    <div class="seg"><button class="btn sm" data-wopen="${i}">${T('Open')}</button><button class="btn sm" data-wshut="${i}">${T('Shut')}</button></div>
+    <div class="ctl"><label>${T('Choke')}</label><input type="range" min="0" max="100" step="1" data-wch="${i}"><output id="wco${i}"></output></div>
+    <div class="ctl"><label>${T('Gas lift')}</label><input type="range" min="0" max="0.6" step="0.01" data-wgl="${i}"><output id="wgo${i}"></output></div>
+    <div class="kvt"><span>${T('Oil')}</span><b id="wq${i}">—</b><span>${T('Water cut')}</span><b id="ww${i}">—</b><span>WHP / BHP</span><b id="wp${i}" class="w">—</b><span>${T('Status')}</span><b id="wx${i}">—</b></div></div>`).join('');
+}
+function buildComp() {
+  $('compRow').innerHTML = [0, 1].map(i => `<div class="comp"><b>${T('Train')} ${i ? 'B' : 'A'}</b> <span class="lamp" id="cl${i}"></span><span class="seg"><button class="btn sm" data-con="${i}">${T('Run')}</button><button class="btn sm" data-coff="${i}">${T('Stop')}</button></span></div>`).join('');
+}
+
+/* ---------------- field layout scene ---------------- */
+const SEA = 250, BED = 598, PX = 2.2, TUR = 196, HULL0 = 140, HULL1 = 800, MAN = 500;
+const TREES = [120, 310, 690, 870], WIX = 960;
+let SC = {};
+function callout(x, y, key, title, sub, w) {
+  w = w || 196;
+  return `<g class="co" data-info="${key}" transform="translate(${x} ${y})"><rect width="${w}" height="40" rx="3"/><text x="8" y="16" class="ct">${T(title)}</text><text x="8" y="33" class="cs" id="co_${key}">${T(sub)}</text></g>`;
+}
+function buildScene() {
+  let h = `<defs>
+  <linearGradient id="gSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#14254a"/><stop offset=".55" stop-color="#5b4a73"/><stop offset=".85" stop-color="#e58a4a"/><stop offset="1" stop-color="#f6b25c"/></linearGradient>
+  <linearGradient id="gSea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0d4d7a"/><stop offset=".5" stop-color="#083356"/><stop offset="1" stop-color="#03182b"/></linearGradient>
+  <linearGradient id="gHull" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a2f36"/><stop offset=".62" stop-color="#1b1f24"/><stop offset=".63" stop-color="#8a1f1f"/><stop offset="1" stop-color="#5c1212"/></linearGradient>
+  <linearGradient id="gYel" x1="0" x2="1"><stop offset="0" stop-color="#9d7500"/><stop offset=".45" stop-color="#ffd84a"/><stop offset="1" stop-color="#8f6a00"/></linearGradient>
+  <linearGradient id="gSteel" x1="0" x2="1"><stop offset="0" stop-color="#55697e"/><stop offset=".5" stop-color="#cfdbe6"/><stop offset="1" stop-color="#4c5f73"/></linearGradient>
+  <linearGradient id="gOil" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#c98b24"/><stop offset="1" stop-color="#6e4310"/></linearGradient>
+  <linearGradient id="gRes" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#ffb42e"/><stop offset="1" stop-color="#8c4b07"/></linearGradient>
+  <radialGradient id="gSun" cx=".88" cy=".9" r=".35"><stop offset="0" stop-color="#ffd27a" stop-opacity=".9"/><stop offset="1" stop-color="#ffd27a" stop-opacity="0"/></radialGradient>
+  <filter id="glow"><feGaussianBlur stdDeviation="2.4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  <pattern id="rock" width="24" height="12" patternUnits="userSpaceOnUse"><rect width="24" height="12" fill="#2b2620"/><path d="M0 12 L6 4 L12 9 L18 2 L24 8" stroke="#3a332a" fill="none"/></pattern></defs>
+  <rect width="1000" height="${SEA}" fill="url(#gSky)"/><rect width="1000" height="${SEA}" fill="url(#gSun)"/>
+  <g opacity=".35" fill="#20304f"><ellipse cx="160" cy="70" rx="120" ry="16"/><ellipse cx="520" cy="45" rx="160" ry="14"/><ellipse cx="830" cy="95" rx="140" ry="12"/></g>
+  <rect y="${SEA}" width="1000" height="${BED - SEA}" fill="url(#gSea)"/>
+  <g opacity=".18" fill="#9fe0ff">${[0, 1, 2, 3, 4, 5].map(i => `<path d="M${120 + i * 150} ${SEA} L${80 + i * 150} ${BED} L${170 + i * 150} ${BED} Z"/>`).join('')}</g>`;
+  // subsurface: seabed, strata, reservoir, OWC
+  h += `<rect y="${BED}" width="1000" height="${760 - BED}" fill="#241d16"/><rect y="${BED}" width="1000" height="16" fill="url(#rock)"/>
+  <path d="M0 640 C200 632 400 652 600 640 S900 630 1000 642 V662 C800 652 600 670 400 660 S100 650 0 664Z" fill="#3a2f22"/>
+  <path d="M0 676 C220 660 420 690 640 672 S900 662 1000 676 V700 C800 690 600 712 400 700 S150 690 0 704Z" fill="#4a3a28"/>
+  <g data-info="reservoir" class="hot"><path id="resOil" d="M40 712 C200 694 360 700 520 696 S820 700 960 716 L960 728 C800 722 600 726 500 726 S200 724 40 730Z" fill="url(#gRes)" filter="url(#glow)" opacity=".9"/>
+  <path d="M40 730 C200 724 400 726 500 726 S800 722 960 728 L960 744 C760 740 500 746 300 744 S100 744 40 746Z" fill="#1f5f8f" opacity=".75"/>
+  <path d="M40 730 C200 724 400 726 500 726 S800 722 960 728" stroke="#7fd0ff" stroke-dasharray="6 4" fill="none"/>
+  <text x="880" y="758" class="sl">OWC</text></g>`;
+  // wells: downhole paths, trees, flowlines
+  const tip = [190, 360, 640, 820];
+  TREES.forEach((x, i) => {
+    h += `<path d="M${x} ${BED - 4} C${x} ${650} ${(x + tip[i]) / 2} ${680} ${tip[i]} 712" stroke="#9fb3c8" stroke-width="2.4" fill="none"/>
+    <path id="dh${i}" class="flow" d="M${tip[i]} 712 C${(x + tip[i]) / 2} 680 ${x} 650 ${x} ${BED - 4}" stroke="#ffb627" stroke-width="2" fill="none"/>
+    <path d="M${x} ${BED} H${MAN}" stroke="#16222e" stroke-width="7" fill="none"/><path id="fl${i}" class="flow" d="M${x} ${BED} H${MAN}" stroke="#ffb627" stroke-width="3" fill="none" transform="translate(0 ${(i % 2) * 3 - 1})"/>
+    <g data-info="wells" class="hot" transform="translate(${x} ${BED - 4})"><rect x="-9" y="-30" width="18" height="30" fill="url(#gYel)" stroke="#3a2a00"/><rect x="-16" y="-20" width="32" height="7" fill="url(#gYel)" stroke="#3a2a00"/><rect x="-5" y="-38" width="10" height="9" fill="#c49b18"/><circle id="tl${i}" cx="0" cy="-44" r="4" fill="#2bd66f" filter="url(#glow)"/>
+    <text x="0" y="16" class="sl" text-anchor="middle">${CFG.wells[i].id}</text></g>`;
+  });
+  // water injection well
+  h += `<path d="M${WIX} ${BED - 4} C${WIX} 660 ${WIX - 30} 700 ${WIX - 60} 738" stroke="#9fb3c8" stroke-width="2.4" fill="none"/><path id="dhWi" class="flow" d="M${WIX} ${BED - 4} C${WIX} 660 ${WIX - 30} 700 ${WIX - 60} 738" stroke="#3fb0ff" stroke-width="2" fill="none"/>
+  <path d="M${MAN + 40} ${BED + 4} H${WIX}" stroke="#16222e" stroke-width="6"/><path id="flWi" class="flow" d="M${MAN + 40} ${BED + 4} H${WIX}" stroke="#3fb0ff" stroke-width="2.6"/>
+  <g data-info="injection" class="hot" transform="translate(${WIX} ${BED - 4})"><rect x="-8" y="-26" width="16" height="26" fill="#3b78b5" stroke="#0d2a48"/><rect x="-13" y="-17" width="26" height="6" fill="#3b78b5"/><text x="0" y="16" class="sl" text-anchor="middle">WI-1</text></g>`;
+  // manifold
+  h += `<g data-info="manifold" class="hot" transform="translate(${MAN} ${BED - 6})"><rect x="-46" y="-26" width="92" height="26" fill="url(#gYel)" stroke="#3a2a00"/>${[-34, -18, -2, 14, 30].map(x => `<rect x="${x}" y="-38" width="8" height="12" fill="#c49b18"/>`).join('')}<path d="M-46 -12 H46 M-46 -20 H46" stroke="#8f6a00"/></g>`;
+  // risers (lazy wave): production x2, gas lift, water injection
+  const riser = (dx, id, col, w) => { const x0 = TUR + dx, x1 = MAN - 30 + dx * 3; return `<path d="M${x1} ${BED - 32} C${x1 - 10} 480 ${x0 + 150} 500 ${x0 + 120} 440 S${x0 + 10} 380 ${x0} ${SEA + 60}" stroke="#16222e" stroke-width="${w + 3}" fill="none"/><path id="${id}" class="flow" d="M${x1} ${BED - 32} C${x1 - 10} 480 ${x0 + 150} 500 ${x0 + 120} 440 S${x0 + 10} 380 ${x0} ${SEA + 60}" stroke="${col}" stroke-width="${w}" fill="none"/>`; };
+  h += `<g data-info="risers" class="hot">${riser(-6, 'rs0', '#ffb627', 3.4)}${riser(-2, 'rs1', '#ffb627', 3.4)}${riser(2, 'rsGl', '#9b7cff', 2.2)}${riser(6, 'rsWi', '#3fb0ff', 2.2)}
+  ${[0, 1, 2, 3, 4].map(i => `<rect x="${TUR + 100 + i * 12}" y="${438 + Math.abs(i - 2) * 4}" width="10" height="14" rx="3" fill="#ffcf3a" stroke="#6a5000"/>`).join('')}</g>`;
+  // mooring lines (catenaries to anchors)
+  const moor = [[-40, 540], [10, 590], [60, 598], [430, 598], [560, 590]];
+  h += `<g data-info="turret" class="hot">${moor.map((a, j) => `<path id="ml${j}" d="M${TUR} ${SEA + 62} Q${(TUR + a[0]) / 2} ${a[1] - 10} ${a[0]} ${a[1]}" stroke="#c9d6e3" stroke-width="1.6" fill="none"/>`).join('')}</g>`;
+  // waves (drawn over hull bottom later) — hull group translated by draft
+  h += `<g id="hull">
+    <path data-info="storage" class="hot" d="M${HULL0 + 30} 0 H${HULL1} V${32 * PX} H${HULL0 + 40} C${HULL0 + 10} ${32 * PX} ${HULL0} ${20 * PX} ${HULL0} 0 Z" fill="url(#gHull)" stroke="#05080c"/>
+    <g data-info="storage" class="hot">${[0, 1, 2, 3, 4].map(k => `<rect x="${320 + k * 82}" y="${8}" width="74" height="${24 * PX - 4}" rx="10" fill="#0c1218" stroke="#5c6a78"/><rect id="ct${k}" x="${322 + k * 82}" y="${8}" width="70" height="0" rx="9" fill="url(#gOil)"/>`).join('')}
+    <text x="520" y="${30 * PX}" class="sl" text-anchor="middle" fill="#ffd9a8">${T('CARGO TANKS')}</text></g>
+    <path d="M${HULL0 + 4} -4 H${HULL1}" stroke="#7f8a96" stroke-width="3"/>
+    <!-- turret -->
+    <g data-info="turret" class="hot"><rect x="${TUR - 18}" y="-34" width="36" height="${32 * PX + 46}" fill="url(#gYel)" stroke="#3a2a00"/><rect x="${TUR - 26}" y="-44" width="52" height="12" fill="#e2b52c" stroke="#3a2a00"/>${[0, 1, 2, 3].map(k => `<path d="M${TUR - 18} ${-20 + k * 30} H${TUR + 18}" stroke="#8f6a00"/>`).join('')}</g>
+    <!-- flare tower -->
+    <g data-info="flare" class="hot"><path d="M232 -4 L246 -150 L260 -4 M236 -40 H256 M239 -80 H253 M242 -120 H250 M236 -40 L253 -80 M256 -40 L239 -80 M239 -80 L250 -120 M253 -80 L242 -120" stroke="#9fb3c8" stroke-width="2" fill="none"/>
+      <path id="flame" d="M246 -150 c-12 -14 -4 -30 0 -44 c4 14 14 30 0 44z" fill="#ffb627" filter="url(#glow)"/><path id="flame2" d="M246 -152 c-6 -8 -2 -18 0 -26 c2 8 8 18 0 26z" fill="#fff3b0"/></g>
+    <!-- process modules -->
+    <g data-info="separator" class="hot"><rect x="290" y="-46" width="150" height="42" fill="#3b4652" stroke="#8fa2b5"/>
+      <rect x="300" y="-38" width="88" height="22" rx="11" fill="url(#gSteel)" stroke="#2e3b48"/><rect id="sepLiq" x="302" y="-26" width="84" height="8" rx="4" fill="#c98b24"/><rect x="396" y="-36" width="36" height="16" rx="8" fill="url(#gSteel)"/><text x="365" y="-50" class="sl" text-anchor="middle">${T('SEPARATION')}</text></g>
+    <g data-info="compression" class="hot"><rect x="450" y="-64" width="120" height="60" fill="#46505b" stroke="#8fa2b5"/>${[0, 1, 2].map(k => `<rect x="${460 + k * 36}" y="-56" width="28" height="22" fill="#5c6a78" stroke="#9fb3c8"/><circle cx="${474 + k * 36}" cy="-24" r="8" fill="#2b3640" stroke="#9fb3c8"/>`).join('')}
+      <path d="M470 -64 V-96 M500 -64 V-104 M530 -64 V-96" stroke="#9fb3c8" stroke-width="5"/><circle id="cA" cx="458" cy="-58" r="4"/><circle id="cB" cx="562" cy="-58" r="4"/><text x="510" y="-108" class="sl" text-anchor="middle">${T('GAS COMPRESSION')}</text></g>
+    <g data-info="power" class="hot"><rect x="580" y="-50" width="70" height="46" fill="#3e4954" stroke="#8fa2b5"/><path d="M596 -50 V-86 M616 -50 V-90 M636 -50 V-86" stroke="#7f8a96" stroke-width="7"/><g id="smoke" opacity="0">${[0, 1, 2].map(k => `<circle cx="${596 + k * 20}" cy="-98" r="7" fill="#555"/>`).join('')}</g><text x="615" y="-96" class="sl" text-anchor="middle">${T('POWER')}</text></g>
+    <g data-info="water" class="hot"><rect x="658" y="-40" width="62" height="36" fill="#34506b" stroke="#8fa2b5"/>${[0, 1, 2, 3].map(k => `<rect x="${664 + k * 14}" y="-34" width="8" height="24" rx="3" fill="#7fb6e0"/>`).join('')}<text x="689" y="-46" class="sl" text-anchor="middle">${T('WATER')}</text></g>
+    <g data-info="accommodation" class="hot"><rect x="728" y="-92" width="66" height="88" fill="#e9eef3" stroke="#9aa6b2"/>${[0, 1, 2, 3, 4].map(k => `<path d="M734 ${-82 + k * 16} H788" stroke="#4f6c8a" stroke-width="4" stroke-dasharray="6 3"/>`).join('')}<rect x="740" y="-110" width="40" height="18" fill="#dfe6ee"/><path d="M760 -110 V-132" stroke="#9aa6b2" stroke-width="2"/></g>
+    <path d="M300 -4 H720" stroke="#ffb627" stroke-width="2" opacity=".6"/>
+    <g><path d="M560 -64 L600 -150 L640 -110" stroke="#ffcf3a" stroke-width="4" fill="none"/><path d="M640 -110 V-80" stroke="#c9d6e3"/></g>
+  </g>`;
+  // shuttle tanker group
+  h += `<g id="tanker" data-info="tanker" class="hot"><path d="M0 0 H150 C160 0 168 10 168 22 V36 H10 C4 36 0 26 0 18Z" fill="url(#gHull)" stroke="#05080c"/><rect x="120" y="-26" width="34" height="26" fill="#e9eef3"/><rect x="128" y="-36" width="18" height="10" fill="#dfe6ee"/>
+    <path d="M10 -2 H118" stroke="#7f8a96" stroke-width="2"/><rect x="40" y="-8" width="60" height="6" fill="#4f5b66"/><text x="84" y="52" class="sl" text-anchor="middle">${T('SHUTTLE TANKER')}</text></g>
+  <path id="hawser" d="" stroke="#e8e0c8" stroke-width="1.5" fill="none"/><path id="hose" d="" stroke="#16222e" stroke-width="5" fill="none"/><path id="hoseF" class="flow" d="" stroke="#ffb627" stroke-width="2.4" fill="none"/>`;
+  // sea surface (animated) over the hulls
+  h += `<path id="waves" d="" fill="#0d4d7a" opacity=".55"/><path id="waveLine" d="" stroke="#bfe9ff" stroke-width="1.2" fill="none" opacity=".8"/>`;
+  // wind indicator
+  h += `<g transform="translate(36 200)"><circle r="22" fill="#0b1e36aa" stroke="#4f6c8a"/><path id="windArrow" d="M0 -16 L6 0 H2 V16 H-2 V0 H-6Z" fill="#dcecff"/><text y="38" class="sl" text-anchor="middle" id="windTxt">—</text></g>`;
+  // callouts (like an infographic)
+  h += callout(8, 46, 'turret', 'TURRET MOORING', 'Keeps the FPSO on station', 200)
+    + callout(290, 8, 'separator', 'PROCESSING', 'Separates oil, gas and water', 210)
+    + callout(520, 8, 'compression', 'GAS COMPRESSION', 'Export, lift and fuel gas', 210)
+    + callout(800, 96, 'tanker', 'SHUTTLE TANKER', 'Receives crude oil', 192)
+    + callout(560, 300, 'storage', 'CRUDE OIL STORAGE', 'Stored in the hull tanks', 210)
+    + callout(330, 372, 'risers', 'RISERS', 'Well fluids to the FPSO', 170)
+    + callout(560, 466, 'manifold', 'SUBSEA MANIFOLD', 'Combines production from wells', 230)
+    + callout(8, 470, 'flowlines', 'FLOWLINES', 'Connect wells to the manifold', 220)
+    + callout(758, 520, 'wells', 'SUBSEA WELLHEADS', 'Control production from the reservoir', 236)
+    + callout(560, 676, 'reservoir', 'RESERVOIR', 'Oil, gas and water', 170)
+    + callout(8, 120, 'flare', 'FLARE', 'Safe disposal of excess gas', 200);
+  $('scene').innerHTML = `<style>.sl{font:10.5px system-ui,sans-serif;fill:#cfe3f7}.co rect{fill:#071425e6;stroke:#ffcf3a;stroke-width:1}.ct{font:700 13px system-ui,sans-serif;fill:#ffcf3a;letter-spacing:.03em}.cs{font:12px system-ui,sans-serif;fill:#e6f0fa}.co,.hot{cursor:pointer}.co:hover rect{stroke:#fff}.hot:hover{filter:brightness(1.25)}</style>` + h;
+  for (const id of ['hull', 'tanker', 'hawser', 'hose', 'hoseF', 'waves', 'waveLine', 'flame', 'flame2', 'smoke', 'sepLiq', 'cA', 'cB', 'windArrow', 'windTxt', 'rs0', 'rs1', 'rsGl', 'rsWi', 'flWi', 'dhWi', 'ct0', 'ct1', 'ct2', 'ct3', 'ct4', 'ml0', 'ml1', 'ml2', 'ml3', 'ml4',
+    'dh0', 'dh1', 'dh2', 'dh3', 'fl0', 'fl1', 'fl2', 'fl3', 'tl0', 'tl1', 'tl2', 'tl3', 'co_separator', 'co_storage', 'co_compression', 'co_tanker', 'co_risers', 'co_manifold', 'co_wells', 'co_reservoir', 'co_flare', 'co_turret', 'co_flowlines']) SC[id] = document.getElementById(id);
+}
+function flowAnim(el, q, qRef) {
+  if (!el) return;
+  if (q > qRef * 0.002) { el.style.animationPlayState = 'running'; el.style.animationDuration = clamp(2.2 * qRef / Math.max(q, 1e-9), 0.3, 8).toFixed(2) + 's'; el.style.opacity = 1; }
+  else { el.style.animationPlayState = 'paused'; el.style.opacity = 0.2; }
+}
+const tensionCol = r => r > 0.55 ? '#ff4545' : r > 0.4 ? '#ffb627' : '#c9d6e3';
+function updateScene(dtA) {
+  const s = sim.s, d = sim.d, c = sim.c, A = st.anim;
+  A.wave += dtA;
+  // hull floats at its draft
+  const draft = d.draft || 12, yDeck = SEA - (32 - draft) * PX, heave = Math.sin(A.wave * 0.9) * Math.min(c.env.hs, 8) * 0.35;
+  SC.hull.setAttribute('transform', `translate(0 ${(yDeck + heave).toFixed(2)})`);
+  const frac = s.cargo / CFG.cargo.cap, th = (24 * PX - 4) * frac;
+  for (let k = 0; k < 5; k++) { SC['ct' + k].setAttribute('y', 8 + (24 * PX - 4) - th); SC['ct' + k].setAttribute('height', Math.max(0, th)); }
+  // sea surface
+  const amp = 1.5 + Math.min(c.env.hs, 9) * 1.4; let p = `M0 ${SEA + 40} V${SEA}`, l = '';
+  for (let x = 0; x <= 1000; x += 20) { const y = SEA + Math.sin(x / 38 + A.wave * 1.6) * amp * 0.6 + Math.sin(x / 91 - A.wave) * amp * 0.4; p += ` L${x} ${y.toFixed(1)}`; l += (x ? ' L' : 'M') + `${x} ${y.toFixed(1)}`; }
+  SC.waves.setAttribute('d', p + ` V${SEA + 40} Z`); SC.waveLine.setAttribute('d', l);
+  // flare
+  const fl = s.sep.flareQ, sc = clamp(0.35 + Math.sqrt(fl) * 1.4, 0.35, 3.2) * (0.9 + 0.1 * Math.sin(A.wave * 9));
+  for (const f of [SC.flame, SC.flame2]) f.setAttribute('transform', `translate(246 -150) scale(${sc.toFixed(2)}) translate(-246 150)`);
+  SC.smoke.setAttribute('opacity', s.power.diesel ? 0.7 : 0);
+  SC.sepLiq.setAttribute('width', (84 * clamp(s.sep.LT / 100, 0, 1)).toFixed(1));
+  SC.cA.setAttribute('fill', s.comp.tripped[0] ? '#ff4545' : c.comp[0] ? '#2bd66f' : '#28384b'); SC.cB.setAttribute('fill', s.comp.tripped[1] ? '#ff4545' : c.comp[1] ? '#2bd66f' : '#28384b');
+  // flows
+  const qL = s.wellsQin.L;
+  s.wells.forEach((w, i) => { flowAnim(SC['dh' + i], w.q, 5000); flowAnim(SC['fl' + i], w.q, 5000); SC['tl' + i].setAttribute('fill', w.q > 50 ? '#2bd66f' : sim.c.wells[i].open && w.ch > 5 ? '#ffb627' : '#ff4545'); });
+  flowAnim(SC.rs0, qL / 2, 9000); flowAnim(SC.rs1, qL / 2, 9000); flowAnim(SC.rsGl, s.gasUse.lift, 0.5); flowAnim(SC.rsWi, s.wi.q, 20000); flowAnim(SC.flWi, s.wi.q, 20000); flowAnim(SC.dhWi, s.wi.q, 20000);
+  // mooring line colours (side view shows the 5 drawn lines mapped onto the 9 lines)
+  const Tl = s.moor.T || []; [0, 1, 2, 3, 4].forEach(j => { const t = Math.max(Tl[j] || 0, Tl[j + 4] || 0); SC['ml' + j].setAttribute('stroke', s.moor.failed[j] ? '#ff4545' : tensionCol(t / CFG.moor.MBL)); SC['ml' + j].setAttribute('stroke-dasharray', s.moor.failed[j] ? '4 4' : ''); });
+  // shuttle tanker
+  const tk = s.tanker, Tc = CFG.tanker; let tx = 1100;
+  if (tk.st === 'approaching') tx = 1100 - 290 * clamp(tk.t / Tc.approach, 0, 1);
+  else if (['hookup', 'offloading', 'disconnect'].includes(tk.st)) tx = 810;
+  else if (tk.st === 'departing') tx = 810 + 290 * clamp(tk.t / Tc.depart, 0, 1);
+  const tDraft = 6 + 12 * tk.cargo / Tc.cap, ty = SEA - (20 - tDraft) * 1.4 + Math.sin(A.wave * 1.1 + 1) * Math.min(c.env.hs, 8) * 0.45;
+  SC.tanker.setAttribute('transform', `translate(${tx} ${ty.toFixed(1)}) scale(.95)`);
+  const conn = ['offloading', 'hookup', 'disconnect'].includes(tk.st) && tx < 900;
+  const sx = HULL1, sy = yDeck + heave + 4;
+  SC.hawser.setAttribute('d', conn ? `M${sx} ${sy} Q${(sx + tx) / 2} ${SEA + 6} ${tx + 4} ${ty + 4}` : '');
+  const hp = conn && tk.st !== 'hookup' ? `M${sx - 4} ${sy + 8} Q${(sx + tx) / 2} ${SEA + 20} ${tx + 6} ${ty + 10}` : '';
+  SC.hose.setAttribute('d', hp); SC.hoseF.setAttribute('d', hp); flowAnim(SC.hoseF, tk.st === 'offloading' ? c.offRate : 0, 6000);
+  // wind indicator: arrow points where the wind blows to
+  SC.windArrow.setAttribute('transform', `rotate(${(c.env.windDir + 180).toFixed(0)})`); SC.windTxt.textContent = fu('spd', c.env.wind, 0);
+  // live values on the callouts
+  SC.co_separator.textContent = `${fu('press', s.sep.P, 1)} · ${T('level')} ${nf(s.sep.LT, 0)} %`;
+  SC.co_storage.textContent = `${fu('vol', s.cargo, 0)} · ${nf(frac * 100, 0)} %`;
+  SC.co_compression.textContent = `${fu('gas', s.comp.q, 2)} · ${nf(s.comp.power, 1)} MW`;
+  SC.co_tanker.textContent = T(TK_TXT[tk.st]);
+  SC.co_risers.textContent = `${fu('liq', qL, 0)}`;
+  SC.co_manifold.textContent = `${fu('press', s.Pman, 1)}`;
+  SC.co_flare.textContent = `${fu('gas', s.sep.flareQ, 2)}`;
+  SC.co_reservoir.textContent = `${fu('press', s.Pr, 0)}`;
+  SC.co_turret.textContent = `${T('offset')} ${fu('len', s.moor.offset, 0)}`;
+  SC.co_flowlines.textContent = `${fu('temp', s.Tarr, 0)}`;
+}
+const TK_TXT = { none: 'No tanker', approaching: 'Approaching', hookup: 'Connecting hawser & hose', offloading: 'Offloading', disconnect: 'Disconnecting', departing: 'Departing' };
+
+/* ---------------- explanation panel ---------------- */
+function showInfo(key) {
+  st.info = key; const it = INFO[key] || INFO.overview; if (!it) return;
+  const L = I.lang === 'ar' ? 1 : 0;
+  $('info').innerHTML = `<h3 class="ih">${it.t[L]}</h3><p class="is">${it.s[L]}</p>${it.b[L]}<div class="itags">${Object.keys(INFO).map(k => `<button class="btn sm${k === key ? ' on' : ''}" data-info="${k}">${INFO[k].t[L]}</button>`).join('')}</div>`;
+  $('infoTag').textContent = it.t[L];
+}
+
+/* ---------------- turret plan view ---------------- */
+function drawPlan() {
+  const cv0 = $('plan'), dpr = window.devicePixelRatio || 1, W = cv0.clientWidth, H = cv0.clientHeight;
+  if (cv0.width !== Math.round(W * dpr)) { cv0.width = Math.round(W * dpr); cv0.height = Math.round(H * dpr); }
+  const c = cv0.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, W, H);
+  const s = sim.s, m = s.moor, e = sim.c.env, cx = W / 2, cy = H / 2, R = Math.min(W, H) * 0.42, k = R / 900;      // 900 m radius anchor circle
+  c.fillStyle = '#062a45'; c.fillRect(0, 0, W, H);
+  c.strokeStyle = '#1e4f7d'; c.beginPath(); c.arc(cx, cy, R, 0, 7); c.stroke(); c.fillStyle = '#7f9dbd'; c.font = '10.5px system-ui,sans-serif'; c.textAlign = 'center'; c.fillText('N', cx, cy - R - 4);
+  // compass: 0° = north (up), clockwise
+  const P = (az, r) => [cx + Math.sin(az * Math.PI / 180) * r, cy - Math.cos(az * Math.PI / 180) * r];
+  const off = m.offset * k * 3, od = m.offDir; const [tx, ty] = [cx + Math.sin(od * Math.PI / 180) * off, cy - Math.cos(od * Math.PI / 180) * off];
+  // mooring lines from anchors to the turret
+  for (let j = 0; j < CFG.moor.lines; j++) {
+    const [ax, ay] = P(sim.lineAz(j), R); const t = (m.T || [])[j] || 0;
+    c.strokeStyle = m.failed[j] ? '#ff4545' : tensionCol(t / CFG.moor.MBL); c.lineWidth = m.failed[j] ? 1 : 1.6; c.setLineDash(m.failed[j] ? [4, 4] : []);
+    c.beginPath(); c.moveTo(ax, ay); c.lineTo(tx, ty); c.stroke(); c.setLineDash([]); c.fillStyle = '#9fb3c8'; c.fillRect(ax - 2, ay - 2, 4, 4);
+  }
+  // FPSO hull: turret at the bow, hull extends downstream along the heading
+  const L = 300 * k * 1.6, B = 58 * k * 1.8, hd = m.heading * Math.PI / 180;
+  c.save(); c.translate(tx, ty); c.rotate(hd); c.fillStyle = '#3b4652'; c.strokeStyle = '#ffd9a8'; c.lineWidth = 1;
+  c.beginPath(); c.moveTo(-B / 2, 0); c.quadraticCurveTo(0, -B * 0.9, B / 2, 0); c.lineTo(B / 2, L); c.lineTo(-B / 2, L); c.closePath(); c.fill(); c.stroke();
+  if (s.tanker.st === 'offloading' || s.tanker.st === 'hookup' || s.tanker.st === 'disconnect') { c.fillStyle = '#5c6a78'; c.fillRect(-B * 0.35, L + 25 * k * 4, B * 0.7, L * 0.55); c.strokeStyle = '#e8e0c8'; c.beginPath(); c.moveTo(0, L); c.lineTo(0, L + 25 * k * 4); c.stroke(); }
+  c.restore();
+  c.fillStyle = '#ffd84a'; c.beginPath(); c.arc(tx, ty, 3.5, 0, 7); c.fill();
+  // environment arrows (towards)
+  const arrow = (fromDeg, mag, col, lab, r0) => { const to = fromDeg + 180; const [x0, y0] = P(fromDeg, R * r0), [x1, y1] = P(fromDeg, R * r0 - 14 - mag * 14); c.strokeStyle = col; c.fillStyle = col; c.lineWidth = 2.5; c.beginPath(); c.moveTo(x0, y0); c.lineTo(x1, y1); c.stroke();
+    const a = Math.atan2(y1 - y0, x1 - x0); c.beginPath(); c.moveTo(x1, y1); c.lineTo(x1 - 7 * Math.cos(a - 0.5), y1 - 7 * Math.sin(a - 0.5)); c.lineTo(x1 - 7 * Math.cos(a + 0.5), y1 - 7 * Math.sin(a + 0.5)); c.fill(); c.fillText(lab, x0 + 10 * Math.sin(to), y0); };
+  c.textAlign = 'center'; arrow(e.windDir, e.wind / 10, '#dcecff', T('wind'), 1.12); arrow(e.waveDir, e.hs / 2.5, '#7fdcff', T('waves'), 1.0); arrow(e.curDir, e.cur * 2, '#2bd66f', T('current'), 0.88);
+  c.fillStyle = '#7f9dbd'; c.textAlign = 'left'; c.fillText(`${T('offset ×3 for visibility')} · ${T('anchor radius')} ≈ 900 m`, 6, H - 6);
+}
+
+/* ---------------- trends ---------------- */
+const TRACKS = [
+  [['qo', 'Oil', 'liq', '#ffb627'], ['qw', 'Water', 'liq', '#3fb0ff']],
+  [['qg', 'Gas', 'gas', '#ffe14d'], ['flare', 'Flare', 'gas', '#ff4545']],
+  [['psep', 'Separator P', 'press', '#36c8ff'], ['pman', 'Manifold P', 'press', '#b689ff']],
+  [['cargo', 'Cargo', 'vol', '#2bd66f'], ['offset', 'Offset', 'len', '#ff8a3d']],
+  [['pr', 'Reservoir P', 'press', '#ffd9a8'], ['power', 'Power (MW)', '', '#9fb3c8']],
+];
+function buildLegend() { $('legend').innerHTML = TRACKS.flat().map(ch => `<span data-ch="${ch[0]}" class="${st.hidden[ch[0]] ? 'off' : ''}"><i style="background:${ch[3]}"></i>${T(ch[1])} <em class="hint">${un(ch[2]) ? '(' + un(ch[2]) + ')' : ''}</em></span>`).join(''); }
+function drawTrend() {
+  const cv0 = $('trend'), dpr = window.devicePixelRatio || 1, W = cv0.clientWidth, H = cv0.clientHeight;
+  if (cv0.width !== Math.round(W * dpr)) { cv0.width = Math.round(W * dpr); cv0.height = Math.round(H * dpr); }
+  const c = cv0.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, W, H);
+  const Tr = sim.trend, n = Math.min(Tr.n, Tr.N), idx = []; for (let k = n; k > 0; k--) idx.push((Tr.n - k) % Tr.N);
+  const tNow = sim.s.t, t0 = tNow - st.win, L = 64, Rm = 64, pw = W - L - Rm, th = (H - 18) / TRACKS.length, xt = t => L + (t - t0) / st.win * pw;
+  c.font = '10.5px system-ui,sans-serif';
+  const step = st.win <= 3600 ? 600 : st.win <= 21600 ? 3600 : st.win <= 86400 ? 4 * 3600 : 12 * 3600;
+  TRACKS.forEach((tr, ti) => {
+    const y0 = ti * th + 2, y1 = y0 + th - 6; c.fillStyle = ti % 2 ? '#0a1a2f' : '#0b1e36'; c.fillRect(L, y0, pw, y1 - y0);
+    c.strokeStyle = '#163a5e'; c.beginPath(); for (let t = Math.ceil(t0 / step) * step; t < tNow; t += step) { c.moveTo(xt(t), y0); c.lineTo(xt(t), y1); } c.stroke(); c.strokeStyle = '#1e4f7d'; c.strokeRect(L, y0, pw, y1 - y0);
+    tr.forEach((ch, ci) => {
+      const [key, , q, col] = ch; if (st.hidden[key]) return; const arr = Tr.ch[key];
+      let mn = Infinity, mx = -Infinity; for (const i of idx) { if (Tr.t[i] < t0) continue; mn = Math.min(mn, arr[i]); mx = Math.max(mx, arr[i]); }
+      if (!isFinite(mn)) { mn = 0; mx = 1; } const pad = (mx - mn) * 0.1 || Math.abs(mx) * 0.05 || 1; mn -= pad; mx += pad;
+      const yv = v => y1 - (v - mn) / (mx - mn) * (y1 - y0);
+      c.strokeStyle = col; c.lineWidth = 1.6; c.beginPath(); let first = true; for (const i of idx) { if (Tr.t[i] < t0) continue; const x = xt(Tr.t[i]), y = yv(arr[i]); if (first) { c.moveTo(x, y); first = false; } else c.lineTo(x, y); } c.stroke();
+      c.fillStyle = col; const left = ci === 0, lx = left ? L - 4 : L + pw + 4; c.textAlign = left ? 'right' : 'left';
+      c.fillText(fmt(q, mx, 1), lx, y0 + 10); c.fillText(fmt(q, mn, 1), lx, y1 - 2); c.font = 'bold 12px system-ui,sans-serif'; c.fillText(fmt(q, sim.d[key], q === 'gas' ? 2 : 0), lx, (y0 + y1) / 2 + 4); c.font = '10.5px system-ui,sans-serif';
+    });
+  });
+  c.fillStyle = '#7f9dbd'; c.textAlign = 'center';
+  for (let t = Math.ceil(t0 / step) * step; t < tNow; t += step) c.fillText(clockStr(sim.clock0 + (t - sim.tStart) * 1000, true), xt(t), H - 4);
+}
+
+/* ---------------- periodic UI ---------------- */
+function clockStr(ms, short) { const d = new Date(ms), p = n => String(n).padStart(2, '0'); return short ? `${p(d.getDate())}/${p(d.getHours())}:${p(d.getMinutes())}` : `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`; }
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function txt(id, v) { const e = $(id); if (e && e.textContent !== v) e.textContent = v; }
+function cls(id, c) { const e = $(id); if (e && e.className !== c) e.className = c; }
+function on(el, b) { if (el) el.classList.toggle('on', !!b); }
+function sync(id, oid, v, show) { const el = $(id); if (el && document.activeElement !== el) el.value = v; if (oid) txt(oid, show); }
+function plantStatus() {
+  const c = sim.c, s = sim.s;
+  if (c.esd) return ['ESD', 'crit']; if (c.psd) return ['PROCESS SHUTDOWN', 'crit'];
+  if (s.wellsQin.L < 1) return ['SHUT IN', 'idle'];
+  if (s.tanker.st === 'offloading') return ['PRODUCING + OFFLOADING', ''];
+  if (s.sep.flareQ > 0.5) return ['PRODUCING — FLARING', 'warn'];
+  return ['PRODUCING', ''];
+}
+function updateUI() {
+  const s = sim.s, c = sim.c, d = sim.d;
+  const now = new Date(sim.clockMs()); txt('dateTxt', `${String(now.getDate()).padStart(2, '0')}-${MON[now.getMonth()]}-${now.getFullYear()}`); txt('clockTxt', clockStr(sim.clockMs()));
+  const [ps, pc] = plantStatus(); txt('plantStatus', T(ps)); cls('plantStatus', 'status-badge ' + pc);
+  const al = sim.alarmList(), top = al[0], ban = $('alarmBanner');
+  if (top) { txt('alarmTxt', T(top.text)); txt('alarmSub', `${T(top.active ? 'ACTIVE' : 'CLEARED')} · ${T(top.acked ? 'acknowledged' : 'unacknowledged')} · ${F('{n} in list — click to ack', { n: al.length })}`); ban.className = `alarm-banner p${top.prio}${top.acked ? '' : ' blink'}`; }
+  else { txt('alarmTxt', T('No active alarms')); txt('alarmSub', T('All systems normal')); ban.className = 'alarm-banner ok'; }
+  txt('esdBtn', T(confirming('esd') ? 'CONFIRM?' : c.esd ? 'ESD ACTIVE — RESET' : 'ESD READY')); $('esdBtn').className = 'btn ' + (c.esd || confirming('esd') ? 'red blink' : 'on');
+  $('psdBtn').disabled = !c.psd;
+  txt('unitsNote', T(st.units === 'si' ? 'SI units' : 'Oilfield units'));
+  // key parameters
+  const alarmRows = {}; for (const a of al) if (a.active && ALARM_ROW[a.id]) alarmRows[ALARM_ROW[a.id]] = Math.min(alarmRows[ALARM_ROW[a.id]] || 9, a.prio);
+  const vals = { wc: d.wc * 100, daysFull: d.daysFull, vrr: d.vrr, Tmax: d.Tmax, power: d.power };
+  for (const [k, , q, dec] of PARAMS) {
+    const v = k in vals ? vals[k] : d[k];
+    txt('pv_' + k, k === 'daysFull' && !isFinite(v) ? '—' : fmt(q, v, dec)); txt('pu_' + k, un(q) ? '(' + T(un(q)) + ')' : '');
+    cls('pr_' + k, 'prow' + (alarmRows[k] ? (alarmRows[k] <= 2 ? ' al' : ' wn') : ''));
+  }
+  // wells
+  s.wells.forEach((w, i) => {
+    const cw = c.wells[i]; on(document.querySelector(`[data-wopen="${i}"]`), cw.open); on(document.querySelector(`[data-wshut="${i}"]`), !cw.open);
+    const ch = document.querySelector(`[data-wch="${i}"]`), gl = document.querySelector(`[data-wgl="${i}"]`);
+    if (document.activeElement !== ch) ch.value = cw.choke; if (document.activeElement !== gl) gl.value = cw.lift;
+    txt('wco' + i, `${cw.choke.toFixed(0)} % (${w.ch.toFixed(0)})`); txt('wgo' + i, fu('gas', cw.lift, 2));
+    txt('wq' + i, fu('liq', w.qo, 0)); txt('ww' + i, nf(w.wc * 100, 1) + ' %'); txt('wp' + i, `${fmt('press', w.Pwh, 0)} / ${fmt('press', w.Pwf, 0)} ${un('press')}`);
+    const stt = c.esd || c.psd ? 'SHUT (ESD/PSD)' : !cw.open || w.ch < 1 ? 'SHUT' : w.q < 50 ? 'NOT FLOWING' : 'FLOWING'; txt('wx' + i, T(stt)); cls('wx' + i, stt === 'FLOWING' ? '' : stt === 'SHUT' ? 'w' : 'r');
+    cls('wl' + i, 'lamp' + (stt === 'FLOWING' ? ' g' : stt === 'NOT FLOWING' ? ' a' : ' r'));
+  });
+  txt('sPman', fu('press', s.Pman, 1)); txt('sTemp', `${fu('temp', s.Tarr, 1)} / ${fu('temp', d.Thyd, 1)}`); cls('sTemp', s.Tarr < d.Thyd + 3 ? 'r' : s.Tarr < d.Thyd + 8 ? 'a' : '');
+  const coolH = s.wellsQin.L > 50 ? null : s.Tarr > d.Thyd + 0.1 ? 8 * Math.log((s.Tarr - 4) / Math.max(d.Thyd - 4, 0.01)) : 0;
+  txt('sCool', s.wellsQin.L > 50 ? T('flowing — no cooldown') : d.Thyd <= 4 ? T('protected (MEG)') : F('{h} h until hydrate zone', { h: nf(Math.max(0, coolH), 1) })); cls('sCool', coolH !== null && coolH < 2 && d.Thyd > 4 ? 'r' : 'w');
+  txt('sSlug', nf(s.slug, 2)); cls('sSlug', s.slug > 0.25 ? 'a' : ''); txt('sPr', `${fu('press', s.Pr, 1)} / ${fu('press', CFG.Pb, 0)}`); txt('sVrr', nf(d.vrr, 2)); cls('sVrr', d.vrr < 0.9 ? 'a' : '');
+  on($('megBtn'), c.meg); txt('subseaNote', `${fu('liq', s.wellsQin.L, 0)} ${T('liquid')}`);
+  // process
+  sync('sPset', 'oPset', c.sep.Pset, fu('press', c.sep.Pset, 1)); sync('sLT', 'oLT', c.sep.LTsp, c.sep.LTsp.toFixed(0) + ' %');
+  $('vLT').style.height = clamp(s.sep.LT, 0, 100) + '%'; $('vLI').style.height = clamp(s.sep.LI, 0, 100) + '%'; txt('vTxt', `${nf(s.sep.LT, 0)} % / ${nf(s.sep.LI, 0)} %`);
+  txt('pP', fu('press', s.sep.P, 2)); cls('pP', s.sep.P > c.sep.Pset + 3 ? 'r' : ''); txt('pL', `${nf(s.sep.LT, 1)} % / ${nf(s.sep.LI, 1)} %`); cls('pL', s.sep.LT > 85 || s.sep.LT < 15 ? 'r' : '');
+  txt('pQo', fu('liq', s.sep.qoOut, 0)); txt('pQw', fu('liq', s.sep.qwOut, 0)); txt('pQg', fu('gas', s.sep.qgComp, 2)); txt('pBsw', nf(d.bsw, 2) + ' %'); cls('pBsw', d.bsw > 0.5 ? 'r' : '');
+  [0, 1].forEach(i => { on(document.querySelector(`[data-con="${i}"]`), c.comp[i] && !s.comp.tripped[i]); on(document.querySelector(`[data-coff="${i}"]`), !c.comp[i]); cls('cl' + i, 'lamp' + (s.comp.tripped[i] ? ' r' : c.comp[i] ? ' g' : '')); });
+  const g = s.gasUse, tot = Math.max(s.wellsQin.g / 1e6, 0.01), bars = [['Fuel gas', g.fuel, '#ff8a3d'], ['Gas lift', g.lift, '#9b7cff'], ['Export', g.exp, '#2bd66f'], ['Reinjection', g.reinj, '#36c8ff'], ['Flare', s.sep.flareQ, '#ff4545']];
+  $('gasBars').innerHTML = bars.map(([n, v, col]) => `<div class="bar"><span>${T(n)}</span><i style="width:${clamp(v / tot * 100, 0, 100).toFixed(1)}%;background:${col}"></i><b>${fu('gas', v, 2)}</b></div>`).join('');
+  sync('sRoute', 'oRoute', c.route * 100, (c.route * 100).toFixed(0) + ' %');
+  txt('pOiw', nf(d.oiw, 1) + ' mg/L'); cls('pOiw', d.oiw > CFG.pw.limit ? 'r' : d.oiw > 0.8 * CFG.pw.limit ? 'a' : ''); txt('pPw', fu('liq', s.sep.qwOut, 0)); txt('pWi', fu('liq', s.wi.q, 0));
+  on($('wiBtn'), c.wi.on); sync('sWi', 'oWi', c.wi.rate, fu('liq', c.wi.rate, 0)); on($('cleanBtn'), c.cleanCyclones);
+  txt('pPow', `${nf(s.power.demand, 1)} / ${nf(d.powerAvail, 0)} MW`); cls('pPow', s.power.demand > d.powerAvail ? 'r' : ''); txt('pPow2', `${nf(s.comp.power, 1)} / ${nf(s.power.wiPower, 1)} MW`);
+  txt('pFuel', s.power.diesel ? T('DIESEL (fuel gas short)') : fu('gas', g.fuel, 3)); cls('pFuel', s.power.diesel ? 'a' : '');
+  txt('procNote', `${T('separator')} ${fu('press', s.sep.P, 1)}`);
+  // storage & offloading
+  const frac = s.cargo / CFG.cargo.cap; $('cargoBar').style.width = (frac * 100).toFixed(1) + '%'; cls('cargoBar', frac > 0.92 ? 'r' : frac > 0.8 ? 'a' : ''); txt('cargoTxt', `${nf(frac * 100, 1)} %`);
+  txt('oCargo', `${fu('vol', s.cargo, 0)} / ${fu('vol', CFG.cargo.cap, 0)}`); txt('oDays', isFinite(d.daysFull) ? nf(d.daysFull, 1) + ' ' + T('days') : '—'); txt('oDraft', fu('len', d.draft, 1));
+  const tk = s.tanker; txt('oTk', T(TK_TXT[tk.st])); cls('oTk', tk.st === 'offloading' ? 'c' : tk.st === 'none' ? 'w' : 'a'); txt('oTkC', `${fu('vol', tk.cargo, 0)} / ${fu('vol', CFG.tanker.cap, 0)}`);
+  txt('oHs', `Hs ${nf(c.env.hs, 1)} / ${nf(CFG.tanker.hsLimit, 1)} m`); cls('oHs', c.env.hs > CFG.tanker.hsLimit ? 'r' : 'w');
+  sync('sOff', 'oOff', c.offRate, fu('ofh', c.offRate, 0)); txt('tkState', T(TK_TXT[tk.st]));
+  const Tc = CFG.tanker, dur = { approaching: Tc.approach, hookup: Tc.hookup, disconnect: Tc.disconnect, departing: Tc.depart }[tk.st];
+  $('tkProg').style.width = (tk.st === 'offloading' ? tk.cargo / Tc.cap * 100 : dur ? clamp(tk.t / dur, 0, 1) * 100 : 0) + '%';
+  $('tkBtn').disabled = tk.st !== 'none';
+  // mooring & environment
+  const e = c.env;
+  sync('sWind', 'oWind', e.wind, fu('spd', e.wind, 0)); sync('sWindDir', 'oWindDir', e.windDir, e.windDir + '°'); sync('sHs', 'oHs2', e.hs, nf(e.hs, 1) + ' m'); sync('sWaveDir', 'oWaveDir', e.waveDir, e.waveDir + '°');
+  sync('sCur', 'oCur', e.cur, fu('spd', e.cur, 2)); sync('sCurDir', 'oCurDir', e.curDir, e.curDir + '°');
+  txt('mHead', nf(s.moor.heading, 0) + '°'); txt('mOff', `${fu('len', s.moor.offset, 1)} (${nf(s.moor.offset / CFG.wd * 100, 1)} %)`); cls('mOff', s.moor.offset > 0.04 * CFG.wd ? 'r' : s.moor.offset > 0.03 * CFG.wd ? 'a' : '');
+  txt('mT', `${fu('force', d.Tmax, 0)} (${nf(d.Tmax / CFG.moor.MBL * 100, 0)} %)`); cls('mT', d.Tmax > 0.55 * CFG.moor.MBL ? 'r' : d.Tmax > 0.4 * CFG.moor.MBL ? 'a' : '');
+  txt('moorNote', `${T('water depth')} ${fu('len', CFG.wd, 0)}`);
+  // alarms & log
+  $('alarmBody').innerHTML = al.length ? al.map(a => `<tr class="p${a.prio}${a.acked ? '' : ' unack'}"><td class="num">${clockStr(sim.clock0 + (a.t0 - sim.tStart) * 1000)}</td><td>${T(a.text)}</td><td>${a.active ? '<span class="pill ' + (a.prio === 1 ? 'r' : a.prio === 2 ? 'a' : 'c') + '">' + T('ACTIVE') + '</span>' : '<span class="pill g">' + T('CLEAR') + '</span>'} ${a.acked ? '' : `<button class="btn sm" data-ack="${a.id}">${T('Ack')}</button>`}</td></tr>`).join('') : `<tr><td colspan="3" class="hint">${T('No alarms')}</td></tr>`;
+  $('log').innerHTML = sim.log.slice(0, 60).map(l => `<div class="${l.type === 'EVENT' ? 'ev' : 'p' + l.prio}">${clockStr(sim.clock0 + (l.t - sim.tStart) * 1000)} ${l.type === 'EVENT' ? '•' : l.type === 'ALARM' ? '▲' : '✓'} ${T(l.text)}</div>`).join('');
+  for (const m of sim.msg) if (m.t > st.lastMsg) { toast(m.text); st.lastMsg = m.t; }
+  if (st.sound) { const u = al.find(a => !a.acked && a.active && a.prio <= 2); if (u && performance.now() - st.beepT > 1400) { beep(u.prio === 1 ? 880 : 620); st.beepT = performance.now(); } }
+  txt('unitName', CFG.name); txt('fieldName', T(CFG.field));
+}
+
+/* ---------------- helpers ---------------- */
+function confirm2(key, fn, msg) { const now = performance.now(); if (st.confirm && st.confirm.key === key && now - st.confirm.t < 3000) { st.confirm = null; fn(); return; } st.confirm = { key, t: now }; toast(msg); }
+const confirming = key => st.confirm && st.confirm.key === key && performance.now() - st.confirm.t < 3000;
+function toast(t) { const e = document.createElement('div'); e.textContent = T(t); $('toast').appendChild(e); setTimeout(() => e.remove(), 4200); }
+let actx = null;
+function beep(f) { try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); const o = actx.createOscillator(), g = actx.createGain(); o.type = 'square'; o.frequency.value = f; g.gain.setValueAtTime(0.05, actx.currentTime); g.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime + 0.35); o.connect(g).connect(actx.destination); o.start(); o.stop(actx.currentTime + 0.36); } catch (e) { /* no audio */ } }
+const res = r => { if (r && r.ok === false && r.msg) { toast(r.msg); st.lastMsg = sim.s.t; } };
+
+/* ---------------- events ---------------- */
+function bind() {
+  const q = (sel, fn, ev = 'click') => document.querySelectorAll(sel).forEach(el => el.addEventListener(ev, e => fn(el, e)));
+  q('[data-speed]', el => { st.speed = +el.dataset.speed; document.querySelectorAll('[data-speed]').forEach(b => on(b, b === el)); });
+  q('[data-units]', el => { st.units = el.dataset.units; document.querySelectorAll('[data-units]').forEach(b => on(b, b === el)); buildLegend(); updateUI(); drawTrend(); });
+  q('[data-lang]', el => setLang(el.dataset.lang));
+  $('soundBtn').onclick = () => { st.sound = !st.sound; $('soundBtn').textContent = T(st.sound ? '🔊 Horn' : '🔇 Horn'); on($('soundBtn'), st.sound); if (st.sound) beep(660); };
+  $('instrBtn').onclick = () => $('instr').showModal(); $('instrClose').onclick = () => $('instr').close();
+  $('alarmBanner').onclick = () => sim.ack(); $('ackAll').onclick = () => sim.ack();
+  $('alarmBody').addEventListener('click', e => { const b = e.target.closest('[data-ack]'); if (b) sim.ack(b.dataset.ack); });
+  $('esdBtn').onclick = () => confirm2('esd', () => { if (sim.c.esd) sim.resetEsd(); else sim.esd(); }, sim.c.esd ? 'Click again to reset ESD' : 'Click again to activate ESD');
+  $('psdBtn').onclick = () => res(sim.resetPsd());
+  // explanation: any element with data-info
+  document.addEventListener('click', e => { const t = e.target.closest('[data-info]'); if (t && (!e.target.closest('input,select,button') || e.target.closest('.itags'))) showInfo(t.dataset.info); });
+  // wells
+  $('wells').addEventListener('click', e => { const a = e.target.closest('[data-wopen]'), b = e.target.closest('[data-wshut]'); if (a) sim.c.wells[+a.dataset.wopen].open = true; if (b) sim.c.wells[+b.dataset.wshut].open = false; });
+  $('wells').addEventListener('input', e => { const t = e.target; if (t.dataset.wch !== undefined) sim.c.wells[+t.dataset.wch].choke = +t.value; if (t.dataset.wgl !== undefined) sim.c.wells[+t.dataset.wgl].lift = +t.value; });
+  $('allOpen').onclick = () => sim.c.wells.forEach(w => { w.open = true; if (w.choke < 5) w.choke = 50; }); $('allShut').onclick = () => sim.c.wells.forEach(w => { w.open = false; });
+  $('megBtn').onclick = () => { sim.c.meg = !sim.c.meg; };
+  // process
+  $('sPset').addEventListener('input', e => sim.c.sep.Pset = +e.target.value); $('sLT').addEventListener('input', e => sim.c.sep.LTsp = +e.target.value);
+  $('compRow').addEventListener('click', e => { const a = e.target.closest('[data-con]'), b = e.target.closest('[data-coff]'); if (a) sim.restartComp(+a.dataset.con); if (b) sim.c.comp[+b.dataset.coff] = false; });
+  $('sRoute').addEventListener('input', e => sim.c.route = +e.target.value / 100);
+  $('wiBtn').onclick = () => { sim.c.wi.on = !sim.c.wi.on; }; $('sWi').addEventListener('input', e => sim.c.wi.rate = +e.target.value);
+  $('cleanBtn').onclick = () => { sim.c.cleanCyclones = !sim.c.cleanCyclones; };
+  // offloading
+  $('tkBtn').onclick = () => res(sim.callTanker()); $('tkStop').onclick = () => sim.stopOffload(); $('sOff').addEventListener('input', e => sim.c.offRate = +e.target.value);
+  // environment
+  const env = (id, k) => $(id).addEventListener('input', e => { sim.c.env[k] = +e.target.value; });
+  env('sWind', 'wind'); env('sWindDir', 'windDir'); env('sHs', 'hs'); env('sWaveDir', 'waveDir'); env('sCur', 'cur'); env('sCurDir', 'curDir');
+  // trends
+  q('[data-win]', el => { st.win = +el.dataset.win; document.querySelectorAll('[data-win]').forEach(b => on(b, b === el)); drawTrend(); });
+  $('legend').addEventListener('click', e => { const s = e.target.closest('[data-ch]'); if (s) { st.hidden[s.dataset.ch] = !st.hidden[s.dataset.ch]; s.classList.toggle('off'); drawTrend(); } });
+  // instructor
+  q('[data-sc]', el => { sim.scenario(el.dataset.sc); toast(F('Scenario: {n}', { n: el.textContent })); });
+  const reset = hot => { sim = new F_.FpsoSim({ hot }); st.lastMsg = 0; $('instr').close(); drawTrend(); toast(hot ? 'Reset: producing' : 'Reset: wells shut in'); };
+  $('resetHot').onclick = () => reset(true); $('resetCold').onclick = () => reset(false);
+  window.addEventListener('resize', () => { drawTrend(); drawPlan(); });
+}
+function setLang(l) { if (I.setLang) I.setLang(l); document.querySelectorAll('[data-lang]').forEach(b => on(b, b.dataset.lang === I.lang)); buildParams(); buildWells(); buildComp(); buildScene(); buildLegend(); showInfo(st.info); $('soundBtn').textContent = T(st.sound ? '🔊 Horn' : '🔇 Horn'); updateUI(); drawTrend(); drawPlan(); }
+
+/* ---------------- main loop ---------------- */
+let last = performance.now();
+function frame(now) {
+  const dtR = Math.min(0.25, (now - last) / 1000); last = now;
+  if (st.speed > 0) { const simT = dtR * st.speed, h = st.speed >= 3600 ? 4 : st.speed >= 600 ? 2 : 1; const n = Math.min(Math.ceil(simT / h), 2000); for (let i = 0; i < n; i++) sim.step(simT / n); }
+  updateScene(dtR * (st.speed ? 1 : 0));
+  if (now - st.lastUi > 150) { updateUI(); drawPlan(); st.lastUi = now; }
+  if (now - st.lastTrend > 1000) { drawTrend(); st.lastTrend = now; }
+  requestAnimationFrame(frame);
+}
+if (I.init) I.init();
+bind(); setLang(I.lang);
+requestAnimationFrame(frame);
+window.__sim = () => sim;
+})();
+</script>
+<script>if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(() => {});</script>
+</body>
+</html>
