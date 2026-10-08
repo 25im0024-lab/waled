@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Driller's Console</title>
 <meta name="description" content="Interactive driller's console simulator: auto-driller, top drive, drawworks, triplex mud pumps, BOP & well control, kick/loss scenarios, alarms and real-time trends.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="theme-color" content="#0b2340">
 <style>
 :root{color-scheme:dark;
   --bg:#040b15;--bg2:#071425;--panel:#0a1a2f;--panel2:#0d223d;--line:#1e4f7d;--line2:#15385b;
@@ -1714,5 +1718,6 @@ requestAnimationFrame(frame);
 window.__sim = () => sim;
 })();
 </script>
+<script>if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(() => {});</script>
 </body>
 </html>

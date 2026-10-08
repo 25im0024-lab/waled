@@ -6,6 +6,12 @@
 
 الكود المصدري في `src/` (`page.html` و `style.css` و `sim.js` و `ui.js`). بعد أي تعديل أعد البناء بالأمر: `node drillers-console/build.js`، فيُنتج `index.html` من جديد.
 
+## التثبيت على سطح المكتب أو الهاتف
+المحاكي تطبيق ويب قابل للتثبيت (PWA)، ويعمل بدون إنترنت بعد أول فتح.
+- **Chrome / Edge على الكمبيوتر:** افتح https://25im0024-lab.github.io/waled/drillers-console/ ثم اضغط أيقونة التثبيت ⊕ في آخر شريط العنوان، أو من القائمة ⋮ اختر **Install Driller's Console**.
+- **Android (Chrome):** القائمة ⋮ ← **Add to Home screen** أو **Install app**.
+- **iPhone / iPad (Safari):** زر المشاركة ← **Add to Home Screen**.
+
 ## ما الذي يمكن التحكم فيه
 - **Auto-Driller**: وضع WOB أو ROP، وحدود WOB/Torque/RPM، مع عرض PV/SP/Output. ويوجد تحكم يدوي كامل (Hoist/Lower، Brake، Jog speed).
 - **Top Drive**: الأوضاع DRILL/SPIN/TORQUE والاتجاه FWD/OFF/REV وRPM setpoint وTorque setpoint، مع محاكاة الـ stall عند تجاوز حد العزم.
