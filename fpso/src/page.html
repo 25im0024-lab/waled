@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FPSO Console</title>
+<meta name="description" content="Interactive FPSO simulator: subsea wells, manifold and risers, turret mooring, 3-phase separation, gas compression, water treatment and injection, crude storage and offloading to a shuttle tanker. Arabic and English, with explanations.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="theme-color" content="#0b2340">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+<header class="hdr">
+  <div class="title">
+    <h1>FPSO Console <span>— Floating Production, Storage &amp; Offloading</span></h1>
+    <div class="toolbar">
+      <span class="lbl">Sim</span>
+      <span class="seg" id="speedSeg">
+        <button class="btn sm" data-speed="0" title="Pause">❚❚</button>
+        <button class="btn sm on" data-speed="1">1×</button>
+        <button class="btn sm" data-speed="10">10×</button>
+        <button class="btn sm" data-speed="60">60×</button>
+        <button class="btn sm" data-speed="600">600×</button>
+        <button class="btn sm" data-speed="3600">3600×</button>
+      </span>
+      <span class="lbl">Units</span>
+      <span class="seg"><button class="btn sm on" data-units="si">SI</button><button class="btn sm" data-units="fd">Field</button></span>
+      <span class="lbl">Language</span>
+      <span class="seg" data-i18n-skip><button class="btn sm on" data-lang="en">English</button><button class="btn sm" data-lang="ar">العربية</button></span>
+      <button class="btn sm" id="soundBtn" title="Alarm horn">🔇 Horn</button>
+      <button class="btn sm cy" id="instrBtn">Instructor / Setup</button>
+      <a class="btn sm" href="../">Home</a>
+    </div>
+  </div>
+  <div><div class="kv"><span class="lbl">Unit</span><b id="unitName">—</b><span class="lbl">Field</span><b id="fieldName">—</b></div></div>
+  <div><span class="lbl">Plant status</span><div class="status-badge" id="plantStatus">PRODUCING</div></div>
+  <div><span class="lbl" id="dateTxt">—</span><span class="clock" id="clockTxt">--:--:--</span></div>
+  <div class="alarm-banner ok" id="alarmBanner" title="Click to acknowledge">
+    <svg class="ico" viewBox="0 0 34 30"><path d="M17 2L32 28H2Z" fill="#ffcc00" stroke="#000" stroke-width="1.5"/><path d="M17 11v8" stroke="#000" stroke-width="3"/><circle cx="17" cy="23.5" r="1.8"/></svg>
+    <div><div class="txt" id="alarmTxt">No active alarms</div><div class="sub" id="alarmSub">—</div></div>
+  </div>
+  <div><span class="lbl">ESD / PSD</span><div class="row"><button class="btn on" id="esdBtn">ESD READY</button><button class="btn sm" id="psdBtn">PSD reset</button></div></div>
+</header>
+
+<main class="grid">
+  <section class="card c3">
+    <h2>Key Parameters <small id="unitsNote">SI</small></h2>
+    <div class="body"><div class="params" id="params"></div></div>
+  </section>
+
+  <section class="card c6 scene-card">
+    <h2>Field Layout — From Subsea Wells to Offloading <small>tap any part for an explanation</small></h2>
+    <div class="body"><svg id="scene" viewBox="0 0 1000 760" aria-label="Animated FPSO field layout"></svg>
+      <div class="scene-legend"><span><i style="background:#ffb627"></i>Oil</span><span><i style="background:#ffe14d"></i>Gas</span><span><i style="background:#3fb0ff"></i>Water</span><span><i style="background:#9b7cff"></i>Lift gas</span></div>
+    </div>
+  </section>
+
+  <section class="card c3 info-card">
+    <h2>Explanation <small id="infoTag">overview</small></h2>
+    <div class="body" id="info"></div>
+  </section>
+
+  <section class="card c6">
+    <h2>Wells, Manifold &amp; Risers <small id="subseaNote"></small></h2>
+    <div class="body">
+      <div class="wells" id="wells"></div>
+      <div class="kvt" style="margin-top:8px">
+        <span>Manifold pressure</span><b id="sPman">—</b>
+        <span>Arrival temperature / hydrate temp.</span><b id="sTemp">—</b>
+        <span>Cooldown margin to hydrates</span><b id="sCool" class="w">—</b>
+        <span>Riser slugging index</span><b id="sSlug">—</b>
+        <span>Reservoir pressure / bubble point</span><b id="sPr" class="w">—</b>
+        <span>Voidage replacement ratio (VRR)</span><b id="sVrr">—</b>
+      </div>
+      <div class="row" style="margin-top:6px"><button class="btn sm" id="megBtn">MEG injection</button><button class="btn sm" id="allOpen">Open all wells</button><button class="btn sm" id="allShut">Shut all wells</button></div>
+    </div>
+  </section>
+
+  <section class="card c6">
+    <h2>Topsides Process <small id="procNote"></small></h2>
+    <div class="body proc">
+      <div>
+        <div class="sub-h">HP 3-phase separator</div>
+        <div class="vessel"><div class="vl" id="vLT"></div><div class="vw" id="vLI"></div><span id="vTxt"></span></div>
+        <div class="ctl"><label>Pressure set-point</label><input type="range" id="sPset" min="8" max="22" step="0.5"><output id="oPset"></output></div>
+        <div class="ctl"><label>Level set-point</label><input type="range" id="sLT" min="30" max="75" step="1"><output id="oLT"></output></div>
+        <div class="kvt">
+          <span>Pressure</span><b id="pP">—</b><span>Liquid / interface level</span><b id="pL">—</b>
+          <span>Oil to stabilisation</span><b id="pQo">—</b><span>Water to treatment</span><b id="pQw">—</b><span>Gas to compressors</span><b id="pQg">—</b>
+          <span>Crude BS&amp;W (spec ≤ 0.5 %)</span><b id="pBsw">—</b>
+        </div>
+      </div>
+      <div>
+        <div class="sub-h">Gas compression &amp; use</div>
+        <div class="row" id="compRow"></div>
+        <div class="bars" id="gasBars"></div>
+        <div class="ctl"><label>Reinjection share</label><input type="range" id="sRoute" min="0" max="100" step="5"><output id="oRoute"></output></div>
+        <div class="sub-h">Water</div>
+        <div class="kvt"><span>Oil-in-water (limit 30 mg/L)</span><b id="pOiw">—</b><span>Produced water overboard</span><b id="pPw">—</b><span>Seawater injection</span><b id="pWi">—</b></div>
+        <div class="row"><button class="btn sm" id="wiBtn">WI pumps</button><button class="btn sm" id="cleanBtn">Clean hydrocyclones</button></div>
+        <div class="ctl"><label>Injection rate</label><input type="range" id="sWi" min="0" max="32000" step="500"><output id="oWi"></output></div>
+        <div class="sub-h">Power</div>
+        <div class="kvt"><span>Demand / available</span><b id="pPow">—</b><span>Compression / water injection</span><b id="pPow2" class="w">—</b><span>Fuel gas</span><b id="pFuel">—</b></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card c4">
+    <h2>Storage &amp; Offloading <small id="tkState"></small></h2>
+    <div class="body">
+      <div class="tank"><i id="cargoBar"></i><span id="cargoTxt"></span></div>
+      <div class="kvt" style="margin-top:6px">
+        <span>Cargo on board</span><b id="oCargo">—</b><span>Days to tanks full</span><b id="oDays">—</b><span>Draft</span><b id="oDraft" class="w">—</b>
+        <span>Shuttle tanker</span><b id="oTk">—</b><span>Tanker cargo</span><b id="oTkC">—</b><span>Offloading weather limit</span><b id="oHs" class="w">—</b>
+      </div>
+      <div class="ctl"><label>Offloading rate</label><input type="range" id="sOff" min="1000" max="8000" step="100"><output id="oOff"></output></div>
+      <div class="row"><button class="btn sm cy" id="tkBtn">Call shuttle tanker</button><button class="btn sm" id="tkStop">Stop offloading</button></div>
+      <div class="prog"><i id="tkProg"></i></div>
+    </div>
+  </section>
+
+  <section class="card c4">
+    <h2>Turret Mooring &amp; Weather <small id="moorNote"></small></h2>
+    <div class="body">
+      <canvas id="plan" dir="ltr"></canvas>
+      <div class="ctl"><label>Wind</label><input type="range" id="sWind" min="0" max="40" step="1"><output id="oWind"></output></div>
+      <div class="ctl"><label>Wind from</label><input type="range" id="sWindDir" min="0" max="355" step="5"><output id="oWindDir"></output></div>
+      <div class="ctl"><label>Significant wave height</label><input type="range" id="sHs" min="0" max="9" step="0.1"><output id="oHs2"></output></div>
+      <div class="ctl"><label>Waves from</label><input type="range" id="sWaveDir" min="0" max="355" step="5"><output id="oWaveDir"></output></div>
+      <div class="ctl"><label>Current</label><input type="range" id="sCur" min="0" max="2" step="0.05"><output id="oCur"></output></div>
+      <div class="ctl"><label>Current from</label><input type="range" id="sCurDir" min="0" max="355" step="5"><output id="oCurDir"></output></div>
+      <div class="kvt"><span>Heading</span><b id="mHead">—</b><span>Offset (% of water depth)</span><b id="mOff">—</b><span>Max line tension (% MBL)</span><b id="mT">—</b></div>
+    </div>
+  </section>
+
+  <section class="card c4">
+    <h2>Alarm / Safety <span class="seg"><button class="btn sm" id="ackAll">Ack all</button></span></h2>
+    <div class="body">
+      <div class="alist"><table class="atable"><thead><tr><th>Time</th><th>Alarm</th><th>Status</th></tr></thead><tbody id="alarmBody"></tbody></table></div>
+      <div class="sub-h">Event log</div>
+      <div class="log" id="log"></div>
+    </div>
+  </section>
+
+  <section class="card c12">
+    <h2>Trends <small id="trendWin"></small>
+      <span class="seg"><button class="btn sm" data-win="3600">1 h</button><button class="btn sm on" data-win="21600">6 h</button><button class="btn sm" data-win="86400">24 h</button><button class="btn sm" data-win="259200">3 d</button></span></h2>
+    <div class="body trend-wrap"><div class="legend" id="legend"></div><canvas id="trend" dir="ltr"></canvas></div>
+  </section>
+</main>
+</div>
+<div id="toast"></div>
+
+<dialog id="instr">
+  <h2 class="card" style="margin:0;border:0;border-bottom:1px solid var(--line);padding:8px 14px;display:flex;justify-content:space-between;flex-direction:row;align-items:center">INSTRUCTOR / SETUP <button class="btn sm" id="instrClose">Close</button></h2>
+  <div class="body">
+    <div class="sub-h">Scenarios</div>
+    <div class="row">
+      <button class="btn sm amb" data-sc="comptrip">Compressor train A trip</button>
+      <button class="btn sm amb" data-sc="water3">Water breakthrough in P-3</button>
+      <button class="btn sm red" data-sc="line">Mooring line failure</button>
+      <button class="btn sm red" data-sc="storm">Storm</button>
+      <button class="btn sm amb" data-sc="foul">Hydrocyclone fouling</button>
+      <button class="btn sm amb" data-sc="lcv">Separator oil level valve stuck</button>
+      <button class="btn sm amb" data-sc="decline">Fast reservoir depletion (×200)</button>
+      <button class="btn sm on" data-sc="clear">Clear all faults</button>
+    </div>
+    <div class="sub-h">Reset</div>
+    <div class="row"><button class="btn sm cy" id="resetHot">Reset — producing (hot start)</button><button class="btn sm" id="resetCold">Reset — wells shut in (cold start)</button></div>
+    <div class="sub-h">What is modelled</div>
+    <p class="note">The model includes the following:</p>
+    <ul class="note">
+      <li>Reservoir material balance with voidage replacement (water injection and gas reinjection).</li>
+      <li>Composite IPR: straight line above the bubble point, Vogel below it.</li>
+      <li>Wells solved by nodal analysis: tubing hydrostatic head with gas lightening and friction, plus the subsea choke.</li>
+      <li>Gas lift, and water-cut growth with cumulative production.</li>
+      <li>Manifold and riser pressure (hydrostatic + friction), a severe-slugging indicator, and arrival-temperature cooldown against a hydrate curve, with MEG.</li>
+      <li>3-phase separator with level and pressure control, PCV/PSV to flare.</li>
+      <li>2×50 % compressor trains (adiabatic multi-stage power); gas allocated to fuel, lift, export and reinjection; gas-turbine power balance with diesel fallback.</li>
+      <li>Hydrocyclone oil-in-water; crude BS&amp;W.</li>
+      <li>Cargo storage and draft; the shuttle-tanker sequence with weather limits.</li>
+      <li>Turret weathervaning, mooring offset and line tensions; ESD/PSD.</li>
+    </ul>
+    <p class="note">This is a training model: the coefficients are illustrative and not from a specific FPSO.</p>
+  </div>
+</dialog>
+
+<script src="../../drillers-console/src/i18n.js"></script>
+<script src="i18n-ar.js"></script>
+<script src="info.js"></script>
+<script src="sim.js"></script>
+<script src="ui.js"></script>
+<script>if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(() => {});</script>
+</body>
+</html>
