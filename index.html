@@ -1,20 +1,121 @@
-<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>محاكي منصة الحفر ثلاثي الأبعاد</title><style>
-:root{--bg:#06110f;--panel:#0c211c;--line:#2f6858;--ink:#effff8;--muted:#9bb8ae;--green:#62efb2;--orange:#ffbb54;--blue:#55cbed;--red:#ff7878}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:Tahoma,Arial,sans-serif}#app{min-height:100vh;padding:18px;display:grid;grid-template-columns:1fr 315px;gap:14px}header{grid-column:1/-1;display:flex;direction:ltr;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:12px}h1{margin:0;font:600 22px Consolas,monospace;color:var(--green)}header p{margin:5px 0 0;font-size:12px;color:var(--muted)}.meta{font:12px Consolas,monospace;text-align:right;color:var(--muted);line-height:1.8}.meta b{color:var(--orange)}.scene{position:relative;min-height:600px;border:1px solid var(--line);background:linear-gradient(#123b34 0 35%,#805a3c 35.2%,#382c22 100%);overflow:hidden}svg{width:100%;height:100%;display:block}.legend{position:absolute;top:12px;right:12px;display:flex;gap:11px;font:11px Consolas,monospace}.legend i{display:inline-block;width:9px;height:9px;margin-left:4px;border-radius:50%}.side{display:flex;flex-direction:column;gap:12px}.card{background:var(--panel);border:1px solid var(--line);padding:13px}.card h2{font-size:14px;color:var(--green);margin:0 0 10px}.buttons{display:grid;grid-template-columns:1fr 1fr;gap:8px}.buttons button,.unit button{border:1px solid var(--line);padding:10px;background:#102d26;color:var(--ink);cursor:pointer}.buttons .go{background:#176344;border-color:var(--green)}.buttons .halt{border-color:#a85c5c;color:#ffcccc}.control{margin-top:12px}.control label{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}input{width:100%;accent-color:var(--green)}.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}.stat{background:#081813;padding:8px}.stat small{color:var(--muted);display:block;font-size:11px}.stat b{font:600 16px Consolas,monospace}.unit{display:flex;justify-content:space-between;align-items:center;background:#081813;padding:8px;margin-top:6px;font-size:12px}.unit button{padding:4px 7px;font-size:11px}.run{color:var(--green)}.stop{color:var(--orange)}#drill{transform-origin:500px 300px;animation:spin 1s linear infinite;animation-play-state:paused}#mud{stroke-dasharray:8 8;animation:flow .65s linear infinite;animation-play-state:paused}#bit{transform-origin:500px 542px;animation:spin .3s linear infinite;animation-play-state:paused}.active #drill,.active #bit,.active #mud{animation-play-state:running}@keyframes spin{to{transform:rotate(360deg)}}@keyframes flow{to{stroke-dashoffset:-16}}@media(max-width:850px){#app{grid-template-columns:1fr}.side{display:grid;grid-template-columns:1fr 1fr}.side .card:last-child{grid-column:1/-1}}@media(max-width:520px){#app{padding:10px}.side{display:block}.side .card{margin-bottom:10px}.scene{min-height:430px}}
-</style></head><body><main id="app"><header><div><h1>DRILLING RIG VIEW // منصة السهول 17</h1><p>محاكاة تدريبية ثلاثية الأبعاد: برج الحفر، نظام الطين، الحفّار، والبئر</p></div><div class="meta">RIG: <b>SAH-D250</b><br>STATUS: <span id="status">STANDBY</span></div></header>
-<section class="scene" id="scene"><div class="legend"><span><i style="background:#ffbb54"></i>طين الحفر</span><span><i style="background:#62efb2"></i>معدات نشطة</span><span><i style="background:#55cbed"></i>ماء التبريد</span></div><svg viewBox="0 0 1000 650" aria-label="مشهد منصة الحفر والبئر">
-<defs><linearGradient id="sky" x2="0" y2="1"><stop stop-color="#17463c"/><stop offset="1" stop-color="#0b211c"/></linearGradient><linearGradient id="soil" x2="0" y2="1"><stop stop-color="#755238"/><stop offset="1" stop-color="#2c241c"/></linearGradient><filter id="glow"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
-<rect width="1000" height="650" fill="url(#sky)"/><path d="M0 270H1000V650H0Z" fill="url(#soil)"/><path d="M0 270H1000" stroke="#76dcb8" opacity=".4"/>
-<!-- rig platform / isometric deck --><path d="M245 370L500 315L760 370L500 440Z" fill="#183b32" stroke="#8ccfc0" stroke-width="3"/><path d="M245 370V414L500 485V440Z" fill="#102720"/><path d="M760 370V414L500 485V440Z" fill="#143127"/>
-<!-- derrick legs and lattice --><g stroke="#d3e9df" fill="none" stroke-width="9"><path d="M355 363L455 70M645 363L545 70M455 70H545M355 363H645"/><path d="M382 285H618M409 205H591M436 130H564"/></g><g stroke="#79b9a7" stroke-width="3"><path d="M355 363L591 205L409 205L645 363M382 285L564 130L436 130L618 285M409 205L545 70L455 70L591 205"/></g>
-<!-- crown block, traveling block, top drive --><g fill="#213f36" stroke="#aee8d5" stroke-width="3"><rect x="462" y="61" width="76" height="22"/><rect x="476" y="186" width="48" height="27"/><rect x="484" y="213" width="32" height="45"/></g><path d="M480 83V186M520 83V186" stroke="#e6f7ef" stroke-width="3"/>
-<!-- drill string and bit --><g id="drill"><path d="M500 258V540" stroke="#ccdcd5" stroke-width="13"/><path d="M493 258V540" stroke="#52655e" stroke-width="3"/></g><g id="bit"><path d="M480 540L500 570L520 540Z" fill="#d4e7df" stroke="#203d35" stroke-width="3"/><circle cx="488" cy="548" r="4" fill="#ffbb54"/><circle cx="512" cy="548" r="4" fill="#ffbb54"/></g>
-<!-- rotary table and BOP --><ellipse cx="500" cy="365" rx="75" ry="24" fill="#192f29" stroke="#a2d8c6" stroke-width="5"/><ellipse cx="500" cy="365" rx="35" ry="11" fill="#06110f" stroke="#ffbb54" stroke-width="4"/><rect x="462" y="377" width="76" height="38" fill="#bd5f3c" stroke="#f3c0a1" stroke-width="3"/><text x="500" y="405" text-anchor="middle" fill="#fff" font-size="11">BOP</text>
-<!-- drawworks --><g fill="#1b4035" stroke="#9bdac6" stroke-width="3"><rect x="660" y="330" width="112" height="64"/><circle cx="693" cy="362" r="21"/><circle cx="741" cy="362" r="21"/></g><text x="716" y="320" fill="#eafff6" text-anchor="middle" font-size="12">DRAWWORKS</text>
-<!-- mud tanks, shale shaker, pumps --><g stroke="#a9e5d1" stroke-width="3"><path d="M70 396L215 365L340 405L195 441Z" fill="#17352d"/><path d="M70 396V454L195 496V441Z" fill="#0d211b"/><path d="M340 405V458L195 496V441Z" fill="#102a22"/><path d="M91 405L214 380L312 410L193 443Z" fill="#bd7929" opacity=".9"/><rect x="102" y="321" width="102" height="42" fill="#213f36"/><path d="M105 342H202" stroke="#ffbb54" stroke-width="5"/></g><text x="195" y="305" fill="#eafff6" text-anchor="middle" font-size="12">SHALE SHAKERS + MUD TANKS</text><g fill="#153a31" stroke="#86d4bd" stroke-width="3"><circle cx="302" cy="498" r="38"/><circle cx="383" cy="498" r="38"/></g><text x="343" y="553" fill="#eafff6" text-anchor="middle" font-size="12">MUD PUMPS</text>
-<!-- mud flow --><path id="mud" d="M420 498H460V365H500M500 415V450H344V498" fill="none" stroke="#ffbb54" stroke-width="8" filter="url(#glow)"/>
-<!-- pipe racks and generator --><g stroke="#8bc9b6" fill="#16382f" stroke-width="3"><path d="M776 475L950 435L985 480L810 522Z"/><path d="M810 522V547L985 505V480Z"/><rect x="770" y="273" width="110" height="70"/></g><g stroke="#d5e7e0" stroke-width="8"><path d="M798 482L950 448M804 495L956 461M811 508L963 474"/></g><text x="875" y="425" fill="#eafff6" text-anchor="middle" font-size="12">PIPE RACK</text><text x="825" y="262" fill="#eafff6" text-anchor="middle" font-size="12">GENERATOR</text>
-<!-- underground borehole --><path d="M500 415V605" stroke="#21211c" stroke-width="42"/><path d="M500 415V605" stroke="#cabaa3" stroke-width="22"/><path d="M500 415V605" stroke="#121816" stroke-width="12"/><path d="M350 590Q500 550 650 590V650H350Z" fill="#5d3b23"/><path d="M360 610Q500 580 640 610V650H360Z" fill="#d99130" opacity=".82"/><text x="665" y="622" fill="#ffe1a0" font-size="13">طبقة نفطية</text>
-<g fill="#d8f7eb" font-size="12"><text x="290" y="70">CROWN BLOCK</text><text x="545" y="245">TOP DRIVE</text><text x="520" y="585">DRILL BIT</text></g></svg></section>
-<aside class="side"><section class="card"><h2>// تشغيل المنصة</h2><div class="buttons"><button class="go" id="start">بدء الحفر</button><button class="halt" id="stop">إيقاف آمن</button></div><div class="control"><label>معدل الاختراق ROP <output id="ropVal">12 م/ساعة</output></label><input id="rop" type="range" min="2" max="35" value="12"></div><div class="control"><label>معدل مضخة الطين <output id="pumpVal">1,850 L/min</output></label><input id="pump" type="range" min="400" max="3200" step="50" value="1850"></div></section><section class="card"><h2>// بيانات الحفر</h2><div class="stats"><div class="stat"><small>العمق الحالي</small><b id="depth">2,640 م</b></div><div class="stat"><small>وزن على اللقمة</small><b id="wob">0 t</b></div><div class="stat"><small>RPM</small><b id="rpm">0</b></div><div class="stat"><small>ضغط الطين</small><b id="pressure">0 bar</b></div></div></section><section class="card"><h2>// المعدات</h2><div id="units"></div><p style="font-size:11px;color:var(--muted);line-height:1.7">اضغط زر التشغيل لكل جهاز أو ابدأ الحفر لتشغيل تسلسل العمل كاملاً.</p></section></aside></main>
-<script>const $=s=>document.querySelector(s),s={run:false,depth:2640,rop:12,pump:1850,units:{top:false,pumps:false,drive:false,bop:false}};const names={top:'Top drive',pumps:'Mud pumps',drive:'Drawworks',bop:'BOP system'};function renderUnits(){$('#units').innerHTML=Object.entries(names).map(([k,n])=>`<div class="unit"><span>${n}</span><span class="${s.units[k]?'run':'stop'}">${s.units[k]?'RUN':'STOP'}</span><button data-u="${k}">${s.units[k]?'إيقاف':'تشغيل'}</button></div>`).join('');document.querySelectorAll('[data-u]').forEach(b=>b.onclick=()=>{s.units[b.dataset.u]=!s.units[b.dataset.u];s.run=Object.values(s.units).every(Boolean);sync()})}function sync(){let ok=s.run&&Object.values(s.units).every(Boolean);$('#scene').classList.toggle('active',ok);$('#status').textContent=ok?'DRILLING':'STANDBY';$('#depth').textContent=Math.floor(s.depth).toLocaleString()+' م';$('#wob').textContent=ok?Math.round(8+s.rop*.7)+' t':'0 t';$('#rpm').textContent=ok?Math.round(80+s.rop*4):0;$('#pressure').textContent=ok?Math.round(70+s.pump*.045)+' bar':'0 bar';renderUnits()}$('#start').onclick=()=>{Object.keys(s.units).forEach(k=>s.units[k]=true);s.run=true;sync()};$('#stop').onclick=()=>{Object.keys(s.units).forEach(k=>s.units[k]=false);s.run=false;sync()};$('#rop').oninput=e=>{s.rop=+e.target.value;$('#ropVal').textContent=s.rop+' م/ساعة';sync()};$('#pump').oninput=e=>{s.pump=+e.target.value;$('#pumpVal').textContent=s.pump.toLocaleString()+' L/min';sync()};setInterval(()=>{if(s.run){s.depth+=s.rop/3600;sync()}},1000);sync();</script></body></html>
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Drilling Tools — أدوات الحفر</title>
+<meta name="description" content="Free drilling-engineering tools: Driller's Console simulator, Field Hydraulics calculator (API RP 13D, Herschel-Bulkley) and a bilingual parameter guide. Arabic and English.">
+<meta name="theme-color" content="#0b2340">
+<link rel="icon" href="drillers-console/icon.svg" type="image/svg+xml">
+<style>
+:root{color-scheme:dark;--bg:#040b15;--panel:#0a1a2f;--panel2:#0d223d;--line:#1e4f7d;--line2:#15385b;--text:#dcecff;--muted:#8fa9c6;--cyan:#36c8ff;--green:#2bd66f;--amber:#ffb627}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg) radial-gradient(1200px 600px at 50% -10%,#0b2340 0,var(--bg) 60%) fixed;color:var(--text);font:15px/1.6 "Segoe UI",Tahoma,"Noto Sans Arabic",system-ui,sans-serif}
+a{color:var(--cyan)}
+.wrap{max-width:1100px;margin:0 auto;padding:20px 16px 40px}
+header{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:18px}
+h1{margin:0;font-size:28px}h1 span{display:block;font-size:15px;color:var(--cyan);font-weight:600;direction:ltr;text-align:right}
+.sub{margin:4px 0 0;color:var(--muted)}
+h2{font-size:19px;margin:26px 0 10px;border-inline-start:4px solid var(--cyan);padding-inline-start:10px}
+.en{direction:ltr;text-align:left;color:var(--muted);font-size:13.5px;unicode-bidi:isolate}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+.card{background:linear-gradient(180deg,var(--panel2),var(--panel) 45%);border:1px solid var(--line);border-radius:6px;padding:16px;display:flex;flex-direction:column;gap:8px}
+.card h3{margin:0;font-size:19px}.card h3 small{display:block;font-size:13px;color:var(--cyan);direction:ltr;text-align:right;font-weight:600}
+.card p{margin:0}
+.card .btns{margin-top:auto;display:flex;gap:6px;flex-wrap:wrap;padding-top:6px}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:6px 14px;border-radius:4px;border:1px solid #2b5f90;background:linear-gradient(#173556,#0f2440);color:#e6f3ff;text-decoration:none;font-weight:600;font-size:14px}
+.btn:hover{border-color:var(--cyan)}.btn.pri{background:linear-gradient(#167fb0,#0b4868);border-color:#7fdcff;color:#fff}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:10px;border:1px solid var(--line);color:var(--muted)}
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.steps .card ol{margin:0;padding-inline-start:20px}
+.qr{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.qr figure{margin:0;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:12px;text-align:center}
+.qr img{width:100%;max-width:220px;height:auto;background:#fff;border-radius:4px;display:block;margin:0 auto 8px}
+.qr figcaption{font-size:13.5px}.qr figcaption a{margin:0 4px}
+.warn{background:#3a2900;border:1px solid #7a5a00;color:#ffe3a6;border-radius:5px;padding:10px 14px;font-size:14px}
+.other{display:flex;gap:8px;flex-wrap:wrap}
+footer{margin-top:30px;border-top:1px solid var(--line);padding-top:12px;color:var(--muted);font-size:13px}
+code{direction:ltr;unicode-bidi:isolate;background:#081830;border:1px solid var(--line2);border-radius:3px;padding:0 4px;font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div>
+    <h1>أدوات هندسة الحفر<span>Drilling Engineering Tools</span></h1>
+    <p class="sub">محاكي تدريبي، وحاسبة للبيانات الحقلية، ودليل للبارامترات — مجانية، بالعربي والإنجليزي، وتعمل بدون إنترنت بعد التثبيت.</p>
+    <p class="en">A training simulator, a field-data hydraulics calculator and a parameter guide — free, Arabic &amp; English, offline after install.</p>
+  </div>
+  <a class="btn" href="https://github.com/25im0024-lab/waled" rel="noopener">GitHub</a>
+</header>
 
+<h2>الأدوات <span class="en">Tools</span></h2>
+<div class="cards">
+  <div class="card">
+    <h3>محاكي لوحة الحفّار<small>Driller's Console</small></h3>
+    <span class="tag">للتدريب · Training</span>
+    <p>لوحة تحكم تفاعلية لمنصة حفر:</p>
+    <ul>
+      <li>Auto-driller و top drive والمضخات.</li>
+      <li>دورة سائل الحفر، وبت PDC.</li>
+      <li>BOP و kill sheet، وسيناريوهات kick و losses.</li>
+      <li>إنذارات ومنحنيات لحظية.</li>
+    </ul>
+    <p class="en">Interactive rig control panel: auto-driller, top drive, pumps, mud circulation, PDC bit, BOP and kill sheet, kick/loss scenarios, alarms and trends.</p>
+    <div class="btns"><a class="btn pri" href="drillers-console/?lang=ar">افتح بالعربي</a><a class="btn" href="drillers-console/?lang=en">Open in English</a></div>
+  </div>
+  <div class="card">
+    <h3>حاسبة البيانات الحقلية<small>Field Hydraulics</small></h3>
+    <span class="tag">API RP 13D · Herschel-Bulkley</span>
+    <p>أدخل بيانات بئرك واحصل على النتائج:</p>
+    <ul>
+      <li><b>المدخلات:</b> الهندسة، والـ survey، وقراءات Fann، والمضخات، والـ nozzles.</li>
+      <li><b>النتائج:</b> SPP و ECD، وهيدروليكا البت، وتنظيف البئر.</li>
+      <li><b>المقارنة:</b> مع القيم المقاسة.</li>
+    </ul>
+    <p class="en">Enter your well (geometry, survey, Fann readings, pumps, nozzles) to get SPP, ECD, bit hydraulics and hole cleaning, and compare them with measured values.</p>
+    <div class="btns"><a class="btn pri" href="drillers-console/hydraulics/?lang=ar">افتح بالعربي</a><a class="btn" href="drillers-console/hydraulics/?lang=en">Open in English</a></div>
+  </div>
+  <div class="card">
+    <h3>دليل البارامترات<small>Parameter Guide (PDF)</small></h3>
+    <span class="tag">عربي + English · 18 صفحة</span>
+    <p>يشرح لكل بارامتر مهمته وكيف تفسّره. ويضم دورة الطين، وبت الـ PDC، والـ kill sheet، والإنذارات.</p>
+    <p>ويتضمن كل معادلات المحاكي والحاسبة مع شرحها، ومع بيان هل كل معادلة قياسية أم افتراض للنموذج.</p>
+    <p class="en">Role and interpretation of every parameter, plus every equation used by both tools (standard vs model assumption).</p>
+    <div class="btns"><a class="btn pri" href="drillers-console/guide/drillers-console-guide.pdf" target="_blank" rel="noopener">افتح الـ PDF</a></div>
+  </div>
+</div>
+
+<p class="warn" style="margin-top:14px"><b>تنبيه:</b> المحاكي نموذج تدريبي مبسّط وغير معايَر على منصة حقيقية. الحاسبة أداة مساعدة هندسية وليست برنامجاً معتمداً، فقارن نتائجها بقياسات حقيقية (SPP و ECD من PWD) قبل استخدامها في أي قرار.<br><span class="en">The simulator is a simplified training model. The calculator is an engineering aid, not validated software: check its results against measurements before using them for decisions.</span></p>
+
+<h2>التثبيت كتطبيق <span class="en">Install as an app</span></h2>
+<div class="steps">
+  <div class="card"><h3>Android<small>Chrome</small></h3><ol><li>افتح رابط المحاكي.</li><li>القائمة ⋮ ← <b>Install app</b> أو <b>Add to Home screen</b>.</li></ol></div>
+  <div class="card"><h3>iPhone / iPad<small>Safari</small></h3><ol><li>افتح رابط المحاكي في Safari.</li><li>زر المشاركة ← <b>Add to Home Screen</b>.</li></ol></div>
+  <div class="card"><h3>الكمبيوتر<small>Chrome / Edge</small></h3><ol><li>افتح رابط المحاكي.</li><li>أيقونة التثبيت ⊕ في آخر شريط العنوان، أو القائمة ← <b>Install</b>.</li></ol></div>
+</div>
+<p>بعد التثبيت، اضغط مطوّلاً على أيقونة التطبيق (أو انقر بالزر الأيمن على الكمبيوتر) لتظهر اختصارات تفتح <b>الحاسبة</b> أو <b>الدليل</b> مباشرة. يعمل التطبيق بدون إنترنت بعد أول فتح.<br><span class="en">After installing, long-press (or right-click) the app icon for shortcuts to the calculator and the guide. Works offline after the first visit.</span></p>
+
+<h2>رموز QR للعروض والملصقات <span class="en">QR codes for slides &amp; posters</span></h2>
+<div class="qr">
+  <figure><img src="qr/waled-home.svg" alt="QR code: this page" width="220" height="220"><figcaption><b>هذه الصفحة</b> · Home<br><a href="qr/waled-home.svg" download>SVG</a><a href="qr/waled-home.png" download>PNG</a></figcaption></figure>
+  <figure><img src="qr/drillers-console-ar.svg" alt="QR code: Driller's Console (Arabic)" width="220" height="220"><figcaption><b>المحاكي</b> · Simulator<br><a href="qr/drillers-console-ar.svg" download>SVG</a><a href="qr/drillers-console-ar.png" download>PNG</a></figcaption></figure>
+  <figure><img src="qr/field-hydraulics-ar.svg" alt="QR code: Field Hydraulics (Arabic)" width="220" height="220"><figcaption><b>الحاسبة</b> · Calculator<br><a href="qr/field-hydraulics-ar.svg" download>SVG</a><a href="qr/field-hydraulics-ar.png" download>PNG</a></figcaption></figure>
+</div>
+<p class="en" style="margin-top:6px">SVG for print (scales without blur), PNG for slides. · استخدم SVG للطباعة لأنه لا يفقد الدقة عند التكبير، و PNG للعروض التقديمية.</p>
+
+<h2>أدوات أخرى في المستودع <span class="en">Other tools in this repository</span></h2>
+<div class="other">
+  <a class="btn" href="oilfield/">رحلة البرميل · Oilfield guide</a>
+  <a class="btn" href="ielts/">IELTS Coach</a>
+  <a class="btn" href="rig-3d.html">محاكي المنصة ثلاثي الأبعاد (نسخة قديمة) · 3D rig demo</a>
+</div>
+
+<footer>
+  <p>الكود مفتوح المصدر بترخيص <a href="https://github.com/25im0024-lab/waled/blob/main/LICENSE" rel="noopener">MIT</a>: يمكنك الاستخدام والتعديل وإعادة النشر بشرط إبقاء إشعار الترخيص، والبرنامج مقدَّم "كما هو" دون أي ضمان.<br>
+  <span class="en">Open source under the MIT License — provided "as is", without warranty of any kind.</span></p>
+  <p>لا تجمع هذه الأدوات أي بيانات: كل ما تدخله يبقى في متصفحك. · <span class="en">No data is collected; everything you enter stays in your browser.</span></p>
+</footer>
+</div>
+</body>
+</html>

@@ -1,3 +1,17 @@
+# أدوات هندسة الحفر — Drilling Engineering Tools
+
+### ▶ [الصفحة الرئيسية: كل الأدوات وطريقة التثبيت ورموز QR](https://25im0024-lab.github.io/waled/)
+
+- **[محاكي لوحة الحفّار](https://25im0024-lab.github.io/waled/drillers-console/?lang=ar)**: للتدريب.
+- **[حاسبة البيانات الحقلية](https://25im0024-lab.github.io/waled/drillers-console/hydraulics/?lang=ar)**: تعمل وفق API RP 13D بنموذج Herschel-Bulkley.
+- **[دليل البارامترات PDF](https://25im0024-lab.github.io/waled/drillers-console/guide/drillers-console-guide.pdf)**: بالعربي والإنجليزي، ويضم كل المعادلات.
+
+رموز QR جاهزة للعروض والملصقات في [`qr/`](qr/): ملفات SVG للطباعة و PNG للعروض.
+
+**الترخيص:** [MIT](LICENSE). يمكنك الاستخدام والتعديل وإعادة النشر بشرط إبقاء إشعار الترخيص. البرنامج مقدَّم "كما هو" دون أي ضمان. المحاكي نموذج تدريبي، والحاسبة أداة مساعدة غير معتمدة، فتحقّق من نتائجها بقياسات حقيقية.
+
+---
+
 https://github.com/25im0024-lab/waled/commit/be429ce5f3b571389ec05952bc00c307bfe19e9d
 
 ## IELTS Coach

@@ -6,6 +6,8 @@
 <title>Field Hydraulics</title>
 <meta name="description" content="Drilling hydraulics calculator for field data: wellpath (minimum curvature), Herschel-Bulkley rheology from Fann readings, pipe/annulus/bit pressure losses, ECD and hole cleaning per API RP 13D, with comparison to measured SPP/ECD.">
 <link rel="icon" href="../icon.svg" type="image/svg+xml">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
 <meta name="theme-color" content="#0b2340">
 <link rel="stylesheet" href="style.css">
 </head>
@@ -75,5 +77,6 @@
 <script src="i18n-ar.js"></script>
 <script src="core.js"></script>
 <script src="ui.js"></script>
+<script>if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register('../sw.js', { scope: '../' }).catch(() => {});</script>
 </body>
 </html>
