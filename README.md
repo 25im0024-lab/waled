@@ -5,6 +5,7 @@
 - **[محاكي لوحة الحفّار](https://25im0024-lab.github.io/waled/drillers-console/?lang=ar)**: للتدريب.
 - **[حاسبة البيانات الحقلية](https://25im0024-lab.github.io/waled/drillers-console/hydraulics/?lang=ar)**: تعمل وفق API RP 13D بنموذج Herschel-Bulkley.
 - **[محاكي وحدة FPSO](https://25im0024-lab.github.io/waled/fpso/?lang=ar)**: تطبيق مستقل يغطي مسار الإنتاج البحري من المكمن حتى التفريغ، مع شرح لكل جزء.
+- **[مختبر سوائل التكسير](https://25im0024-lab.github.io/waled/frac-lab/)**: يحلل نتائج مختبر سوائل التكسير ويقارنها مع بحث مرجعي. التفاصيل في [`frac-lab/`](frac-lab/README.md).
 - **[دليل البارامترات PDF](https://25im0024-lab.github.io/waled/drillers-console/guide/drillers-console-guide.pdf)**: بالعربي والإنجليزي، ويضم كل المعادلات.
 
 رموز QR جاهزة للعروض والملصقات في [`qr/`](qr/): ملفات SVG للطباعة و PNG للعروض.

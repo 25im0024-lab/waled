@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Frac-Fluid Lab</title>
+<meta name="description" content="Laboratory analysis tool for hydraulic-fracturing fluids: rheology fitting (Power-law, Herschel-Bulkley, Carreau) with confidence intervals, thermal stability, oscillation (G′, G″, crossover), proppant settling, breaker kinetics and residue, PKN/KGD fracture geometry with Carter leak-off, surface and interfacial tension, and comparison with published data.">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0b2340">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+<header class="hdr">
+  <div class="title">
+    <h1>مختبر سوائل التكسير <span>Frac-Fluid Lab</span></h1>
+    <div class="toolbar">
+      <button class="btn cy" id="exBtn">تحميل بيانات مثال</button>
+      <button class="btn" id="clrBtn">مشروع جديد</button>
+      <button class="btn" id="expBtn">تصدير JSON</button>
+      <label class="btn">استيراد JSON<input type="file" id="impFile" accept=".json,application/json" hidden></label>
+      <button class="btn" id="prtBtn">طباعة / PDF</button>
+      <a class="btn" href="../index.html">كل الأدوات</a>
+    </div>
+  </div>
+  <p class="warnbox">أداة مساعدة لتحليل البيانات المخبرية، وليست برنامجاً معتمداً. البيانات تُحفظ في متصفحك فقط. صدّرها (JSON) لحفظ نسخة. بيانات المثال مصطنعة (synthetic) للتجربة فقط.</p>
+  <nav class="tabs" id="tabs">
+    <button data-tab="rheo">الريولوجيا</button>
+    <button data-tab="thermal">الثبات الحراري</button>
+    <button data-tab="ve">اللزوجة المرنة</button>
+    <button data-tab="prop">تعليق الـ proppant</button>
+    <button data-tab="brk">الـ breaker</button>
+    <button data-tab="frac">الكسر PKN / KGD</button>
+    <button data-tab="surf">Surface / IFT</button>
+    <button data-tab="cmp">المقارنة مع البحث</button>
+    <button data-tab="ref">المعادلات والمراجع</button>
+  </nav>
+</header>
+<main id="main"></main>
+</div>
+<div id="toast"></div>
+<script src="core.js"></script>
+<script src="protocols.js"></script>
+<script src="ui.js"></script>
+<script>if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(() => {});</script>
+</body>
+</html>

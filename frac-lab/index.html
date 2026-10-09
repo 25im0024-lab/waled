@@ -1,0 +1,1368 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Frac-Fluid Lab</title>
+<meta name="description" content="Laboratory analysis tool for hydraulic-fracturing fluids: rheology fitting (Power-law, Herschel-Bulkley, Carreau) with confidence intervals, thermal stability, oscillation (G′, G″, crossover), proppant settling, breaker kinetics and residue, PKN/KGD fracture geometry with Carter leak-off, surface and interfacial tension, and comparison with published data.">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0b2340">
+<style>
+:root{color-scheme:dark;
+  --bg:#040b15;--panel:#0a1a2f;--panel2:#0d223d;--line:#1e4f7d;--line2:#15385b;--text:#dcecff;--muted:#8fa9c6;
+  --cyan:#36c8ff;--green:#2bd66f;--amber:#ffb627;--red:#ff4545;--mono:ui-monospace,"Cascadia Mono",Consolas,monospace}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg) radial-gradient(1200px 600px at 50% -10%,#0b2340 0,var(--bg) 60%) fixed;color:var(--text);font:14px/1.55 "Segoe UI",Tahoma,"Noto Sans Arabic",system-ui,sans-serif}
+button,select,input,textarea{font:inherit;color:inherit}
+a{color:var(--cyan)}
+.app{padding:10px 16px 30px;max-width:1700px;margin:0 auto}
+.hdr{background:linear-gradient(270deg,#0e2a4d,#081627 70%);border:1px solid var(--line);border-radius:5px;padding:10px 14px;margin-bottom:10px}
+.title{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.title h1{margin:0;font-size:22px}.title h1 span{color:var(--cyan);font-size:15px;margin-inline-start:6px;direction:ltr;unicode-bidi:isolate}
+.toolbar{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.warnbox{margin:8px 0;font-size:12.5px;color:#ffe3a6;background:#3a2900;border:1px solid #7a5a00;border-radius:3px;padding:5px 9px}
+.tabs{display:flex;gap:4px;flex-wrap:wrap}
+.tabs button{background:#0a1d34;border:1px solid var(--line2);border-radius:4px 4px 0 0;padding:6px 12px;cursor:pointer;color:var(--muted);font-weight:600}
+.tabs button.on{background:linear-gradient(#167fb0,#0b4868);color:#fff;border-color:#7fdcff}
+.grid{display:grid;grid-template-columns:minmax(330px,0.85fr) minmax(0,1.45fr);gap:10px;align-items:start}
+.col{display:flex;flex-direction:column;gap:10px;min-width:0}
+@media (max-width:1100px){.grid{grid-template-columns:1fr}}
+.card{background:linear-gradient(180deg,var(--panel2),var(--panel) 40%);border:1px solid var(--line);border-radius:5px;min-width:0}
+.card>h2{margin:0;padding:7px 11px;font-size:14.5px;font-weight:700;border-bottom:1px solid var(--line2);background:linear-gradient(270deg,#123259,transparent);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.card>h2 small{font-weight:400;color:var(--muted);font-size:12px}
+.card>h2 .dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+.body{padding:9px 11px}
+.form{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:7px 10px}
+.form label{display:flex;flex-direction:column;gap:2px;font-size:12.5px;color:#bcd3ea}
+.form label.chk{flex-direction:row;align-items:center;gap:6px}
+.form label.wide{grid-column:1/-1}
+input,select,textarea{background:#081830;border:1px solid var(--line);border-radius:3px;padding:4px 6px;min-width:0}
+input[type=number]{direction:ltr;text-align:left}
+input:focus,select:focus,textarea:focus{outline:1px solid var(--cyan)}
+textarea{width:100%;font:12.5px var(--mono);resize:vertical;direction:ltr;text-align:left}
+.btn{background:linear-gradient(#173556,#0f2440);border:1px solid #2b5f90;border-radius:3px;padding:4px 10px;cursor:pointer;font-weight:600;font-size:13px;color:#cfe3f7;text-decoration:none;display:inline-flex;align-items:center;min-height:30px}
+.btn:hover{border-color:var(--cyan)}.btn.cy{background:linear-gradient(#167fb0,#0b4868);border-color:#7fdcff;color:#fff}.btn.sm{min-height:24px;font-size:12px;padding:2px 8px}
+.tw{overflow-x:auto}
+.res{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+.res th{color:var(--muted);font-weight:600;font-size:12px;padding:4px 6px;border-bottom:1px solid var(--line2);text-align:right;white-space:nowrap}
+.res td{padding:3px 6px;border-bottom:1px solid #10294466;white-space:nowrap}
+.res td.n{direction:ltr;text-align:left;unicode-bidi:isolate}
+.res tr.best td{background:#0e3a24}
+.res tr.grp td{color:var(--cyan);font-weight:700;padding-top:9px;border-bottom:1px solid var(--line2)}
+.res input{width:100px;direction:ltr}
+.mine{color:var(--cyan)}.refc{color:var(--amber)}
+.wn{margin-top:6px;font-size:12.5px;border-radius:3px;padding:5px 9px;border:1px solid}
+.wn.a{background:#3a2900;border-color:#7a5a00;color:#ffe3a6}.wn.i{background:#08283d;border-color:#1e5f8d;color:#cfe9ff}
+.note{font-size:12.5px;color:var(--muted)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:6px;margin-bottom:6px}
+.kpi{background:#081830;border:1px solid var(--line2);border-radius:3px;padding:5px 8px}
+.kpi span{display:block;font-size:12px;color:var(--muted)}.kpi b{font-size:17px;direction:ltr;unicode-bidi:isolate;display:block;text-align:right}
+canvas{display:block;width:100%;direction:ltr}
+.charts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:800px){.charts{grid-template-columns:1fr}}
+details.proto{background:#07182c;border:1px solid var(--line);border-radius:5px;margin-bottom:10px}
+details.proto>summary{cursor:pointer;padding:8px 12px;font-weight:700;color:var(--green)}
+details.proto>div{padding:0 16px 10px;font-size:13.5px}
+details.proto ol,details.proto ul{padding-inline-start:22px;margin:6px 0}
+details.proto li{margin:3px 0}
+.pnote{color:#cfe0f2;margin:8px 0 4px}
+.refs li{margin:4px 0;font-size:13px}
+.refs small,h3 small{color:var(--muted);font-weight:400}
+.ltr{direction:ltr;unicode-bidi:isolate}
+code{direction:ltr;unicode-bidi:isolate;background:#081830;border:1px solid var(--line2);border-radius:3px;padding:0 4px;font-size:12.5px}
+#toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);display:flex;flex-direction:column;gap:6px;z-index:50;pointer-events:none;width:min(520px,92vw)}
+#toast div{background:#2a1d00;border:1px solid var(--amber);color:#ffe5a8;padding:8px 12px;border-radius:4px;font-size:13px;animation:fade 4s forwards}
+@keyframes fade{0%,85%{opacity:1}100%{opacity:0}}
+@media print{
+  :root{color-scheme:light}html,body{background:#fff;color:#000}
+  .toolbar,.tabs,.btn,#toast,details.proto:not([open]){display:none!important}
+  .grid{grid-template-columns:1fr}.card{background:#fff;border-color:#999;break-inside:avoid}.card>h2{background:#e8eef5;color:#000}
+  input,select,textarea{background:#fff;color:#000;border-color:#999}.kpi{background:#fff;border-color:#999}
+  .res td,.res th{color:#000}.warnbox{color:#000;background:#fff3cf}.note{color:#333}details.proto{background:#fff}
+}
+</style>
+</head>
+<body>
+<div class="app">
+<header class="hdr">
+  <div class="title">
+    <h1>مختبر سوائل التكسير <span>Frac-Fluid Lab</span></h1>
+    <div class="toolbar">
+      <button class="btn cy" id="exBtn">تحميل بيانات مثال</button>
+      <button class="btn" id="clrBtn">مشروع جديد</button>
+      <button class="btn" id="expBtn">تصدير JSON</button>
+      <label class="btn">استيراد JSON<input type="file" id="impFile" accept=".json,application/json" hidden></label>
+      <button class="btn" id="prtBtn">طباعة / PDF</button>
+      <a class="btn" href="../index.html">كل الأدوات</a>
+    </div>
+  </div>
+  <p class="warnbox">أداة مساعدة لتحليل البيانات المخبرية، وليست برنامجاً معتمداً. البيانات تُحفظ في متصفحك فقط. صدّرها (JSON) لحفظ نسخة. بيانات المثال مصطنعة (synthetic) للتجربة فقط.</p>
+  <nav class="tabs" id="tabs">
+    <button data-tab="rheo">الريولوجيا</button>
+    <button data-tab="thermal">الثبات الحراري</button>
+    <button data-tab="ve">اللزوجة المرنة</button>
+    <button data-tab="prop">تعليق الـ proppant</button>
+    <button data-tab="brk">الـ breaker</button>
+    <button data-tab="frac">الكسر PKN / KGD</button>
+    <button data-tab="surf">Surface / IFT</button>
+    <button data-tab="cmp">المقارنة مع البحث</button>
+    <button data-tab="ref">المعادلات والمراجع</button>
+  </nav>
+</header>
+<main id="main"></main>
+</div>
+<div id="toast"></div>
+<script>
+/* Frac-Fluid Lab — computation core (no DOM).
+   Browser: window.FL ; Node: module.exports. All internal quantities are SI unless a name says otherwise. */
+(function (root) {
+'use strict';
+const R_GAS = 8.314462618, NA = 6.02214076e23, G0 = 9.80665, SQPI = Math.sqrt(Math.PI);
+const fin = x => typeof x === 'number' && isFinite(x);
+
+/* ================= statistics ================= */
+function lgamma(x) {
+  const c = [76.18009172947146, -86.50532032941677, 24.01409824083091, -1.231739572450155, 0.1208650973866179e-2, -0.5395239384953e-5];
+  let y = x, t = x + 5.5; t -= (x + 0.5) * Math.log(t); let s = 1.000000000190015;
+  for (const v of c) s += v / ++y;
+  return -t + Math.log(2.5066282746310005 * s / x);
+}
+function betacf(a, b, x) {
+  const FP = 1e-300; let qab = a + b, qap = a + 1, qam = a - 1, c = 1, d = 1 - qab * x / qap;
+  if (Math.abs(d) < FP) d = FP; d = 1 / d; let h = d;
+  for (let m = 1; m <= 300; m++) {
+    const m2 = 2 * m; let aa = m * (b - m) * x / ((qam + m2) * (a + m2));
+    d = 1 + aa * d; if (Math.abs(d) < FP) d = FP; c = 1 + aa / c; if (Math.abs(c) < FP) c = FP; d = 1 / d; h *= d * c;
+    aa = -(a + m) * (qab + m) * x / ((a + m2) * (qap + m2));
+    d = 1 + aa * d; if (Math.abs(d) < FP) d = FP; c = 1 + aa / c; if (Math.abs(c) < FP) c = FP; d = 1 / d;
+    const del = d * c; h *= del; if (Math.abs(del - 1) < 3e-16) break;
+  }
+  return h;
+}
+function ibeta(x, a, b) { // regularized incomplete beta I_x(a,b)
+  if (x <= 0) return 0; if (x >= 1) return 1;
+  const bt = Math.exp(lgamma(a + b) - lgamma(a) - lgamma(b) + a * Math.log(x) + b * Math.log(1 - x));
+  return x < (a + 1) / (a + b + 2) ? bt * betacf(a, b, x) / a : 1 - bt * betacf(b, a, 1 - x) / b;
+}
+function tCdf(t, df) { const p = 0.5 * ibeta(df / (df + t * t), df / 2, 0.5); return t > 0 ? 1 - p : p; }
+function tInv(p, df) { // Student-t quantile, p > 0.5
+  let lo = 0, hi = 1e4;
+  for (let i = 0; i < 200; i++) { const m = (lo + hi) / 2; if (tCdf(m, df) < p) lo = m; else hi = m; }
+  return (lo + hi) / 2;
+}
+const mean = a => a.reduce((s, v) => s + v, 0) / a.length;
+const sd = a => a.length > 1 ? Math.sqrt(a.reduce((s, v) => s + (v - mean(a)) ** 2, 0) / (a.length - 1)) : NaN;
+
+function inv(M) { // Gauss-Jordan; returns null if singular
+  const n = M.length, A = M.map((r, i) => r.concat(Array.from({ length: n }, (_, j) => +(i === j))));
+  for (let c = 0; c < n; c++) {
+    let p = c; for (let r = c + 1; r < n; r++) if (Math.abs(A[r][c]) > Math.abs(A[p][c])) p = r;
+    if (!(Math.abs(A[p][c]) > 1e-300)) return null;
+    [A[c], A[p]] = [A[p], A[c]]; const d = A[c][c];
+    for (let j = 0; j < 2 * n; j++) A[c][j] /= d;
+    for (let r = 0; r < n; r++) if (r !== c) { const f = A[r][c]; if (f) for (let j = 0; j < 2 * n; j++) A[r][j] -= f * A[c][j]; }
+  }
+  return A.map(r => r.slice(n));
+}
+
+/* Ordinary least squares y = a + b·x, with standard errors and 95 % confidence intervals. */
+function linreg(x, y) {
+  const n = x.length; if (n < 2) return null;
+  const mx = mean(x), my = mean(y); let sxx = 0, sxy = 0, syy = 0;
+  for (let i = 0; i < n; i++) { sxx += (x[i] - mx) ** 2; sxy += (x[i] - mx) * (y[i] - my); syy += (y[i] - my) ** 2; }
+  if (!(sxx > 0)) return null;
+  const b = sxy / sxx, a = my - b * mx; let ssr = 0;
+  for (let i = 0; i < n; i++) ssr += (y[i] - a - b * x[i]) ** 2;
+  const dof = n - 2, s2 = dof > 0 ? ssr / dof : NaN, seB = Math.sqrt(s2 / sxx), seA = Math.sqrt(s2 * (1 / n + mx * mx / sxx));
+  const t = dof > 0 ? tInv(0.975, dof) : NaN;
+  return { a, b, seA, seB, ciA: t * seA, ciB: t * seB, r2: syy > 0 ? 1 - ssr / syy : 1, ssr, n, dof, f: v => a + b * v };
+}
+
+/* Nonlinear least squares (Levenberg-Marquardt).
+   spec: { f(x, p), x[], y[], p0[], names[], logp[] (fit ln p: keeps p > 0), lo[] (lower bound for linear params), mode 'log'|'lin' }
+   Residuals: mode 'log' -> ln y − ln f (relative error); 'lin' -> y − f.
+   Uncertainty: covariance s²(JᵀJ)⁻¹ evaluated in the natural parameters; 95 % CI = p ± t(0.975, N−P)·SE (Wald). */
+function nls(spec) {
+  const { f, x, y, names } = spec, N = x.length, P = spec.p0.length, logp = spec.logp || names.map(() => false);
+  const lo = spec.lo || names.map(() => -Infinity), mode = spec.mode || 'log';
+  const toP = q => q.map((v, i) => logp[i] ? Math.exp(v) : Math.max(v, lo[i]));
+  const res = p => { const r = new Array(N); for (let i = 0; i < N; i++) { const m = f(x[i], p); r[i] = mode === 'log' ? (m > 0 ? Math.log(y[i]) - Math.log(m) : 50) : y[i] - m; if (!isFinite(r[i])) r[i] = 1e6; } return r; };
+  const ss = r => r.reduce((s, v) => s + v * v, 0);
+  const jac = (q, r0) => { const J = []; for (let j = 0; j < P; j++) { const h = 1e-6 * (Math.abs(q[j]) + 1e-3), qq = q.slice(); qq[j] += h; const r1 = res(toP(qq)); J.push(r1.map((v, i) => (v - r0[i]) / h)); } return J; }; // J[j][i]
+  let q = spec.p0.map((v, i) => logp[i] ? Math.log(v) : v), r = res(toP(q)), S = ss(r), lam = 1e-3, it = 0;
+  for (; it < 500; it++) {
+    const J = jac(q, r), A = [], g = [];
+    for (let a = 0; a < P; a++) { A.push([]); g.push(-J[a].reduce((s, v, i) => s + v * r[i], 0)); for (let b = 0; b < P; b++) A[a].push(J[a].reduce((s, v, i) => s + v * J[b][i], 0)); }
+    let improved = false;
+    for (let k = 0; k < 30; k++) {
+      const B = A.map((row, i) => row.map((v, j) => i === j ? v * (1 + lam) + 1e-12 : v)), Bi = inv(B);
+      if (!Bi) { lam *= 10; continue; }
+      const d = Bi.map(row => row.reduce((s, v, j) => s + v * g[j], 0));
+      const qn = q.map((v, i) => { const t = v + d[i]; return logp[i] ? t : Math.max(t, lo[i]); }), rn = res(toP(qn)), Sn = ss(rn);
+      if (Sn < S) { const done = (S - Sn) <= 1e-14 * (S + 1e-30) || d.every((v, i) => Math.abs(v) < 1e-12 * (Math.abs(q[i]) + 1e-12)); q = qn; r = rn; S = Sn; lam = Math.max(lam / 3, 1e-12); improved = true; if (done) it = 1e9; break; }
+      lam *= 4;
+    }
+    if (!improved) break;
+  }
+  const p = toP(q), dof = N - P, s2 = dof > 0 ? S / dof : NaN;
+  // Jacobian in natural parameters for the covariance
+  const r0 = res(p), Jn = [];
+  for (let j = 0; j < P; j++) {
+    const h = 1e-6 * Math.abs(p[j]) + 1e-12, pp = p.slice(), pm = p.slice(); pp[j] += h; pm[j] = Math.max(pm[j] - h, logp[j] ? pm[j] * 0.5 : lo[j]);
+    const rp = res(pp), rm = res(pm), hh = pp[j] - pm[j]; Jn.push(rp.map((v, i) => (v - rm[i]) / hh));
+  }
+  const JTJ = Jn.map(a => Jn.map(b => a.reduce((s, v, i) => s + v * b[i], 0))), C = inv(JTJ);
+  const t = dof > 0 ? tInv(0.975, dof) : NaN;
+  const atBound = p.map((v, i) => !logp[i] && isFinite(lo[i]) && Math.abs(v - lo[i]) <= 1e-12 * (1 + Math.abs(lo[i])));
+  const se = p.map((v, i) => C && dof > 0 && C[i][i] > 0 && !atBound[i] ? Math.sqrt(s2 * C[i][i]) : NaN);
+  // goodness of fit
+  const yt = y.map(v => mode === 'log' ? Math.log(v) : v), myt = mean(yt), sst = yt.reduce((s, v) => s + (v - myt) ** 2, 0);
+  const my = mean(y), sstl = y.reduce((s, v) => s + (v - my) ** 2, 0), ssrl = y.reduce((s, v, i) => s + (v - f(x[i], p)) ** 2, 0);
+  const mape = 100 * mean(y.map((v, i) => Math.abs((v - f(x[i], p)) / v)));
+  const aic = N * Math.log(S / N) + 2 * P, aicc = N - P - 1 > 0 ? aic + 2 * P * (P + 1) / (N - P - 1) : NaN;
+  const out = { names, p, se, ci: se.map(v => t * v), atBound, ssr: S, r2: sst > 0 ? 1 - S / sst : NaN, r2adj: sst > 0 && dof > 0 ? 1 - (S / dof) / (sst / (N - 1)) : NaN, r2lin: sstl > 0 ? 1 - ssrl / sstl : NaN, mape, aic, aicc, N, P, dof, mode, iter: it };
+  names.forEach((n, i) => out[n] = p[i]);
+  return out;
+}
+function bestOf(fits) { return fits.filter(Boolean).sort((a, b) => a.ssr - b.ssr)[0] || null; }
+
+/* ================= data parsing ================= */
+/* Accepts paste from Excel/rheometer software: tab, semicolon, comma or space separated; decimal comma allowed
+   with tab/semicolon separators. Lines that are not fully numeric (headers, notes) are skipped. */
+function parseTable(text, ncol) {
+  const rows = [];
+  for (let line of String(text || '').split(/\r?\n/)) {
+    line = line.trim(); if (!line || line[0] === '#') continue;
+    let cells;
+    if (line.includes('\t')) cells = line.split('\t').map(s => s.replace(',', '.'));
+    else if (line.includes(';')) cells = line.split(';').map(s => s.replace(',', '.'));
+    else cells = line.split(/[,\s]+/);
+    cells = cells.map(s => s.trim()).filter(s => s !== '');
+    if (cells.length < ncol) continue;
+    const v = cells.slice(0, ncol).map(Number);
+    if (v.every(fin)) rows.push(v);
+  }
+  return rows;
+}
+
+/* ================= 1. steady-shear rheology ================= */
+/* unit: 'eta' (γ̇ 1/s, η mPa·s) | 'tau' (γ̇ 1/s, τ Pa) | 'fann' (rpm, dial θ; Fann 35 R1B1 F1: γ̇ = 1.7023·rpm, τ = 0.5110·θ Pa) */
+function rheoData(rows, unit) {
+  const d = rows.map(([a, b]) => unit === 'fann' ? [1.7023 * a, 0.5110 * b] : unit === 'tau' ? [a, b] : [a, b * 1e-3 * a])
+    .filter(([g, t]) => g > 0 && t > 0).sort((p, q) => p[0] - q[0]);
+  return { gd: d.map(r => r[0]), tau: d.map(r => r[1]), eta: d.map(r => r[1] / r[0]) };
+}
+const MODELS = {
+  PL: { names: ['K', 'n'], tau: (g, p) => p[0] * Math.pow(g, p[1]) },
+  HB: { names: ['tau0', 'K', 'n'], tau: (g, p) => p[0] + p[1] * Math.pow(g, p[2]) },
+  CA: { names: ['eta0', 'lambda', 'n', 'etaInf'], tau: (g, p) => g * (p[3] + (p[0] - p[3]) * Math.pow(1 + (p[1] * g) ** 2, (p[2] - 1) / 2)) },
+};
+function etaModel(model, p) { // apparent viscosity function η(γ̇) in Pa·s
+  if (model === 'CA') return g => p.etaInf + (p.eta0 - p.etaInf) * Math.pow(1 + (p.lambda * g) ** 2, (p.n - 1) / 2);
+  if (model === 'HB') return g => p.tau0 / g + p.K * Math.pow(g, p.n - 1);
+  return g => p.K * Math.pow(g, p.n - 1);
+}
+function fitPL(d, mode) {
+  const lr = linreg(d.gd.map(Math.log), d.tau.map(Math.log)); if (!lr) return null;
+  const f = nls({ f: MODELS.PL.tau, x: d.gd, y: d.tau, p0: [Math.exp(lr.a), Math.min(Math.max(lr.b, 0.02), 2)], names: MODELS.PL.names, logp: [true, true], mode });
+  f.model = 'PL'; f.p = { K: f.K, n: f.n }; return f;
+}
+function fitHB(d, mode) {
+  if (d.gd.length < 4) return null;
+  const tmin = Math.min(...d.tau), starts = [];
+  for (const fr of [0, 0.3, 0.6, 0.85, 0.95]) {
+    const t0 = fr * tmin, lr = linreg(d.gd.map(Math.log), d.tau.map(t => Math.log(Math.max(t - t0, 1e-12))));
+    if (lr) starts.push(nls({ f: MODELS.HB.tau, x: d.gd, y: d.tau, p0: [t0, Math.exp(lr.a), Math.min(Math.max(lr.b, 0.02), 2)], names: MODELS.HB.names, logp: [false, true, true], lo: [0, -Infinity, -Infinity], mode }));
+  }
+  const f = bestOf(starts); if (!f) return null; f.model = 'HB'; f.p = { tau0: f.tau0, K: f.K, n: f.n }; return f;
+}
+function fitCA(d, mode, etaInfFix) { // etaInfFix: number (Pa·s) to fix η∞, or null to fit it
+  if (d.gd.length < 5) return null;
+  const e0 = Math.max(...d.eta) * 1.05, half = d.gd.find((g, i) => d.eta[i] < e0 / 2) || d.gd[d.gd.length - 1];
+  const lr = linreg(d.gd.slice(-4).map(Math.log), d.eta.slice(-4).map(Math.log)), n0 = Math.min(Math.max(lr ? lr.b + 1 : 0.5, 0.05), 0.95);
+  const fits = [];
+  for (const m of [1, 0.1, 10, 0.01]) {
+    const lam0 = m / half;
+    if (etaInfFix === null || etaInfFix === undefined) {
+      const ei0 = Math.min(...d.eta) * 0.1;
+      fits.push(nls({ f: MODELS.CA.tau, x: d.gd, y: d.tau, p0: [e0, lam0, n0, ei0], names: MODELS.CA.names, logp: [true, true, true, false], lo: [0, 0, 0, 0], mode }));
+    } else {
+      const fx = nls({ f: (g, p) => MODELS.CA.tau(g, [p[0], p[1], p[2], etaInfFix]), x: d.gd, y: d.tau, p0: [e0, lam0, n0], names: ['eta0', 'lambda', 'n'], logp: [true, true, true], mode });
+      fx.names = MODELS.CA.names; fx.p = fx.p.concat(etaInfFix); fx.se = fx.se.concat(NaN); fx.ci = fx.ci.concat(NaN); fx.atBound = fx.atBound.concat(false); fx.etaInf = etaInfFix; fx.fixed = { etaInf: true };
+      fits.push(fx);
+    }
+  }
+  const f = bestOf(fits); if (!f) return null; f.model = 'CA'; f.p = { eta0: f.eta0, lambda: f.lambda, n: f.n, etaInf: f.etaInf }; return f;
+}
+const REF_RATES = [40, 100, 170, 511];
+function rheology(rows, unit, opt) {
+  opt = opt || {}; const d = rheoData(rows, unit), mode = opt.mode || 'log';
+  if (d.gd.length < 3) return { d, err: 'need at least 3 valid points' };
+  const fits = { PL: fitPL(d, mode), HB: fitHB(d, mode), CA: fitCA(d, mode, opt.etaInfFit ? null : (opt.etaInf || 0)) };
+  for (const k in fits) { const f = fits[k]; if (!f) continue; f.eta = etaModel(k, f.p); f.etaAt = REF_RATES.map(g => f.eta(g)); }
+  const ranked = Object.values(fits).filter(f => f && fin(f.aicc)).sort((a, b) => a.aicc - b.aicc);
+  // measured apparent viscosity at the reference rates (log-log interpolation inside the data range only)
+  const etaMeas = REF_RATES.map(g => interpLog(d.gd, d.eta, g));
+  return { d, fits, best: ranked.length ? ranked[0].model : null, etaMeas, mode };
+}
+/* Parameters entered directly (e.g. K′, n′ from a paper). Kunit factor converts to Pa·sⁿ. */
+function rheoFromParams(o) {
+  const K = o.K * (o.Kunit === 'mPa' ? 1e-3 : o.Kunit === 'lbf' ? 47.880259 : 1), n = o.n, tau0 = o.tau0 || 0;
+  if (!(K > 0 && n > 0)) return null;
+  const model = tau0 > 0 ? 'HB' : 'PL', p = model === 'HB' ? { tau0, K, n } : { K, n }, eta = etaModel(model, p);
+  return { model, p, eta, etaAt: REF_RATES.map(g => eta(g)), manual: true };
+}
+
+/* ================= interpolation helpers ================= */
+function interpLin(x, y, xq) {
+  for (let i = 0; i < x.length - 1; i++) { const a = x[i], b = x[i + 1]; if ((xq - a) * (xq - b) <= 0 && a !== b) return y[i] + (y[i + 1] - y[i]) * (xq - a) / (b - a); }
+  return null;
+}
+function interpLog(x, y, xq) {
+  if (!(xq > 0)) return null; const v = interpLin(x.map(Math.log), y.map(v => Math.log(Math.max(v, 1e-300))), Math.log(xq));
+  return v === null ? null : Math.exp(v);
+}
+/* sign changes of ln(a/b) along x, interpolated in log-log coordinates */
+function crossings(x, a, b) {
+  const out = [];
+  for (let i = 0; i < x.length - 1; i++) {
+    const d0 = Math.log(a[i] / b[i]), d1 = Math.log(a[i + 1] / b[i + 1]);
+    if (!(fin(d0) && fin(d1))) continue;
+    if (d0 === 0) { out.push({ x: x[i], G: a[i], dir: d1 > 0 ? 'up' : 'down' }); continue; }
+    if (d0 * d1 < 0) {
+      const fr = d0 / (d0 - d1), lx = Math.log(x[i]) + fr * (Math.log(x[i + 1]) - Math.log(x[i]));
+      const lg = Math.log(a[i]) + fr * (Math.log(a[i + 1]) - Math.log(a[i]));
+      out.push({ x: Math.exp(lx), G: Math.exp(lg), dir: d1 > 0 ? 'up' : 'down' }); // 'up' = G′ overtakes G″ with increasing x
+    }
+  }
+  return out;
+}
+
+/* ================= 2. thermal / shear stability ================= */
+/* rows: [t (min), T (°C), η (mPa·s)] at a constant shear rate. */
+function thermal(rows, opt) {
+  opt = opt || {}; const r = rows.filter(v => v[2] > 0).sort((a, b) => a[0] - b[0]);
+  if (r.length < 3) return { err: 'need at least 3 points' };
+  const t = r.map(v => v[0]), T = r.map(v => v[1]), eta = r.map(v => v[2]), tol = opt.tol ?? 2;
+  const Tmax = Math.max(...T), ih = T.findIndex(v => v >= Tmax - tol);
+  const eta0 = eta[0], etaH = eta[ih], etaEnd = eta[eta.length - 1], ref = opt.ref === 'initial' ? eta0 : etaH;
+  const out = { t, T, eta, Tmax, ih, tHold: t[ih], eta0, etaHold: etaH, etaEnd, tEnd: t[t.length - 1], ref,
+    retention: 100 * etaEnd / ref, retentionHeat: 100 * etaH / eta0, etaMin: Math.min(...eta), etaMeanHold: mean(eta.slice(ih)) };
+  // first time η falls below the threshold
+  out.thr = opt.thr; out.tThr = null;
+  if (opt.thr > 0) { if (eta[0] < opt.thr) out.tThr = t[0]; else for (let i = 1; i < eta.length; i++) if (eta[i] < opt.thr) { out.tThr = t[i - 1] + (t[i] - t[i - 1]) * (eta[i - 1] - opt.thr) / (eta[i - 1] - eta[i]); break; } }
+  // first-order decay during the isothermal hold: ln η = a − k·(t − t_hold)
+  const th = t.slice(ih), eh = eta.slice(ih);
+  if (th.length >= 3 && th[th.length - 1] > th[0]) {
+    const lr = linreg(th.map(v => v - th[0]), eh.map(Math.log));
+    if (lr) out.hold = { k: -lr.b, ciK: lr.ciB, r2: lr.r2, eta0: Math.exp(lr.a), half: -lr.b > 0 ? Math.LN2 / -lr.b : null, n: th.length, fn: v => Math.exp(lr.a + lr.b * (v - th[0])) };
+  }
+  // Arrhenius (flow activation energy) on the heating ramp: ln η = ln A + Ea/(R·T)
+  const tr = [], er = []; for (let i = 0; i <= ih; i++) { tr.push(T[i] + 273.15); er.push(eta[i]); }
+  if (tr.length >= 3 && Math.max(...tr) - Math.min(...tr) >= 10) {
+    const lr = linreg(tr.map(v => 1 / v), er.map(Math.log));
+    if (lr) out.arr = { Ea: lr.b * R_GAS / 1000, ciEa: lr.ciB * R_GAS / 1000, r2: lr.r2, n: tr.length };
+  }
+  return out;
+}
+
+/* ================= 3. viscoelasticity (oscillation) ================= */
+/* kind 'freq': rows [ω or f, G′, G″]; xunit 'rad'|'Hz'. kind 'amp': rows [γ (%) or τ (Pa), G′, G″]. */
+function viscoelastic(rows, opt) {
+  opt = opt || {}; const r = rows.filter(v => v[0] > 0 && v[1] > 0 && v[2] > 0).sort((a, b) => a[0] - b[0]);
+  if (r.length < 3) return { err: 'need at least 3 points' };
+  const x = r.map(v => opt.kind === 'freq' && opt.xunit === 'Hz' ? 2 * Math.PI * v[0] : v[0]), G1 = r.map(v => v[1]), G2 = r.map(v => v[2]);
+  const tand = G1.map((v, i) => G2[i] / v), cx = crossings(x, G1, G2), out = { kind: opt.kind, x, G1, G2, tand, cross: cx };
+  if (opt.kind === 'freq') {
+    out.etaStar = x.map((w, i) => Math.hypot(G1[i], G2[i]) / w);
+    out.at = [0.1, 1, 10].map(w => ({ w, G1: interpLog(x, G1, w), G2: interpLog(x, G2, w), etaStar: interpLog(x, out.etaStar, w) }));
+    out.at.forEach(a => a.tand = a.G1 && a.G2 ? a.G2 / a.G1 : null);
+    out.char = G1.every((v, i) => v > G2[i]) ? 'solid' : G1.every((v, i) => v < G2[i]) ? 'liquid' : 'cross';
+    const c = cx[0]; if (c) { out.wc = c.x; out.Gc = c.G; out.lambdaC = 1 / c.x; }
+    const k = Math.min(4, x.length); if (k >= 3) { const a = linreg(x.slice(0, k).map(Math.log), G1.slice(0, k).map(Math.log)), b = linreg(x.slice(0, k).map(Math.log), G2.slice(0, k).map(Math.log)); out.slopeG1 = a && a.b; out.slopeG2 = b && b.b; }
+    // single-mode Maxwell: G′ = G·(ωλ)²/(1+(ωλ)²), G″ = G·ωλ/(1+(ωλ)²); fitted to both moduli in log space
+    if (x.length >= 3) {
+      const xx = x.map(w => [w, 0]).concat(x.map(w => [w, 1])), yy = G1.concat(G2);
+      const fm = (q, p) => { const wl = q[0] * p[1], den = 1 + wl * wl; return q[1] ? p[0] * wl / den : p[0] * wl * wl / den; };
+      const l0 = out.lambdaC || 1 / Math.sqrt(x[0] * x[x.length - 1]), g0 = Math.max(...G1, ...G2);
+      out.maxwell = bestOf([1, 0.1, 10].map(m => nls({ f: fm, x: xx, y: yy, p0: [g0, l0 * m], names: ['G', 'lambda'], logp: [true, true], mode: 'log' })));
+      if (out.maxwell) out.maxwell.fn = (w, k2) => fm([w, k2], out.maxwell.p);
+    }
+  } else {
+    const np = Math.min(opt.nPlat || 3, x.length), plat = mean(G1.slice(0, np)), tol = (opt.tol ?? 5) / 100;
+    out.plateau = plat; out.tandLVE = mean(tand.slice(0, np)); out.lve = null;
+    for (let i = np; i < x.length; i++) if (G1[i] < (1 - tol) * plat) {
+      const y0 = Math.log(G1[i - 1]), y1 = Math.log(G1[i]), yc = Math.log((1 - tol) * plat), fr = (y0 - yc) / (y0 - y1);
+      out.lve = Math.exp(Math.log(x[i - 1]) + fr * (Math.log(x[i]) - Math.log(x[i - 1]))); break;
+    }
+    const fp = cx.find(c => c.dir === 'down'); if (fp) { out.flow = fp.x; out.flowG = fp.G; }
+  }
+  return out;
+}
+
+/* ================= 4. proppant settling ================= */
+/* Single particle: force balance with the Schiller-Naumann drag curve, Cd = 24·X/Re·(1+0.15·Re^0.687) (Re < 1000; 0.44 above),
+   using the fluid's apparent viscosity at the characteristic shear rate γ̇ = v/d. For a power-law fluid in creeping flow this
+   reduces exactly to the power-law Stokes analogue v = [g·Δρ·d^(n+1)/(18·K·X)]^(1/n). */
+function cdSN(Re, X) { return Re < 1000 ? 24 * X / Re * (1 + 0.15 * Math.pow(Re, 0.687)) : 0.44; }
+function settle(etaFn, rhof, rhop, d, X) {
+  X = X || 1; const drho = rhop - rhof; if (!(drho > 0 && d > 0)) return { v: 0, Re: 0 };
+  const g = v => { const mu = etaFn(v / d), Re = rhof * v * d / mu; return 0.75 * cdSN(Re, X) * rhof * v * v - G0 * drho * d; };
+  let lo = Math.log(1e-14), hi = Math.log(20);
+  for (let i = 0; i < 200; i++) { const m = (lo + hi) / 2; if (g(Math.exp(m)) > 0) hi = m; else lo = m; }
+  const v = Math.exp((lo + hi) / 2), mu = etaFn(v / d), Re = rhof * v * d / mu;
+  return { v, Re, Cd: cdSN(Re, X), gd: v / d, mu };
+}
+function stokesPL(K, n, rhof, rhop, d, X) { return Math.pow(G0 * (rhop - rhof) * Math.pow(d, n + 1) / (18 * K * (X || 1)), 1 / n); }
+/* Richardson-Zaki hindered settling exponent (small d/D) */
+function rzExp(Re) { return Re < 0.2 ? 4.65 : Re < 1 ? 4.4 * Math.pow(Re, -0.03) : Re < 500 ? 4.4 * Math.pow(Re, -0.1) : 2.39; }
+/* proppant concentration in lb of proppant per gal of fluid (ppa) -> volume fraction */
+function ppaToPhi(ppa, sgp) { const vp = ppa / (8.3454 * sgp); return vp / (1 + vp); }
+function proppant(fluid, o) {
+  if (!fluid || !fluid.eta) return { err: 'no fluid rheology' };
+  const rhof = o.rhof * 1000, rhop = o.rhop * 1000, d = o.dmm / 1000, s = settle(fluid.eta, rhof, rhop, d, o.X);
+  const phi = o.phiMode === 'phi' ? o.phi / 100 : ppaToPhi(o.ppa || 0, o.rhop), m = rzExp(s.Re), vh = s.v * Math.pow(1 - phi, m);
+  const out = { ...s, phi, m, vh, X: o.X || 1 };
+  if (fluid.p && fluid.p.K && fluid.p.n && !fluid.p.tau0 && fluid.model !== 'CA') out.vStokes = stokesPL(fluid.p.K, fluid.p.n, rhof, rhop, d, o.X);
+  if (fluid.p && fluid.p.tau0 > 0) out.Y = fluid.p.tau0 / (G0 * (rhop - rhof) * d);
+  if (o.tpump > 0) out.dist = vh * o.tpump * 60;
+  if (o.H > 0) out.tH = o.H / vh / 60;
+  if (o.vmeas > 0) out.vmeas = o.vmeas / 1000; // mm/s -> m/s
+  out.curve = []; for (let dm = 0.1; dm <= 1.2001; dm += 0.05) out.curve.push([dm, settle(fluid.eta, rhof, rhop, dm / 1000, o.X).v * 1000]);
+  return out;
+}
+const MESH = { '12/20': 1.24, '16/30': 0.89, '20/40': 0.63, '30/50': 0.45, '40/70': 0.30, '100 mesh': 0.15 }; // approx. mean diameter, mm (mid of sieve openings)
+
+/* ================= 5. breaker ================= */
+/* rows [t (min), η (mPa·s)] */
+function breaker(rows, opt) {
+  opt = opt || {}; const r = rows.filter(v => v[1] > 0).sort((a, b) => a[0] - b[0]);
+  if (r.length < 3) return { err: 'need at least 3 points' };
+  const t = r.map(v => v[0]), eta = r.map(v => v[1]), out = { t, eta, eta0: eta[0], etaEnd: eta[eta.length - 1] };
+  out.reduction = 100 * (1 - out.etaEnd / out.eta0);
+  const lr = linreg(t, eta.map(Math.log));
+  if (lr) out.first = { k: -lr.b, ciK: lr.ciB, eta0: Math.exp(lr.a), r2: lr.r2, half: -lr.b > 0 ? Math.LN2 / -lr.b : null, fn: v => Math.exp(lr.a + lr.b * v) };
+  if (r.length >= 4) {
+    const k0 = out.first && out.first.k > 0 ? out.first.k : 1 / (t[t.length - 1] || 1);
+    const f = bestOf([0, 0.5, 0.9].map(fr => nls({ f: (x, p) => p[2] + (p[0] - p[2]) * Math.exp(-p[1] * x), x: t, y: eta, p0: [eta[0], k0 * (fr ? 2 : 1), fr * Math.min(...eta)], names: ['eta0', 'k', 'etaInf'], logp: [true, true, false], lo: [0, 0, 0], mode: 'log' })));
+    if (f) { f.half = Math.LN2 / f.k; f.fn = v => f.etaInf + (f.eta0 - f.etaInf) * Math.exp(-f.k * v); out.plateau = f; }
+  }
+  if (opt.crit > 0) {
+    out.crit = opt.crit; out.tBreak = null;
+    if (eta[0] <= opt.crit) out.tBreak = t[0]; else for (let i = 1; i < eta.length; i++) if (eta[i] <= opt.crit) { out.tBreak = Math.exp(interpLin([Math.log(eta[i - 1]), Math.log(eta[i])], [Math.log(Math.max(t[i - 1], 1e-9)), Math.log(Math.max(t[i], 1e-9))], Math.log(opt.crit))); break; }
+    const p = out.plateau; if (p && opt.crit > p.etaInf && p.eta0 > opt.crit) out.tBreakModel = -Math.log((opt.crit - p.etaInf) / (p.eta0 - p.etaInf)) / p.k;
+  }
+  return out;
+}
+/* Residue (gravimetric): rows [V broken fluid (mL), m empty container (g), m container + dried residue (g)];
+   conc = polymer (gelling agent) concentration of the original gel in g/L. */
+function residue(rows, conc) {
+  const r = rows.filter(v => v[0] > 0 && v[2] >= v[1]);
+  if (!r.length) return { err: 'no replicate' };
+  const reps = r.map(([V, m0, m1]) => { const dm = m1 - m0, mgL = dm * 1e3 / (V / 1e3); return { V, dm, mgL, pct: conc > 0 ? 100 * dm / (conc * V / 1e3) : null }; });
+  const a = reps.map(x => x.mgL), b = reps.map(x => x.pct).filter(fin);
+  return { reps, mgL: mean(a), sdMgL: sd(a), pct: b.length ? mean(b) : null, sdPct: sd(b) };
+}
+/* rows [T (°C), k (1/min)] -> Arrhenius activation energy of the breaking reaction */
+function arrhenius(rows) {
+  const r = rows.filter(v => v[1] > 0); if (r.length < 2) return null;
+  const lr = linreg(r.map(v => 1 / (v[0] + 273.15)), r.map(v => Math.log(v[1]))); if (!lr) return null;
+  return { Ea: -lr.b * R_GAS / 1000, ciEa: lr.ciB * R_GAS / 1000, A: Math.exp(lr.a), r2: lr.r2, n: r.length };
+}
+
+/* ================= 6. fracture geometry (PKN / KGD) with Carter leak-off ================= */
+/* scaled complementary error function erfcx(x) = exp(x²)·erfc(x), x ≥ 0 (Numerical Recipes erfcc, rel. error < 1.2e-7) */
+function erfcx(x) {
+  const t = 1 / (1 + 0.5 * x);
+  return t * Math.exp(-1.26551223 + t * (1.00002368 + t * (0.37409196 + t * (0.09678418 + t * (-0.18628806 + t * (0.27886807 + t * (-1.13520398 + t * (1.48851587 + t * (-0.82215223 + t * 0.17087277)))))))));
+}
+/* Carter (Howard & Fast, 1957): fracture face area (one face, both wings) at time t for constant total rate q and constant width w,
+   leak-off coefficient C (per face) and spurt Sp (volume per unit area of one face):
+   A = q·w′/(4πC²)·[exp(β²)erfc(β) + 2β/√π − 1],  β = 2C√(πt)/w′,  w′ = w + 2Sp. */
+function carterArea(q, t, w, C, Sp) {
+  const wp = w + 2 * Sp;
+  if (!(C > 0)) return q * t / wp;
+  const b = 2 * C * Math.sqrt(Math.PI * t) / wp;
+  const F = b < 0.05 ? b * b - 4 * b ** 3 / (3 * SQPI) + b ** 4 / 2 - 8 * b ** 5 / (15 * SQPI) + b ** 6 / 6 : erfcx(b) + 2 * b / SQPI - 1;
+  return q * wp / (4 * Math.PI * C * C) * F;
+}
+/* Width-length relations (q per wing), obtained by eliminating t from Nordgren's (1972) PKN and Geertsma-de Klerk's (1969) KGD
+   no-leak-off solutions as given in Valkó & Economides (1995):
+     PKN  w_w = 2.75·[(1−ν)·μ·q_w·L/G]^(1/4),       w̄ = (π/5)·w_w   (elliptic section, (1−x/L)^(1/4) profile)
+     KGD  w_w = 2.27·[(1−ν)·μ·q_w·L²/(G·h)]^(1/4),  w̄ = (π/4)·w_w
+   Power-law fluid: equivalent Newtonian viscosity of slot flow at the average width,
+     μ_e = K·((2n+1)/(3n))ⁿ·(6·q_w/(h·w̄²))^(n−1)  (exact for a parallel-plate slot). */
+const FR = { PKN: { c: 2.5 / Math.pow(0.68, 0.25), a: 1, shape: Math.PI / 5 }, KGD: { c: 1.32 / Math.sqrt(0.48) * Math.pow(8, 1 / 12), a: 2, shape: Math.PI / 4 } };
+function fracture(o) {
+  // o: model, qt (m³/s, total), t (s), h (m), E (Pa), nu, CL (m/√s), Sp (m³/m²), K (Pa·sⁿ), n
+  const M = FR[o.model], G = o.E / (2 * (1 + o.nu)), qw = o.qt / 2, h = o.h;
+  const muOf = wb => o.K * Math.pow((2 * o.n + 1) / (3 * o.n), o.n) * Math.pow(6 * qw / (h * wb * wb), o.n - 1);
+  const wwOf = (mu, L) => M.c * Math.pow((1 - o.nu) * mu * qw * Math.pow(L, M.a) / (G * (o.model === 'KGD' ? h : 1)), 0.25);
+  let wb = 0.005, L = 0, mu = 0, it = 0, err = 1;
+  for (; it < 500 && err > 1e-11; it++) {
+    mu = muOf(wb); L = carterArea(o.qt, o.t, wb, o.CL, o.Sp) / (2 * h);
+    const wn = M.shape * wwOf(mu, L); err = Math.abs(wn - wb) / wb; wb = wb + 0.6 * (wn - wb);
+  }
+  mu = muOf(wb); L = carterArea(o.qt, o.t, wb, o.CL, o.Sp) / (2 * h);
+  const ww = wb / M.shape, A = 2 * L * h, Vf = A * wb, Vi = o.qt * o.t;
+  const pnet = o.model === 'PKN' ? G * ww / ((1 - o.nu) * h) : G * ww / (2 * (1 - o.nu) * L);
+  return { model: o.model, L, ww, wb, mu, gd: (2 * o.n + 1) / (3 * o.n) * 6 * qw / (h * wb * wb), eff: Vf / Vi, Vf, Vi, Vl: Vi - Vf, pnet, A, G, conv: err <= 1e-9, it };
+}
+function fractureSeries(o, npts) {
+  const out = []; for (let i = 1; i <= (npts || 24); i++) out.push(fracture({ ...o, t: o.t * i / (npts || 24) }));
+  return out;
+}
+/* static fluid-loss test: cumulative filtrate V (mL) vs t (min) through filter area A (cm²).
+   V/A = Sp + 2·Cw·√t  ->  Cw = slope/2 (cm/√min), Sp = intercept (cm = mL/cm²). */
+function fluidLoss(rows, area) {
+  const r = rows.filter(v => v[0] > 0 && v[1] >= 0); if (r.length < 2 || !(area > 0)) return null;
+  const lr = linreg(r.map(v => Math.sqrt(v[0])), r.map(v => v[1] / area)); if (!lr) return null;
+  return { Cw: lr.b / 2, ciCw: lr.ciB / 2, Sp: Math.max(lr.a, 0), SpRaw: lr.a, r2: lr.r2, n: r.length, CwSI: lr.b / 2 / 100, SpSI: Math.max(lr.a, 0) / 100, fn: s => (lr.a + lr.b * s) * area };
+}
+
+/* ================= 7. surface and interfacial tension ================= */
+/* Du Noüy ring with the Zuidema-Waters (1941) correction (as used in ASTM D971):
+   f = 0.7250 + sqrt(0.01452·P/(C²·Δρ) + 0.04534 − 1.679·r/R); γ = P·f.
+   P apparent tension (mN/m), C ring circumference (cm), Δρ (g/cm³), r wire radius, R ring radius. */
+function ringZW(P, Rmm, rmm, drho) {
+  const C = 2 * Math.PI * Rmm / 10, s = 0.01452 * P / (C * C * drho) + 0.04534 - 1.679 * rmm / Rmm;
+  if (!(s >= 0)) return null; const f = 0.725 + Math.sqrt(s); return { f, gamma: P * f };
+}
+/* Wilhelmy plate: γ = F/(L·cosθ), L = 2(w + t) */
+function plate(FmN, wmm, tmm, thetaDeg) { const L = 2 * (wmm + tmm) / 1000; return FmN / (L * Math.cos((thetaDeg || 0) * Math.PI / 180)); }
+/* Spinning drop (Vonnegut, 1942): γ = Δρ·ω²·r³/4, valid for elongated drops (L/D ≳ 4). The apparent diameter seen through
+   the heavy phase is divided by its refractive index. Returns mN/m. */
+function spinning(dmm, rpm, drho, nref, Lmm) {
+  const r = dmm / 2 / (nref || 1) / 1000, w = 2 * Math.PI * rpm / 60;
+  return { gamma: drho * 1000 * w * w * r ** 3 / 4 * 1000, LD: Lmm > 0 ? Lmm / (dmm / (nref || 1)) : null };
+}
+/* CMC from γ vs C: two straight lines in ln C (best split by least squares), CMC at their intersection.
+   Gibbs: Γmax = −(1/(nRT))·dγ/dlnC ; Amin = 1/(N_A·Γmax). nG = 1 (non-ionic or ionic + excess salt), 2 (1:1 ionic, no salt). */
+function cmc(rows, opt) {
+  opt = opt || {}; const r = rows.filter(v => v[0] > 0 && v[1] > 0).sort((a, b) => a[0] - b[0]);
+  if (r.length < 5) return { err: 'need at least 5 points' };
+  const x = r.map(v => Math.log(v[0])), y = r.map(v => v[1]); let best = null;
+  for (let k = 3; k <= r.length - 2; k++) {
+    const a = linreg(x.slice(0, k), y.slice(0, k)), b = linreg(x.slice(k), y.slice(k)); if (!a || !b) continue;
+    if (!(a.b < b.b)) continue; // the pre-CMC branch must be steeper (more negative)
+    const xc = (b.a - a.a) / (a.b - b.b), s = a.ssr + b.ssr;
+    if (!best || s < best.s) best = { k, a, b, xc, s };
+  }
+  if (!best) return { err: 'no break point found' };
+  const T = (opt.T ?? 25) + 273.15, nG = opt.nG || 1, slope = best.a.b / 1000; // N/m per ln-unit
+  const Gam = -slope / (nG * R_GAS * T), out = { C: r.map(v => v[0]), y, k: best.k, pre: best.a, post: best.b, cmc: Math.exp(best.xc), gcmc: best.a.f(best.xc), Gamma: Gam, Amin: Gam > 0 ? 1e18 / (NA * Gam) : null, nG, T: opt.T ?? 25 };
+  const g0 = opt.g0 || 72.0; out.pi = g0 - out.gcmc;
+  if (best.a.b < 0) { out.C20 = Math.exp((g0 - 20 - best.a.a) / best.a.b); if (opt.molar) out.pC20 = -Math.log10(out.C20 * opt.molar); out.ratio = out.cmc / out.C20; }
+  return out;
+}
+function iftScan(rows) {
+  const r = rows.filter(v => v[1] > 0); if (!r.length) return { err: 'no data' };
+  let m = r[0]; for (const v of r) if (v[1] < m[1]) m = v;
+  return { x: r.map(v => v[0]), y: r.map(v => v[1]), xmin: m[0], min: m[1], cls: m[1] < 1e-2 ? 'ultralow' : m[1] < 1 ? 'low' : 'normal' };
+}
+
+/* ================= example data (synthetic, for demonstration only) ================= */
+function rnd(seed) { let s = seed >>> 0; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296 - 0.5; }; }
+function makeExample() {
+  const z = rnd(7), f = (v, d) => +v.toFixed(d), L = a => a.map(r => r.join('\t')).join('\n');
+  const rheo = []; for (let i = 0; i <= 15; i++) { const g = Math.pow(10, -1 + i * 4 / 15), e = 0.95 * Math.pow(1 + (0.6 * g) ** 2, (0.38 - 1) / 2) + 0.002; rheo.push([f(g, 3), f(e * 1000 * (1 + 0.03 * z()), 2)]); }
+  const th = []; for (let t = 0; t <= 120; t += 5) { const T = t < 20 ? 25 + 65 * t / 20 : 90, e = 160 * Math.exp(2600 * (1 / (T + 273.15) - 1 / 298.15)) * Math.exp(-0.004 * Math.max(0, t - 20)); th.push([t, f(T, 1), f(e * (1 + 0.02 * z()), 1)]); }
+  const ve = []; for (let i = 0; i <= 12; i++) { const w = Math.pow(10, -1 + i * 3 / 12), wl = w * 0.8, d = 1 + wl * wl; ve.push([f(w, 3), f((6 * wl * wl / d + 0.05 * Math.sqrt(w)) * (1 + 0.03 * z()), 3), f((6 * wl / d + 0.25 * Math.sqrt(w)) * (1 + 0.03 * z()), 3)]); }
+  const amp = []; for (let i = 0; i <= 14; i++) { const g = Math.pow(10, -1 + i * 3.3 / 14), dec = 1 / (1 + Math.pow(g / 60, 1.6)); amp.push([f(g, 3), f(5.2 * dec * (1 + 0.01 * z()), 3), f((2.4 + 2.8 * (1 - dec)) * Math.sqrt(dec) * (1 + 0.01 * z()), 3)]); }
+  const brk = []; for (const t of [0, 5, 10, 15, 20, 30, 40, 50, 60, 75, 90, 120]) brk.push([t, f((3 + 177 * Math.exp(-0.06 * t)) * (1 + 0.03 * z()), 1)]);
+  const fl = []; for (const t of [1, 4, 9, 16, 25, 36]) fl.push([t, f(22.6 * (0.02 + 2 * 0.012 * Math.sqrt(t)) * (1 + 0.02 * z()), 2)]);
+  const cm = []; for (const c of [0.05, 0.1, 0.2, 0.35, 0.5, 0.7, 0.9, 1.2, 1.6, 2.5, 4, 6]) { const g = c < 1 ? 31 - 9.2 * Math.log(c) : 31; cm.push([c, f(Math.min(g, 71.5) + 0.3 * z(), 1)]); }
+  const ift = []; for (const x of [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4]) ift.push([x, +(0.004 * Math.exp(1.6 * (x - 2.4) ** 2) * (1 + 0.05 * z())).toPrecision(3)]);
+  return { rheo: L(rheo), thermal: L(th), ve: L(ve), amp: L(amp), brk: L(brk), res: L([[50, 25.1234, 25.1301], [50, 24.8710, 24.8779], [50, 25.4402, 25.4466]]), arr: L([[60, 0.021], [70, 0.038], [80, 0.066], [90, 0.11]]), fl: L(fl), cmc: L(cm), ift: L(ift) };
+}
+
+const FL = { R_GAS, NA, G0, tInv, tCdf, linreg, nls, inv, mean, sd, parseTable, rheoData, MODELS, etaModel, rheology, rheoFromParams, REF_RATES,
+  interpLin, interpLog, crossings, thermal, viscoelastic, settle, stokesPL, rzExp, ppaToPhi, proppant, MESH, breaker, residue, arrhenius,
+  erfcx, carterArea, fracture, fractureSeries, FR, fluidLoss, ringZW, plate, spinning, cmc, iftScan, makeExample };
+if (typeof module !== 'undefined' && module.exports) module.exports = FL; else root.FL = FL;
+})(typeof window !== 'undefined' ? window : this);
+</script>
+<script>
+/* Frac-Fluid Lab — experiment protocols and method notes (Arabic with English technical terms). */
+window.PROTO = {
+rheo: `
+<p class="pnote">الهدف: منحنى التدفق (flow curve) في حالة الاستقرار (steady state)، ثم مطابقته (fitting) مع نماذج Power-law و Herschel-Bulkley و Carreau.</p>
+<ol>
+<li><b>تحضير الجل (hydration):</b>
+  <ul>
+  <li>أضف الـ guar ببطء إلى دوامة الماء (vortex) في خلاط بسرعة ثابتة، لتجنّب التكتلات (fish-eyes).</li>
+  <li>اترك البوليمر يتميّه زمناً ثابتاً ومسجّلاً قبل أي إضافة (عادةً 30 دقيقة أو أكثر).</li>
+  <li>أضف بقية المكوّنات بترتيب ثابت في كل مرة، وسجّل الـ pH ودرجة الحرارة.</li>
+  </ul></li>
+<li><b>إزالة الفقاعات (degassing):</b> اترك العينة ترتاح، أو استخدم طرداً مركزياً خفيفاً. الفقاعات تخفض اللزوجة المقاسة.</li>
+<li><b>اختيار الـ geometry:</b>
+  <ul>
+  <li>concentric cylinder (bob &amp; cup): للسوائل منخفضة اللزوجة والجل الخطي.</li>
+  <li>cone-plate أو parallel-plate: للعينات الصغيرة والجل القوي.</li>
+  <li>استخدم solvent trap عند الحرارة العالية لمنع التبخر.</li>
+  </ul></li>
+<li><b>التحميل والتوازن الحراري:</b> حمّل الحجم الصحيح، وانتظر 5 إلى 10 دقائق عند درجة حرارة القياس.</li>
+<li><b>الـ pre-shear:</b> طبّق مثلاً 100 s⁻¹ لمدة 60 s، ثم راحة 60 إلى 120 s. هذه الخطوة تمسح أثر التحميل. استخدم الإعدادات نفسها لكل العينات.</li>
+<li><b>الـ shear-rate sweep:</b>
+  <ul>
+  <li>مسح لوغاريتمي من 1000 إلى 0.1 s⁻¹ تقريباً، بـ 5 إلى 10 نقاط في كل decade.</li>
+  <li>فعّل معيار الاستقرار (steady-state criterion) لكل نقطة.</li>
+  </ul></li>
+<li><b>فحص صلاحية النقاط:</b>
+  <ul>
+  <li>احذف كل نقطة عزمها (torque) أقل من الحد الأدنى للجهاز.</li>
+  <li>عند المعدلات العالية في السوائل الخفيفة، احذف النقاط المتأثرة بالـ inertia أو Taylor vortices.</li>
+  <li>إن شككت في الانزلاق عند الجدار (wall slip)، أعد القياس بفجوة (gap) مختلفة أو بسطوح خشنة.</li>
+  </ul></li>
+<li><b>التكرار:</b> 3 عينات جديدة على الأقل. أدخل المتوسط هنا، وسجّل الـ SD.</li>
+<li><b>الإدخال:</b>
+  <ul>
+  <li>الصق عمودين: γ̇ (s⁻¹) واللزوجة η (mPa·s)، أو τ (Pa)، أو قراءات Fann 35 (rpm ثم قراءة القرص).</li>
+  <li>إن كان البحث يعطي K′ و n′ فقط، اختر "Parameters".</li>
+  </ul></li>
+</ol>
+<p class="pnote"><b>التفسير:</b></p>
+<ul>
+<li>n &lt; 1 يعني shear-thinning.</li>
+<li>τ₀ في Herschel-Bulkley هو apparent yield stress، أي ناتج مطابقة وليس قياساً مباشراً.</li>
+<li>η₀ في Carreau هي لزوجة الهضبة عند القص الصفري. و 1/λ تقريباً معدل القص الذي يبدأ عنده الـ shear-thinning.</li>
+<li>اختيار النموذج بالـ AICc: القيمة الأقل أفضل. الفرق الأقل من 2 لا يرجّح نموذجاً على آخر (Burnham &amp; Anderson, 2002).</li>
+<li>الـ 95 % CI من نوع Wald، أي ± t·SE. لا يُعتمد عليه إذا كان المعامل عند حدّه (مثل τ₀ = 0)، أو إذا كانت البيانات لا تغطي منطقة المعامل (مثل λ إذا لم تظهر الهضبة).</li>
+</ul>
+<p class="pnote"><b>فضاء المطابقة (fitting space):</b></p>
+<ul>
+<li>"log" يقلّل الخطأ النسبي. هو المناسب عندما تمتد البيانات عدة decades.</li>
+<li>"linear" يعطي وزناً أكبر للإجهادات العالية.</li>
+<li>عند المقارنة مع بحث، استخدم الفضاء نفسه الذي استخدمه البحث إن ذكره. قيمة R² تختلف بين الفضاءين.</li>
+</ul>`,
+
+thermal: `
+<p class="pnote">الهدف: معرفة كيف تتغير اللزوجة مع الزمن والحرارة تحت قص ثابت (shear and thermal stability)، على نمط API RP 39 / ISO 13503-1.</p>
+<ol>
+<li><b>الجهاز:</b> استخدم HPHT rotational rheometer بخلية مضغوطة، مثل Fann 50 أو Grace M5600 أو Anton Paar مع pressure cell.
+  <ul><li>طبّق ضغط N₂ أعلى من ضغط بخار الماء عند حرارة الاختبار (عادة بضع مئات psi) لمنع الغليان.</li></ul></li>
+<li><b>التحميل:</b> املأ الخلية بالحجم المحدد بعد تحضير الجل وإزالة الفقاعات، وأغلقها.</li>
+<li><b>القص الثابت:</b> ابدأ عند 170 s⁻¹ أو 100 s⁻¹، وسجّل القيمة المستخدمة في حقل "shear rate".</li>
+<li><b>التسخين:</b> سخّن بمعدل ثابت ومسجّل (مثلاً 2 إلى 5 °C/min) حتى حرارة الاختبار.</li>
+<li><b>الثبات (hold):</b> ثبّت الحرارة 60 إلى 120 دقيقة.
+  <ul><li>سجّل t و T و η كل 30 إلى 60 ثانية.</li></ul></li>
+<li><b>اختياري:</b> مسح قص قصير (shear ramp) كل 30 دقيقة لحساب n′ و K′ عند الحرارة. هذا جزء من إجراءات API RP 39 / ISO 13503-1.
+  <ul><li>أدخل n′ و K′ الناتجة في تبويب الريولوجيا (Parameters) لاستخدامها في حساب الكسر عند حرارة المكمن.</li></ul></li>
+<li><b>الإدخال:</b> ثلاثة أعمدة: الزمن (min)، والحرارة (°C)، واللزوجة (mPa·s).</li>
+</ol>
+<p class="pnote"><b>ما تحسبه الأداة:</b></p>
+<ul>
+<li><b>نسبة الاحتفاظ:</b> retention = η(نهاية الاختبار) ÷ η(المرجع) × 100. المرجع إما بداية الـ hold (بعد الوصول إلى الحرارة)، أو أول قراءة.</li>
+<li><b>زمن الهبوط:</b> أول زمن تنخفض فيه اللزوجة تحت العتبة.</li>
+<li><b>معدل التحلل:</b> ln η = a − k·t خلال الـ hold. منه k و t½ = ln2/k.</li>
+<li><b>طاقة التنشيط للتدفق:</b> E<sub>a</sub> من ln η مقابل 1/T خلال مرحلة التسخين. هذا الجزء يخلط أثر الحرارة مع أي تحلل يحدث أثناء التسخين.</li>
+</ul>
+<p class="pnote"><b>العتبة:</b> المعيار الشائع في الأدبيات هو η ≥ 50 mPa·s عند 170 s⁻¹ بعد زمن الاختبار. هذا عُرف صناعي وليس شرطاً موحّداً في كل المواصفات، لذا اكتب المعيار الذي تعتمده في التقرير.</p>`,
+
+ve: `
+<p class="pnote">الهدف: قياس G′ (التخزين، المرونة) و G″ (الفقد، اللزوجة) بالاهتزاز (oscillation).</p>
+<ol>
+<li><b>Amplitude sweep أولاً:</b> عند تردد ثابت (1 Hz أو 10 rad/s)، امسح الـ strain من 0.01 % إلى 1000 % تقريباً.
+  <ul>
+  <li>تحدّد الأداة نهاية المنطقة الخطية (LVE limit)، وهي حيث ينخفض G′ عن الهضبة بنسبة التسامح (5 % افتراضياً).</li>
+  <li>وتحدّد نقطة التدفق (flow point)، وهي حيث G′ = G″.</li>
+  </ul></li>
+<li><b>Frequency sweep:</b> من 0.1 إلى 100 rad/s عند strain داخل المنطقة الخطية (مثلاً نصف الـ LVE limit). نفّذه عند الحرارة نفسها.</li>
+<li><b>فحص الصلاحية:</b>
+  <ul>
+  <li>عند الترددات العالية: انتبه للـ instrument inertia. إن اقتربت raw phase angle من 180°، فالنقطة غير صالحة.</li>
+  <li>عند الترددات المنخفضة: انتبه للعزم المنخفض.</li>
+  <li>استخدم solvent trap.</li>
+  </ul></li>
+<li><b>Time sweep (اختياري):</b> عند ω و γ ثابتين، لمتابعة تكوّن الجل أو تحلله مع الزمن.</li>
+<li><b>الإدخال:</b> ثلاثة أعمدة: ω (rad/s، أو Hz مع اختيار الوحدة) أو الـ strain (%)، ثم G′ (Pa)، ثم G″ (Pa).</li>
+</ol>
+<p class="pnote"><b>التفسير:</b></p>
+<ul>
+<li>G′ &gt; G″ في كل المدى: سلوك gel-like.</li>
+<li>التقاطع عند ω<sub>c</sub> يعطي زمن ارتخاء تقريبي λ ≈ 1/ω<sub>c</sub>، وهو تقدير Maxwell أحادي النمط.</li>
+<li>الأداة تطابق أيضاً single-mode Maxwell على G′ و G″ معاً. إذا كانت المطابقة رديئة، فهذا يعني توزيعاً من أزمنة الارتخاء.</li>
+<li>ميل G′ و G″ عند الترددات المنخفضة يقارَن بـ 2 و 1 (المنطقة الطرفية، terminal zone).</li>
+<li>tan δ = G″/G′. قيمة أقل من 1 تعني أن المرونة غالبة.</li>
+<li>المرونة العالية (G′ كبير و tan δ منخفض) ترتبط في الأدبيات بتعليق أفضل للـ proppant. لكن العلاقة الكمية تعتمد على النظام، فلا تستنتجها من G′ وحده.</li>
+</ul>`,
+
+prop: `
+<p class="pnote">الهدف: سرعة ترسيب حبيبة الـ proppant في الجل.</p>
+<p class="pnote"><b>الحساب:</b> الأداة تأخذ ريولوجيا كل عينة من تبويب الريولوجيا (النموذج الذي تختاره)، ثم:</p>
+<ul>
+<li>تحسب اللزوجة الظاهرية عند معدل القص المميِّز γ̇ = v/d.</li>
+<li>تستخدم منحنى الـ drag (Schiller-Naumann)، مع معامل تصحيح X(n) اختياري.</li>
+<li>في الجريان الزاحف (creeping flow) لمائع Power-law، تساوي النتيجة تماماً المعادلة المناظرة لـ Stokes:<br>
+  v = [g·Δρ·d<sup>n+1</sup> / (18·K·X)]<sup>1/n</sup></li>
+<li>الترسيب المعاق (hindered settling) بمعادلة Richardson-Zaki: v<sub>h</sub> = v·(1−φ)<sup>m</sup>.</li>
+</ul>
+<ol>
+<li><b>اختبار الحبيبة المفردة (single-particle):</b>
+  <ul>
+  <li>قِس قطر الحبيبات بالمجهر أو الغربال.</li>
+  <li>املأ أسطوانة شفافة بالجل عند حرارة الاختبار، وأزل الفقاعات.</li>
+  <li>اجعل قطر الأسطوانة أكبر بكثير من قطر الحبيبة (d/D صغيرة، مثلاً أقل من 0.05)، لتقليل أثر الجدار.</li>
+  <li>أسقط الحبيبة في المحور، وابدأ التوقيت بعد مسافة كافية لبلوغ السرعة النهائية.</li>
+  <li>قِس زمن المرور بين علامتين (أو استخدم فيديو).</li>
+  <li>كرّر مع 10 حبيبات على الأقل، وأدخل المتوسط في "السرعة المقاسة".</li>
+  </ul></li>
+<li><b>اختبار الترسيب الساكن (static settling):</b>
+  <ul>
+  <li>اخلط الـ proppant بالتركيز المطلوب (ppa) في أسطوانة مدرّجة عند الحرارة.</li>
+  <li>سجّل ارتفاع السائل الصافي فوق المعلّق مع الزمن.</li>
+  <li>ميل الجزء الخطي الأول هو سرعة الترسيب المعاق. قارنها بـ v<sub>h</sub>.</li>
+  </ul></li>
+</ol>
+<p class="pnote"><b>حدود الحساب:</b></p>
+<ul>
+<li><b>استقراء الـ Power-law:</b> يتنبأ بلزوجة لانهائية عند قص يقترب من الصفر. إذا كان γ̇ = v/d أقل من أدنى معدل قص قِسته، فالنتيجة استقراء (extrapolation). الأفضل حينها اختيار Carreau.</li>
+<li><b>المرونة والقص:</b> الحساب لا يشمل المرونة (التي قد تبطئ الترسيب)، ولا القص الناتج عن جريان المائع في الكسر (الذي يخفض اللزوجة ويسرّع الترسيب).</li>
+<li><b>المائع الذي له yield stress:</b> تعرض الأداة Y = τ₀/(g·Δρ·d). القيم الحرجة في الأدبيات (Chhabra &amp; Richardson, 2008) تتراوح تقريباً بين 0.04 و 0.2 حسب التعريف والتجربة، فاعتبرها مؤشراً فقط.</li>
+</ul>`,
+
+brk: `
+<p class="pnote">الهدف: سرعة كسر الجل بالـ breaker، وكمية البقايا (residue) التي يتركها في الـ proppant pack.</p>
+<ol>
+<li><b>حركية الكسر:</b>
+  <ul>
+  <li>حضّر الجل، وأضف الـ breaker (مثل APS أو إنزيم أو encapsulated breaker) بتركيز محدد.</li>
+  <li><b>الطريقة الأولى:</b> القياس المستمر في الـ rheometer عند حرارة الاختبار و 170 s⁻¹.</li>
+  <li><b>الطريقة الثانية:</b> عيّنات في أوعية مغلقة داخل حمام مائي، تُسحب على فترات وتُقاس اللزوجة. سجّل إن كان القياس عند حرارة الاختبار أم بعد التبريد، لأن النتائج تختلف.</li>
+  </ul></li>
+<li><b>معيار الكسر:</b> عادةً لزوجة السائل المكسور ≤ 5 إلى 10 mPa·s (في كثير من الأبحاث وفق SY/T 5107). اكتب المعيار الذي تعتمده.</li>
+<li><b>الـ residue (طريقة وزنية):</b>
+  <ul>
+  <li>خذ حجماً معروفاً (V) من السائل المكسور كلياً.</li>
+  <li>اطرده مركزياً (مثلاً حوالي 3000 rpm لمدة 30 min، أو حسب المواصفة التي تتبعها).</li>
+  <li>أزل الطبقة العليا، واغسل الراسب بالماء، ثم أعد الطرد.</li>
+  <li>جفّف عند 105 °C حتى ثبات الوزن، وزِن بميزان دقته 0.1 mg.</li>
+  </ul></li>
+<li><b>عيّنة الـ blank:</b> نفّذ الإجراء نفسه على محلول بلا بوليمر (ماء مع الـ breaker والإضافات)، واطرح كتلة بقاياه. هذا يفصل أثر الأملاح عن بقايا البوليمر.</li>
+<li><b>Arrhenius (اختياري):</b> كرّر حركية الكسر عند 3 درجات حرارة أو أكثر، وأدخل k الناتج مع T لحساب طاقة تنشيط تفاعل الكسر.</li>
+</ol>
+<p class="pnote"><b>النماذج:</b></p>
+<ul>
+<li>First-order: ln η = ln η₀ − k·t.</li>
+<li>First-order مع هضبة: η = η∞ + (η₀ − η∞)·e<sup>−k·t</sup>. هي الأنسب عندما تقترب اللزوجة من قيمة الماء والأملاح.</li>
+<li>t½ = ln 2 / k.</li>
+</ul>
+<p class="pnote"><b>الـ residue:</b> mg/L = Δm ÷ V. والنسبة من البوليمر = Δm ÷ (تركيز البوليمر × V) × 100.</p>`,
+
+frac: `
+<p class="pnote">الهدف: معرفة أثر ريولوجيا الجل والتسرّب (leak-off) على هندسة الكسر وكفاءة المائع، بنموذجين ثنائيي الأبعاد.</p>
+<ul>
+<li><b>PKN:</b> ارتفاع ثابت، والطول أكبر بكثير من الارتفاع (x<sub>f</sub> ≫ h).</li>
+<li><b>KGD:</b> الارتفاع أكبر من الطول، أو انفعال مستوٍ أفقي.</li>
+</ul>
+<ol>
+<li><b>اختبار الـ fluid loss (static):</b>
+  <ul>
+  <li>استخدم HTHP filter press بقرص ترشيح أو لب صخري، على نمط API RP 39 / ISO 13503-4.</li>
+  <li>طبّق فرق ضغط ثابتاً (عادة 1000 psi) عند الحرارة.</li>
+  <li>سجّل حجم الراشح التراكمي عند 1، 4، 9، 16، 25، 36 min.</li>
+  <li>أدخل t و V ومساحة الترشيح A. الأداة ترسم V/A مقابل √t:
+    <ul><li>الميل = 2·C<sub>w</sub>.</li><li>التقاطع = spurt (S<sub>p</sub>).</li></ul></li>
+  </ul></li>
+<li><b>بيانات العملية:</b> معدل الضخ الكلي، وزمن الضخ، وارتفاع الكسر، ومعامل يونغ E، ونسبة بواسون ν.</li>
+<li><b>ريولوجيا المائع:</b> تؤخذ تلقائياً من مطابقة Power-law في تبويب الريولوجيا لكل عينة.
+  <ul><li>الأدق أن تستخدم K′ و n′ عند حرارة المكمن من اختبار الثبات الحراري، بإدخالها كـ Parameters.</li></ul></li>
+</ol>
+<p class="pnote"><b>طريقة الحساب:</b></p>
+<ul>
+<li><b>علاقة العرض بالطول</b> (q لكل جناح)، مشتقة من حلّي Nordgren (1972) و Geertsma-de Klerk (1969) دون تسرّب:
+  <ul>
+  <li>PKN: w<sub>w</sub> = 2.75·[(1−ν)·μ·q<sub>w</sub>·L/G]<sup>1/4</sup></li>
+  <li>KGD: w<sub>w</sub> = 2.27·[(1−ν)·μ·q<sub>w</sub>·L²/(G·h)]<sup>1/4</sup></li>
+  </ul></li>
+<li><b>التوازن الحجمي مع التسرّب:</b> معادلة Carter (Howard &amp; Fast, 1957).</li>
+<li><b>مائع Power-law:</b> لزوجة نيوتنية مكافئة لجريان الشقّ (slot flow) عند العرض المتوسط:
+  <ul><li>μ<sub>e</sub> = K·((2n+1)/3n)<sup>n</sup>·(6·q<sub>w</sub>/(h·w̄²))<sup>n−1</sup></li></ul></li>
+<li>تُحل المعادلات بالتكرار. اختُبرت مقابل الحلول الأصلية بلا تسرّب: الفرق حتى 5 % في PKN (بسبب افتراض شكل المقطع)، وأقل من 1 % في KGD.</li>
+</ul>
+<p class="pnote"><b>حدود الحساب:</b> نماذج 2D ذات ارتفاع ثابت. لا تشمل: tip effects، ولا fracture toughness، ولا الـ proppant، ولا تغيّر الحرارة على طول الكسر. هي للمقارنة النسبية بين سائلين وليست تصميماً لعملية حقيقية.</p>`,
+
+surf: `
+<p class="pnote">الهدف: قياس الـ surface tension للمحاليل، والـ CMC، والـ interfacial tension (IFT) بين الماء والزيت.</p>
+<ol>
+<li><b>النظافة والحرارة:</b>
+  <ul>
+  <li>نظّف الأواني الزجاجية جيداً.</li>
+  <li>نظّف حلقة أو صفيحة الـ platinum باللهب حتى الاحمرار بعد غسلها.</li>
+  <li>اضبط الحرارة، مثلاً 25 ± 0.1 °C.</li>
+  <li>تحقّق بالماء المقطّر: يجب أن يعطي حوالي 72.0 mN/m عند 25 °C.</li>
+  </ul></li>
+<li><b>سلسلة التخفيف:</b>
+  <ul>
+  <li>حضّر محلولاً أساسياً (stock)، وخفّفه بخطوات لوغاريتمية تغطي ما تحت الـ CMC وما فوقها بوضوح (ثلاث نقاط على الأقل فوقها).</li>
+  <li>قِس من التركيز الأقل إلى الأعلى.</li>
+  </ul></li>
+<li><b>التوازن:</b>
+  <ul>
+  <li>جزيئات الـ surfactant تحتاج زمناً لتصل إلى السطح.</li>
+  <li>انتظر حتى تستقر القراءة (التغير أقل من 0.1 mN/m خلال دقائق)، أو سجّل القراءة مع الزمن.</li>
+  <li>خذ 3 قراءات على الأقل لكل تركيز.</li>
+  </ul></li>
+<li><b>Du Noüy ring:</b> القراءة الخام تحتاج تصحيحاً (Harkins-Jordan أو Zuidema-Waters). إذا كان جهازك يطبّق التصحيح تلقائياً، فأدخل القيمة المصحّحة مباشرة. <b>Wilhelmy plate:</b> لا تحتاج تصحيحاً إذا كانت الصفيحة مبللة تماماً (θ ≈ 0).</li>
+<li><b>الـ IFT:</b>
+  <ul>
+  <li>Pendant drop: للقيم الأعلى من حوالي 1 mN/m.</li>
+  <li>Spinning drop: للقيم المنخفضة جداً (ultralow، أقل من 10⁻² mN/m).</li>
+  <li>في الـ spinning drop: قِس كثافتي الطورين، واختر سرعة دوران تجعل طول القطرة أكبر من 4 أضعاف قطرها، وانتظر الاتزان (قد يستغرق 30 دقيقة أو أكثر في أنظمة الـ microemulsion).</li>
+  <li>القطر الظاهري يُقسم على معامل انكسار الطور الثقيل. الأداة تفعل ذلك إذا أدخلته.</li>
+  </ul></li>
+<li><b>الإدخال:</b>
+  <ul>
+  <li>جدول التركيز و γ (mN/m) لحساب الـ CMC.</li>
+  <li>جدول المتغير (ملوحة، نسبة co-surfactant، زمن...) و IFT لإيجاد أقل قيمة.</li>
+  </ul></li>
+</ol>
+<p class="pnote"><b>الحساب:</b></p>
+<ul>
+<li><b>الـ CMC:</b> تقاطع خطين في γ مقابل ln C. الأداة تختار نقطة الانكسار التي تعطي أقل مجموع مربعات.</li>
+<li><b>معادلة Gibbs:</b>
+  <ul>
+  <li>Γ<sub>max</sub> = −(1/nRT)·dγ/dlnC، من الخط الذي قبل الـ CMC.</li>
+  <li>n = 1 للـ surfactant غير الأيوني، أو الأيوني بوجود ملح زائد.</li>
+  <li>n = 2 للـ surfactant أيوني 1:1 بلا ملح، مثل sodium oleate في الماء النقي.</li>
+  <li>A<sub>min</sub> = 1/(N<sub>A</sub>·Γ<sub>max</sub>).</li>
+  </ul></li>
+<li><b>pC20:</b> = −log C20، حيث C20 التركيز الذي يخفض γ بمقدار 20 mN/m. يحتاج وحدة مولية أو الكتلة المولية.</li>
+</ul>`,
+};
+
+window.METHODS = `
+<h3>المعادلات والافتراضات</h3>
+<ul>
+<li><b>Power-law:</b> τ = K·γ̇ⁿ</li>
+<li><b>Herschel-Bulkley:</b> τ = τ₀ + K·γ̇ⁿ</li>
+<li><b>Carreau:</b> η = η∞ + (η₀ − η∞)·[1 + (λγ̇)²]<sup>(n−1)/2</sup>. تُثبَّت η∞ (صفر افتراضياً) أو تُطابَق.</li>
+<li><b>المطابقة:</b> Levenberg-Marquardt على τ، في فضاء log أو linear. الـ 95 % CI = p ± t(0.975, N−P)·SE، و SE من s²(JᵀJ)⁻¹.</li>
+<li><b>مقاييس الجودة:</b>
+  <ul>
+  <li>R² في فضاء المطابقة.</li>
+  <li>R²(τ) في الفضاء الخطي.</li>
+  <li>MAPE.</li>
+  <li>AICc = N·ln(SSR/N) + 2P + 2P(P+1)/(N−P−1).</li>
+  </ul></li>
+<li><b>Fann 35</b> (R1B1، spring F1): γ̇ = 1.7023·rpm، و τ = 0.511·θ Pa.</li>
+<li><b>الثبات الحراري:</b> تحلل من الرتبة الأولى أثناء الـ hold، و Arrhenius أثناء التسخين.</li>
+<li><b>الاهتزاز:</b>
+  <ul>
+  <li>التقاطع بالاستيفاء الخطي في المحورين اللوغاريتميين (log-log).</li>
+  <li>Maxwell: G′ = G(ωλ)²/(1+(ωλ)²)، و G″ = Gωλ/(1+(ωλ)²).</li>
+  </ul></li>
+<li><b>الترسيب:</b>
+  <ul>
+  <li>Schiller-Naumann (Re &lt; 1000): C<sub>D</sub> = 24X/Re·(1+0.15Re<sup>0.687</sup>)</li>
+  <li>اللزوجة الظاهرية عند γ̇ = v/d.</li>
+  <li>Richardson-Zaki: m = 4.65 (Re &lt; 0.2)، و 4.4·Re<sup>−0.03</sup> (حتى 1)، و 4.4·Re<sup>−0.1</sup> (حتى 500)، و 2.39 (فوق 500).</li>
+  <li>φ من ppa: φ = (C/(8.3454·SG)) / (1 + C/(8.3454·SG)).</li>
+  </ul></li>
+<li><b>الكسر:</b> انظر تبويب الكسر. الضغط الصافي (p<sub>net</sub>):
+  <ul>
+  <li>PKN: G·w<sub>w</sub>/((1−ν)·h)</li>
+  <li>KGD: G·w<sub>w</sub>/(2(1−ν)·L)</li>
+  </ul></li>
+<li><b>Zuidema-Waters:</b> f = 0.7250 + √(0.01452·P/(C²·Δρ) + 0.04534 − 1.679·r/R)</li>
+<li><b>Vonnegut:</b> γ = Δρ·ω²·r³/4</li>
+</ul>
+<h3>المراجع <small>(تحقق من الـ DOI قبل الاقتباس؛ ما لم أتأكد منه موسوم بذلك)</small></h3>
+<ul class="refs">
+<li>Herschel, W.H., Bulkley, R. (1926). Konsistenzmessungen von Gummi-Benzollösungen. <i>Kolloid-Zeitschrift</i> 39, 291–300.</li>
+<li>Carreau, P.J. (1972). Rheological equations from molecular network theories. <i>Transactions of the Society of Rheology</i> 16, 99–127. DOI 10.1122/1.549276</li>
+<li>Burnham, K.P., Anderson, D.R. (2002). <i>Model Selection and Multimodel Inference</i>, 2nd ed. Springer.</li>
+<li>Mezger, T.G. <i>The Rheology Handbook</i>. Vincentz Network (عدة طبعات).</li>
+<li>API RP 39 (1998, 3rd ed.). Recommended Practices on Measuring the Viscous Properties of a Cross-linked Water-based Fracturing Fluid. حلّت محلها ISO 13503-1 / API RP 13M.</li>
+<li>ISO 13503-1:2011. Completion fluids and materials — Part 1: Measurement of viscous properties of completion fluids.</li>
+<li>ISO 13503-4:2006. Completion fluids and materials — Part 4: Procedure for measuring stimulation and gravel-pack fluid leakoff under static conditions.</li>
+<li>SY/T 5107-2016 (China). Evaluation measurement for properties of water-based fracturing fluid. <small>(متوسط الثقة في تفاصيل الأرقام، مثل سرعة الطرد ومعيار اللزوجة، فارجع إلى النص)</small></li>
+<li>Howard, G.C., Fast, C.R. (1957). Optimum fluid characteristics for fracture extension. <i>Drilling and Production Practice</i>, API, 261–270. (يتضمن معادلة Carter)</li>
+<li>Perkins, T.K., Kern, L.R. (1961). Widths of hydraulic fractures. <i>Journal of Petroleum Technology</i> 13(9), 937–949. DOI 10.2118/89-PA</li>
+<li>Nordgren, R.P. (1972). Propagation of a vertical hydraulic fracture. <i>SPE Journal</i> 12(4), 306–314. DOI 10.2118/3009-PA</li>
+<li>Geertsma, J., de Klerk, F. (1969). A rapid method of predicting width and extent of hydraulically induced fractures. <i>JPT</i> 21(12), 1571–1581. DOI 10.2118/2458-PA</li>
+<li>Valkó, P., Economides, M.J. (1995). <i>Hydraulic Fracture Mechanics</i>. Wiley.</li>
+<li>Economides, M.J., Nolte, K.G. (eds.) (2000). <i>Reservoir Stimulation</i>, 3rd ed. Wiley.</li>
+<li>Schiller, L., Naumann, A. (1933). Über die grundlegenden Berechnungen bei der Schwerkraftaufbereitung. <i>Z. Ver. Deutsch. Ing.</i> 77, 318–320.</li>
+<li>Richardson, J.F., Zaki, W.N. (1954). Sedimentation and fluidisation: Part I. <i>Trans. Inst. Chem. Eng.</i> 32, 35–53.</li>
+<li>Chhabra, R.P., Richardson, J.F. (2008). <i>Non-Newtonian Flow and Applied Rheology</i>, 2nd ed. Butterworth-Heinemann.</li>
+<li>Zuidema, H.H., Waters, G.W. (1941). Ring method for the determination of interfacial tension. <i>Ind. Eng. Chem. Anal. Ed.</i> 13, 312–313.</li>
+<li>Harkins, W.D., Jordan, H.F. (1930). A method for the determination of surface and interfacial tension from the maximum pull on a ring. <i>JACS</i> 52, 1751–1772.</li>
+<li>Vonnegut, B. (1942). Rotating bubble method for the determination of surface and interfacial tensions. <i>Rev. Sci. Instrum.</i> 13, 6–9. DOI 10.1063/1.1769937</li>
+<li>Rosen, M.J., Kunjappu, J.T. (2012). <i>Surfactants and Interfacial Phenomena</i>, 4th ed. Wiley.</li>
+</ul>
+<p class="pnote">ثوابت الحلول الأصلية (0.68 و 2.5 لـ Nordgren، و 0.48 و 1.32 لـ Geertsma-de Klerk) من Valkó &amp; Economides (1995) كما أذكرها. تحقق منها في الكتاب قبل اقتباسها، والاختبارات في <code>tests/core-test.js</code> تتحقق من الاتساق الحجمي فقط.</p>`;
+</script>
+<script>
+/* Frac-Fluid Lab — UI: inputs (stored in localStorage), results, charts, comparison with a reference paper. */
+(function () {
+'use strict';
+const FL = window.FL, $ = id => document.getElementById(id), KEY = 'fraclab-v1', WHO = ['mine', 'ref'];
+const COL = { mine: '#36c8ff', ref: '#ffb627' }, COL2 = { mine: '#7fe3ff', ref: '#ffd27a' };
+const clone = o => JSON.parse(JSON.stringify(o));
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const num = v => v === '' || v === null || v === undefined ? NaN : +v;
+const ok = v => typeof v === 'number' && isFinite(v);
+
+/* ---------------- state ---------------- */
+const rheoS = () => ({ src: 'data', unit: 'eta', text: '', K: '', Kunit: 'Pa', n: '', tau0: '' });
+const DEF = {
+  tab: 'rheo',
+  meta: { mine: 'عينتي', ref: 'البحث المرجعي', cite: '', notes: '' },
+  rheo: { mode: 'log', etaInfFit: false, etaInf: 0, show: 'eta', curves: 'best', mine: rheoS(), ref: rheoS() },
+  thermal: { thr: 50, refPt: 'hold', tol: 2, gd: 170, mine: { text: '' }, ref: { text: '' } },
+  ve: { kind: 'freq', xunit: 'rad', tol: 5, mine: { freq: '', amp: '' }, ref: { freq: '', amp: '' } },
+  prop: { model: 'best', rhof: 1.0, rhop: 2.65, mesh: '20/40', dmm: 0.63, X: 1, phiMode: 'ppa', ppa: 2, phi: 8, H: 30, tpump: 60, mine: { vmeas: '' }, ref: { vmeas: '' } },
+  brk: { crit: 5, mine: { text: '', res: '', conc: 3.6, arr: '' }, ref: { text: '', res: '', conc: 3.6, arr: '' } },
+  frac: { qu: 'bpm', q: 40, t: 60, h: 30, E: 20, nu: 0.25, mine: { clsrc: 'manual', CL: 0.001, Sp: 0, area: 22.6, fl: '' }, ref: { clsrc: 'manual', CL: 0.001, Sp: 0, area: 22.6, fl: '' } },
+  surf: { T: 25, nG: 1, g0: 72, cunit: 'mM', mw: 304.44, iftx: 'co-surfactant : surfactant', ring: { P: '', R: 9.549, r: 0.178, drho: 0.997 }, plate: { F: '', w: 19.9, t: 0.1, theta: 0 }, spin: { d: '', rpm: 6000, drho: 0.1, nref: 1.333, L: '' }, mine: { cmc: '', ift: '' }, ref: { cmc: '', ift: '' } },
+  cmp: { manual: {} },
+  proto: {},
+};
+function merge(d, o) {
+  if (!o || typeof o !== 'object') return d;
+  for (const k in d) if (k in o) {
+    const dv = d[k];
+    if (dv && typeof dv === 'object' && !Array.isArray(dv)) { if (Object.keys(dv).length) merge(dv, o[k]); else if (o[k] && typeof o[k] === 'object') Object.assign(dv, o[k]); }
+    else d[k] = o[k];
+  }
+  return d;
+}
+let S = (() => { try { return merge(clone(DEF), JSON.parse(localStorage.getItem(KEY))); } catch (e) { return clone(DEF); } })();
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* storage unavailable */ } };
+const get = (p, o = S) => p.split('.').reduce((a, k) => a == null ? a : a[k], o);
+function set(p, v) { const ks = p.split('.'); let a = S; for (let i = 0; i < ks.length - 1; i++) a = a[ks[i]]; a[ks[ks.length - 1]] = v; }
+function toast(t) { const e = document.createElement('div'); e.textContent = t; $('toast').appendChild(e); setTimeout(() => e.remove(), 4200); }
+const nm = w => esc(S.meta[w] || (w === 'mine' ? 'عينتي' : 'المرجع'));
+
+/* ---------------- formatting ---------------- */
+function fm(v, s) {
+  if (v === null || v === undefined || !ok(v)) return '—'; s = s || 4; const a = Math.abs(v);
+  if (a !== 0 && (a < 1e-3 || a >= 1e6)) return v.toExponential(s - 1);
+  return String(+v.toPrecision(s));
+}
+const pm = (v, ci) => ok(ci) ? `${fm(v)} ± ${fm(ci, 2)}` : fm(v);
+const tbl = (head, rows, cls) => `<div class="tw"><table class="res ${cls || ''}"><thead><tr>${head.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table></div>`;
+const tr = (cells, cls) => `<tr class="${cls || ''}">${cells.map((c, i) => `<td class="${i ? 'n' : ''}">${c}</td>`).join('')}</tr>`;
+const wn = (t, k) => `<div class="wn ${k || 'a'}">${t}</div>`;
+
+/* ---------------- input builders ---------------- */
+// field: [path, label, type, opts]; type n=number t=text s=select c=checkbox a=textarea
+function fld([p, l, t, o]) {
+  const v = get(p), rr = o && o.rr ? ' data-rr="1"' : '', cls = t === 'a' || (o && o.wide) ? ' class="wide"' : t === 'c' ? ' class="chk"' : '';
+  if (t === 's') return `<label${cls}><span>${l}</span><select data-k="${p}"${rr}>${o.opts.map(([a, b]) => `<option value="${a}"${String(v) === String(a) ? ' selected' : ''}>${b}</option>`).join('')}</select></label>`;
+  if (t === 'c') return `<label${cls}><input type="checkbox" data-k="${p}"${rr}${v ? ' checked' : ''}><span>${l}</span></label>`;
+  if (t === 'a') return `<label${cls}><span>${l}</span><textarea data-k="${p}" rows="${(o && o.rows) || 8}" spellcheck="false" placeholder="${esc(o && o.ph)}">${esc(v)}</textarea></label>`;
+  if (t === 't') return `<label${cls}><span>${l}</span><input type="text" data-k="${p}" value="${esc(v)}"${rr}></label>`;
+  return `<label${cls}><span>${l}</span><input type="number" step="any" data-k="${p}" value="${esc(v)}"${rr}></label>`;
+}
+const form = fs => `<div class="form">${fs.map(fld).join('')}</div>`;
+const card = (title, body, extra) => `<div class="card"><h2>${title}${extra ? ` <small>${extra}</small>` : ''}</h2><div class="body">${body}</div></div>`;
+const wcard = (w, title, body, extra) => card(`<span class="dot" style="background:${COL[w]}"></span>${nm(w)} — ${title}`, body, extra);
+const cv = (id, h) => `<canvas id="${id}" style="height:${h || 320}px"></canvas>`;
+const proto = k => `<details class="proto" data-proto="${k}"${S.proto[k] ? ' open' : ''}><summary>خطوات إجراء التجربة وطريقة الحساب (Protocol)</summary><div>${window.PROTO[k]}</div></details>`;
+
+/* ---------------- tab layouts ---------------- */
+const TAB = {};
+TAB.rheo = () => {
+  const smp = w => {
+    const p = `rheo.${w}`, src = get(p + '.src');
+    const f = [[p + '.src', 'مصدر البيانات', 's', { rr: 1, opts: [['data', 'قراءات rheometer'], ['params', 'Parameters (K′، n′) من بحث']] }]];
+    if (src === 'params') f.push([p + '.K', 'K′', 'n'], [p + '.Kunit', 'وحدة K′', 's', { opts: [['Pa', 'Pa·sⁿ'], ['mPa', 'mPa·sⁿ'], ['lbf', 'lbf·sⁿ/ft²']] }], [p + '.n', 'n′', 'n'], [p + '.tau0', 'τ₀ (Pa)، اختياري', 'n']);
+    else f.push([p + '.unit', 'الأعمدة', 's', { rr: 1, opts: [['eta', 'γ̇ (1/s) ، η (mPa·s)'], ['tau', 'γ̇ (1/s) ، τ (Pa)'], ['fann', 'Fann 35: rpm ، قراءة القرص']] }],
+      [p + '.text', 'الصق البيانات (عمودان)', 'a', { ph: '0.1\t850\n1\t620\n10\t180\n...' }]);
+    return wcard(w, 'منحنى التدفق', form(f));
+  };
+  return `${proto('rheo')}<div class="grid"><div class="col">
+  ${card('إعدادات المطابقة', form([['rheo.mode', 'فضاء المطابقة', 's', { opts: [['log', 'log (خطأ نسبي)'], ['lin', 'linear على τ']] }],
+    ['rheo.etaInfFit', 'طابِق η∞ في Carreau (وإلا تُثبَّت)', 'c', { rr: 1 }], ...(S.rheo.etaInfFit ? [] : [['rheo.etaInf', 'η∞ المثبّتة (mPa·s)', 'n']]),
+    ['rheo.show', 'المحور الرأسي', 's', { opts: [['eta', 'η (mPa·s)'], ['tau', 'τ (Pa)']] }],
+    ['rheo.curves', 'المنحنيات المرسومة', 's', { opts: [['best', 'أفضل نموذج (AICc)'], ['PL', 'Power-law'], ['HB', 'Herschel-Bulkley'], ['CA', 'Carreau'], ['all', 'الكل']] }]]))}
+  ${smp('mine')}${smp('ref')}</div>
+  <div class="col">${card('منحنى التدفق والنماذج', cv('cRheo', 360))}<div id="oRheo"></div></div></div>`;
+};
+TAB.thermal = () => `${proto('thermal')}<div class="grid"><div class="col">
+  ${card('إعدادات', form([['thermal.gd', 'معدل القص المستخدم (1/s)', 'n'], ['thermal.thr', 'عتبة اللزوجة (mPa·s)', 'n'],
+    ['thermal.refPt', 'مرجع نسبة الاحتفاظ', 's', { opts: [['hold', 'بداية الـ hold'], ['initial', 'أول قراءة']] }], ['thermal.tol', 'بداية الـ hold عند T ≥ Tmax − (°C)', 'n']]))}
+  ${WHO.map(w => wcard(w, 'الزمن والحرارة واللزوجة', form([[`thermal.${w}.text`, 'ثلاثة أعمدة: t (min) ، T (°C) ، η (mPa·s)', 'a', { ph: '0\t25\t160\n5\t41\t140\n...' }]]))).join('')}</div>
+  <div class="col">${card('اللزوجة والحرارة مع الزمن', cv('cTh', 360))}<div id="oTh"></div></div></div>`;
+TAB.ve = () => {
+  const k = S.ve.kind, fk = k === 'freq' ? 'freq' : 'amp';
+  return `${proto('ve')}<div class="grid"><div class="col">
+  ${card('نوع الاختبار', form([['ve.kind', 'الاختبار', 's', { rr: 1, opts: [['freq', 'Frequency sweep'], ['amp', 'Amplitude sweep']] }],
+    ...(k === 'freq' ? [['ve.xunit', 'وحدة التردد', 's', { opts: [['rad', 'ω (rad/s)'], ['Hz', 'f (Hz)']] }]] : [['ve.tol', 'تسامح الـ LVE (% انخفاض G′)', 'n']])]))}
+  ${WHO.map(w => wcard(w, k === 'freq' ? 'Frequency sweep' : 'Amplitude sweep', form([[`ve.${w}.${fk}`, k === 'freq' ? 'ثلاثة أعمدة: ω ، G′ (Pa) ، G″ (Pa)' : 'ثلاثة أعمدة: γ (%) أو τ (Pa) ، G′ ، G″', 'a', { ph: '0.1\t0.9\t1.5\n1\t4.1\t3.2\n...' }]]))).join('')}</div>
+  <div class="col">${card('G′ و G″', `<div class="charts">${cv('cVe', 320)}${cv('cTd', 320)}</div>`)}<div id="oVe"></div></div></div>`;
+};
+TAB.prop = () => `${proto('prop')}<div class="grid"><div class="col">
+  ${card('الـ proppant والمائع', form([['prop.model', 'نموذج ريولوجيا المائع', 's', { opts: [['best', 'أفضل نموذج (AICc)'], ['PL', 'Power-law'], ['CA', 'Carreau'], ['HB', 'Herschel-Bulkley']] }],
+    ['prop.rhof', 'كثافة المائع (g/cm³)', 'n'], ['prop.rhop', 'كثافة الـ proppant (g/cm³)', 'n'],
+    ['prop.mesh', 'المقاس', 's', { rr: 1, opts: Object.keys(FL.MESH).map(m => [m, m + ' (≈' + FL.MESH[m] + ' mm)']).concat([['custom', 'قطر مخصص']]) }],
+    ...(S.prop.mesh === 'custom' ? [['prop.dmm', 'القطر (mm)', 'n']] : []), ['prop.X', 'معامل الـ drag X(n)', 'n'],
+    ['prop.phiMode', 'التركيز', 's', { rr: 1, opts: [['ppa', 'ppa (lb/gal)'], ['phi', 'نسبة حجمية %']] }], S.prop.phiMode === 'phi' ? ['prop.phi', 'φ (%)', 'n'] : ['prop.ppa', 'ppa', 'n'],
+    ['prop.H', 'مسافة السقوط المرجعية (m)', 'n'], ['prop.tpump', 'زمن الضخ / الإغلاق (min)', 'n']]))}
+  ${WHO.map(w => wcard(w, 'قياس (اختياري)', form([[`prop.${w}.vmeas`, 'سرعة الترسيب المقاسة (mm/s)', 'n']]), 'الريولوجيا تؤخذ من تبويب الريولوجيا')).join('')}</div>
+  <div class="col">${card('سرعة الترسيب مقابل قطر الحبيبة', cv('cProp', 320))}<div id="oProp"></div></div></div>`;
+TAB.brk = () => `${proto('brk')}<div class="grid"><div class="col">
+  ${card('إعدادات', form([['brk.crit', 'معيار الكسر: η ≤ (mPa·s)', 'n']]))}
+  ${WHO.map(w => wcard(w, 'الكسر والبقايا', form([[`brk.${w}.text`, 'حركية الكسر: t (min) ، η (mPa·s)', 'a', { rows: 7, ph: '0\t180\n10\t95\n...' }],
+    [`brk.${w}.conc`, 'تركيز البوليمر في الجل (g/L)', 'n'],
+    [`brk.${w}.res`, 'الـ residue (مكرّرات): V (mL) ، m فارغ (g) ، m مع البقايا (g)', 'a', { rows: 3, ph: '50\t25.1234\t25.1301' }],
+    [`brk.${w}.arr`, 'اختياري: T (°C) ، k (1/min) لحساب Ea', 'a', { rows: 3, ph: '60\t0.02\n80\t0.06' }]]))).join('')}</div>
+  <div class="col">${card('انخفاض اللزوجة مع الزمن', cv('cBrk', 340))}<div id="oBrk"></div></div></div>`;
+TAB.frac = () => `${proto('frac')}<div class="grid"><div class="col">
+  ${card('بيانات العملية (مشتركة للسائلين)', form([['frac.q', 'معدل الضخ الكلي', 'n'], ['frac.qu', 'الوحدة', 's', { opts: [['bpm', 'bbl/min'], ['m3min', 'm³/min']] }],
+    ['frac.t', 'زمن الضخ (min)', 'n'], ['frac.h', 'ارتفاع الكسر h (m)', 'n'], ['frac.E', 'E (GPa)', 'n'], ['frac.nu', 'ν', 'n']]))}
+  ${WHO.map(w => { const p = `frac.${w}`, src = get(p + '.clsrc');
+    return wcard(w, 'التسرّب (leak-off)', form([[p + '.clsrc', 'مصدر C<sub>L</sub>', 's', { rr: 1, opts: [['manual', 'إدخال يدوي'], ['test', 'من اختبار fluid loss']] }],
+      ...(src === 'test' ? [[p + '.area', 'مساحة الترشيح (cm²)', 'n'], [p + '.fl', 't (min) ، V تراكمي (mL)', 'a', { rows: 6, ph: '1\t1.5\n4\t2.6\n9\t3.7\n16\t4.8\n25\t5.9\n36\t7.0' }]]
+        : [[p + '.CL', 'C<sub>L</sub> (m/√min)', 'n'], [p + '.Sp', 'S<sub>p</sub> spurt (L/m²)', 'n']])]), 'الريولوجيا: K و n من مطابقة Power-law'); }).join('')}</div>
+  <div class="col"><div id="oFrac"></div>${card('تطور الكسر مع الزمن', `<div class="charts">${cv('cFl', 300)}${cv('cFw', 300)}</div>`)}<div id="oFl"></div></div></div>`;
+TAB.surf = () => `${proto('surf')}<div class="grid"><div class="col">
+  ${card('حاسبة القياس', `<div id="calc">${form([['surf.ring.P', 'Ring: القراءة الظاهرية P (mN/m)', 'n'], ['surf.ring.R', 'نصف قطر الحلقة R (mm)', 'n'], ['surf.ring.r', 'نصف قطر السلك r (mm)', 'n'], ['surf.ring.drho', 'Δρ (g/cm³)', 'n']])}<div id="oRing" class="note"></div><hr>
+    ${form([['surf.plate.F', 'Plate: القوة F (mN)', 'n'], ['surf.plate.w', 'عرض الصفيحة (mm)', 'n'], ['surf.plate.t', 'سماكتها (mm)', 'n'], ['surf.plate.theta', 'θ (°)', 'n']])}<div id="oPlate" class="note"></div><hr>
+    ${form([['surf.spin.d', 'Spinning drop: القطر الظاهري (mm)', 'n'], ['surf.spin.L', 'طول القطرة (mm)', 'n'], ['surf.spin.rpm', 'rpm', 'n'], ['surf.spin.drho', 'Δρ (g/cm³)', 'n'], ['surf.spin.nref', 'معامل انكسار الطور الثقيل', 'n']])}<div id="oSpin" class="note"></div></div>`)}
+  ${card('إعدادات الـ CMC', form([['surf.cunit', 'وحدة التركيز', 's', { opts: [['mM', 'mM'], ['M', 'mol/L'], ['gL', 'g/L'], ['wt', 'wt%']] }], ['surf.mw', 'الكتلة المولية (g/mol)', 'n'],
+    ['surf.T', 'T (°C)', 'n'], ['surf.nG', 'n في Gibbs', 's', { opts: [['1', '1 (غير أيوني / ملح زائد)'], ['2', '2 (أيوني 1:1 بلا ملح)']] }], ['surf.g0', 'γ المذيب (mN/m)', 'n'], ['surf.iftx', 'متغير جدول الـ IFT', 't']]))}
+  ${WHO.map(w => wcard(w, 'Surface / IFT', form([[`surf.${w}.cmc`, 'C ، γ (mN/m)', 'a', { rows: 7, ph: '0.05\t58\n0.1\t52\n...' }], [`surf.${w}.ift`, 'المتغير ، IFT (mN/m)', 'a', { rows: 5, ph: '1\t0.05\n2\t0.004' }]]))).join('')}</div>
+  <div class="col">${card('γ مقابل التركيز و IFT', `<div class="charts">${cv('cCmc', 320)}${cv('cIft', 320)}</div>`)}<div id="oSurf"></div></div></div>`;
+TAB.cmp = () => `<div class="grid"><div class="col">
+  ${card('العيّنتان والمصدر', form([['meta.mine', 'اسم عيّنتي', 't'], ['meta.ref', 'اسم المرجع', 't'], ['meta.cite', 'البحث (المؤلفون، السنة، المجلة، DOI)', 't', { wide: 1 }], ['meta.notes', 'ملاحظات (اختلاف الظروف: الحرارة، التركيز، الجهاز...)', 'a', { rows: 4 }]]))}
+  ${card('طريقة الاستخدام', `<div class="note"><ol>
+    <li>أدخل بيانات البحث في بطاقات "${nm('ref')}" في كل تبويب، كما تُدخل بيانات عيّنتك.</li>
+    <li>إذا أعطى البحث أرقاماً نهائية فقط، مثل retention % أو CMC، فاكتبها في عمود "قيمة البحث (يدوي)". القيمة اليدوية تُقدَّم على المحسوبة.</li>
+    <li>لا تكون المقارنة عادلة إلا عند الظروف نفسها: معدل القص، والحرارة، والتركيز، والـ geometry. سجّل أي اختلاف في الملاحظات.</li></ol></div>`)}</div>
+  <div class="col">${card('جدول المقارنة', `<div id="oCmp"></div><div class="toolbar" style="margin-top:8px"><button class="btn sm" id="csvBtn">تصدير CSV</button></div>`)}</div></div>`;
+TAB.ref = () => card('المعادلات والمراجع', `<div class="note" style="font-size:13.5px;color:var(--text)">${window.METHODS}</div>`);
+
+/* ---------------- computation ---------------- */
+const rows = (t, n) => FL.parseTable(t, n);
+function rheoOf(w) {
+  const s = S.rheo[w];
+  if (s.src === 'params') { const m = FL.rheoFromParams({ K: num(s.K), Kunit: s.Kunit, n: num(s.n), tau0: num(s.tau0) || 0 }); return m ? { manual: m } : null; }
+  const r = rows(s.text, 2); if (r.length < 3) return null;
+  return FL.rheology(r, s.unit, { mode: S.rheo.mode, etaInfFit: S.rheo.etaInfFit, etaInf: (num(S.rheo.etaInf) || 0) / 1000 });
+}
+function fluidOf(R, w, pref) { // {model, p, eta}
+  const r = R.rheo[w]; if (!r) return null; if (r.manual) return r.manual;
+  if (!r.fits) return null; const k = pref === 'best' || !r.fits[pref] ? r.best : pref; return r.fits[k] || null;
+}
+function plOf(R, w) { const r = R.rheo[w]; if (!r) return null; if (r.manual) return { K: r.manual.p.K, n: r.manual.p.n, manual: true }; const f = r.fits && r.fits.PL; return f ? { K: f.K, n: f.n } : null; }
+function fracInputs(R, w) {
+  const f = S.frac, s = f[w], pl = plOf(R, w); if (!pl) return null;
+  const qt = num(f.q) * (f.qu === 'bpm' ? 0.158987294928 : 1) / 60;
+  let CL = num(s.CL) / Math.sqrt(60), Sp = (num(s.Sp) || 0) / 1000, flr = null;
+  if (s.clsrc === 'test') { flr = FL.fluidLoss(rows(s.fl, 2), num(s.area)); if (!flr) return { err: 'fl', pl }; CL = flr.CwSI / Math.sqrt(60); Sp = flr.SpSI; }
+  const o = { qt, t: num(f.t) * 60, h: num(f.h), E: num(f.E) * 1e9, nu: num(f.nu), CL: CL || 0, Sp: Sp || 0, K: pl.K, n: pl.n };
+  if (![o.qt, o.t, o.h, o.E, o.nu].every(v => v > 0) || o.nu >= 0.5) return { err: 'job', pl, flr };
+  return { o, pl, flr };
+}
+function compute() {
+  const R = { rheo: {}, thermal: {}, ve: {}, prop: {}, brk: {}, frac: {}, surf: {} };
+  for (const w of WHO) {
+    R.rheo[w] = rheoOf(w);
+    const th = rows(S.thermal[w].text, 3); R.thermal[w] = th.length >= 3 ? FL.thermal(th, { thr: num(S.thermal.thr), ref: S.thermal.refPt, tol: num(S.thermal.tol) || 2 }) : null;
+    const vf = rows(S.ve[w].freq, 3), va = rows(S.ve[w].amp, 3);
+    R.ve[w] = { freq: vf.length >= 3 ? FL.viscoelastic(vf, { kind: 'freq', xunit: S.ve.xunit }) : null, amp: va.length >= 3 ? FL.viscoelastic(va, { kind: 'amp', tol: num(S.ve.tol) || 5 }) : null };
+    const fl = fluidOf(R, w, S.prop.model), P = S.prop;
+    R.prop[w] = fl ? FL.proppant(fl, { rhof: num(P.rhof), rhop: num(P.rhop), dmm: P.mesh === 'custom' ? num(P.dmm) : FL.MESH[P.mesh], X: num(P.X) || 1, phiMode: P.phiMode, ppa: num(P.ppa) || 0, phi: num(P.phi) || 0, H: num(P.H), tpump: num(P.tpump), vmeas: num(P[w].vmeas) }) : null;
+    if (R.prop[w]) { R.prop[w].fluid = fl; }
+    const b = S.brk[w], br = rows(b.text, 2);
+    R.brk[w] = { b: br.length >= 3 ? FL.breaker(br, { crit: num(S.brk.crit) }) : null, res: rows(b.res, 3).length ? FL.residue(rows(b.res, 3), num(b.conc)) : null, arr: FL.arrhenius(rows(b.arr, 2)) };
+    const fi = fracInputs(R, w);
+    R.frac[w] = fi && fi.o ? { ...fi, PKN: FL.fracture({ ...fi.o, model: 'PKN' }), KGD: FL.fracture({ ...fi.o, model: 'KGD' }), sPKN: FL.fractureSeries({ ...fi.o, model: 'PKN' }), sKGD: FL.fractureSeries({ ...fi.o, model: 'KGD' }) } : fi;
+    const su = S.surf, molar = su.cunit === 'mM' ? 1e-3 : su.cunit === 'M' ? 1 : su.cunit === 'gL' ? 1 / num(su.mw) : 10 / num(su.mw);
+    const cr = rows(su[w].cmc, 2), ir = rows(su[w].ift, 2);
+    R.surf[w] = { cmc: cr.length >= 5 ? FL.cmc(cr, { T: num(su.T), nG: +su.nG, g0: num(su.g0) || 72, molar: ok(molar) ? molar : null }) : null, ift: ir.length ? FL.iftScan(ir) : null };
+  }
+  return R;
+}
+
+/* ---------------- chart ---------------- */
+function plot(id, o) {
+  const cvs = $(id); if (!cvs) return; const dpr = window.devicePixelRatio || 1, W = cvs.clientWidth || 500, H = cvs.clientHeight || 320;
+  cvs.width = W * dpr; cvs.height = H * dpr; const c = cvs.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0); c.direction = 'ltr';
+  c.font = '11px system-ui,sans-serif'; c.clearRect(0, 0, W, H);
+  const ser = o.series.filter(s => s.x && s.x.length), L = 58, Rm = o.y2 ? 54 : 12, T = 12, B = 38;
+  const vals = (k, ax) => ser.filter(s => !!s.y2 === ax).flatMap(s => s[k].filter((v, i) => ok(v) && ok(s.x[i]) && ok(s.y[i]) && (!o.xlog || s.x[i] > 0) && (!(ax ? o.y2log : o.ylog) || s.y[i] > 0)));
+  const xs = vals('x', false).concat(vals('x', true)), ys = vals('y', false), y2s = vals('y', true);
+  if (!xs.length || !ys.length) { c.fillStyle = '#8fa9c6'; c.textAlign = 'center'; c.fillText(o.empty || 'لا توجد بيانات بعد', W / 2, H / 2); return; }
+  const ax = (lo, hi, log, p0, p1) => {
+    if (log) { lo = Math.log10(lo); hi = Math.log10(hi); if (hi - lo < 0.3) { lo -= 0.3; hi += 0.3; } lo = Math.floor(lo * 4) / 4; hi = Math.ceil(hi * 4) / 4; }
+    else { if (o.zero !== false && lo > 0 && lo < hi * 0.6) lo = 0; if (hi === lo) { hi += Math.abs(hi) * 0.1 || 1; lo -= Math.abs(lo) * 0.1 || 1; } const pad = (hi - lo) * 0.05; hi += pad; if (lo !== 0) lo -= pad; }
+    const f = v => p0 + ((log ? Math.log10(v) : v) - lo) / (hi - lo) * (p1 - p0), ticks = [];
+    if (log) { for (let e = Math.floor(lo); e <= Math.ceil(hi); e++) for (const m of hi - lo < 1.6 ? [1, 2, 5] : [1]) { const v = m * 10 ** e, l = Math.log10(v); if (l >= lo - 1e-9 && l <= hi + 1e-9) ticks.push(v); } }
+    else { const raw = (hi - lo) / 5, mg = 10 ** Math.floor(Math.log10(raw)), st = [1, 2, 2.5, 5, 10].map(k => k * mg).find(k => k >= raw); for (let v = Math.ceil(lo / st) * st; v <= hi + 1e-9 * st; v += st) ticks.push(+v.toPrecision(10)); }
+    return { f, ticks };
+  };
+  const X = ax(Math.min(...xs), Math.max(...xs), o.xlog, L, W - Rm), Y = ax(Math.min(...ys), Math.max(...ys), o.ylog, H - B, T);
+  const Y2 = y2s.length ? ax(Math.min(...y2s), Math.max(...y2s), o.y2log, H - B, T) : null;
+  const tl = v => { const a = Math.abs(v); return a !== 0 && (a < 1e-2 || a >= 1e5) ? v.toExponential(0) : String(+v.toPrecision(3)); };
+  c.strokeStyle = '#163a5e'; c.lineWidth = 1; c.fillStyle = '#8fa9c6';
+  c.beginPath(); X.ticks.forEach(v => { const x = X.f(v); c.moveTo(x, T); c.lineTo(x, H - B); }); Y.ticks.forEach(v => { const y = Y.f(v); c.moveTo(L, y); c.lineTo(W - Rm, y); }); c.stroke();
+  c.strokeStyle = '#2b5f90'; c.strokeRect(L, T, W - Rm - L, H - B - T);
+  c.textAlign = 'center'; X.ticks.forEach(v => c.fillText(tl(v), X.f(v), H - B + 14));
+  c.textAlign = 'right'; Y.ticks.forEach(v => c.fillText(tl(v), L - 4, Y.f(v) + 4));
+  if (Y2) { c.textAlign = 'left'; Y2.ticks.forEach(v => c.fillText(tl(v), W - Rm + 4, Y2.f(v) + 4)); }
+  c.textAlign = 'center'; c.fillStyle = '#bcd3ea'; c.fillText(o.xl || '', L + (W - Rm - L) / 2, H - 6);
+  c.save(); c.translate(13, T + (H - B - T) / 2); c.rotate(-Math.PI / 2); c.fillText(o.yl || '', 0, 0); c.restore();
+  if (Y2) { c.save(); c.translate(W - 8, T + (H - B - T) / 2); c.rotate(Math.PI / 2); c.fillText(o.y2l || '', 0, 0); c.restore(); }
+  c.save(); c.beginPath(); c.rect(L, T, W - Rm - L, H - B - T); c.clip();
+  for (const s of ser) {
+    const Yf = s.y2 ? Y2 : Y; if (!Yf) continue; const yl = s.y2 ? o.y2log : o.ylog;
+    const P = s.x.map((x, i) => [x, s.y[i]]).filter(([x, y]) => ok(x) && ok(y) && (!o.xlog || x > 0) && (!yl || y > 0)).map(([x, y]) => [X.f(x), Yf.f(y)]);
+    c.strokeStyle = c.fillStyle = s.c; c.lineWidth = s.lw || 1.8; c.setLineDash(s.dash ? [6, 4] : s.dot ? [2, 3] : []);
+    if (s.mode !== 'p') { c.beginPath(); P.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.stroke(); }
+    c.setLineDash([]);
+    if (s.mode !== 'l') for (const [x, y] of P) { c.beginPath(); if (s.sq) c.rect(x - 3.5, y - 3.5, 7, 7); else c.arc(x, y, 3.6, 0, 7); if (s.open) { c.lineWidth = 1.5; c.stroke(); } else c.fill(); }
+  }
+  c.restore();
+  let ly = T + 14; c.textAlign = 'left';
+  const leg = ser.filter(s => s.label);
+  if (leg.length) { const lw = Math.max(...leg.map(s => c.measureText(s.label).width)) + 34; c.fillStyle = 'rgba(4,11,21,0.82)'; c.fillRect(L + 3, T + 3, lw, leg.length * 15 + 6); }
+  for (const s of leg) {
+    const lx = L + 8; c.strokeStyle = c.fillStyle = s.c; c.lineWidth = 2; c.setLineDash(s.dash ? [6, 4] : s.dot ? [2, 3] : []);
+    if (s.mode !== 'p') { c.beginPath(); c.moveTo(lx, ly - 4); c.lineTo(lx + 18, ly - 4); c.stroke(); }
+    c.setLineDash([]); if (s.mode !== 'l') { c.beginPath(); c.arc(lx + 9, ly - 4, 3.4, 0, 7); s.open ? c.stroke() : c.fill(); }
+    c.fillStyle = '#dcecff'; c.fillText(s.label, lx + 24, ly); ly += 15;
+  }
+}
+const logspace = (a, b, n) => Array.from({ length: n }, (_, i) => a * Math.pow(b / a, i / (n - 1)));
+
+/* ---------------- rendering per tab ---------------- */
+const MN = { PL: 'Power-law', HB: 'Herschel-Bulkley', CA: 'Carreau' };
+const PU = { K: 'Pa·sⁿ', n: '', tau0: 'Pa', eta0: 'Pa·s', lambda: 's', etaInf: 'Pa·s' };
+const PNAME = { K: 'K', n: 'n', tau0: 'τ₀', eta0: 'η₀', lambda: 'λ', etaInf: 'η∞' };
+const OUT = {};
+OUT.rheo = R => {
+  let h = '';
+  for (const w of WHO) {
+    const r = R.rheo[w]; if (!r) { h += wcard(w, 'نتائج المطابقة', '<p class="note">لا توجد بيانات كافية (3 نقاط على الأقل).</p>'); continue; }
+    if (r.manual) { const m = r.manual; h += wcard(w, 'Parameters مُدخلة', tbl(['', 'القيمة'], [tr(['النموذج', MN[m.model]]), ...Object.entries(m.p).map(([k, v]) => tr([PNAME[k] + (PU[k] ? ` (${PU[k]})` : ''), fm(v)])), ...FL.REF_RATES.map((g, i) => tr([`η @ ${g} s⁻¹ (mPa·s)`, fm(m.etaAt[i] * 1000)]))])); continue; }
+    const rowsH = [], warns = [];
+    for (const k of ['PL', 'HB', 'CA']) {
+      const f = r.fits[k]; if (!f) { rowsH.push(tr([MN[k], 'نقاط غير كافية', '', '', '', '', ''])); continue; }
+      const pars = f.names.map((n, i) => `${PNAME[n]} = ${f.fixed && f.fixed[n] ? fm(f.p[n]) + ' (مثبّت)' : pm(f.p[n], f.ci[i])}${PU[n] ? ' ' + PU[n] : ''}`).join('<br>');
+      rowsH.push(tr([MN[k] + (r.best === k ? ' ★' : ''), pars, fm(f.r2, 5), fm(f.r2lin, 5), fm(f.mape, 3), fm(f.aicc, 4), f.etaAt.map(v => fm(v * 1000, 4)).join(' / ')], r.best === k ? 'best' : ''));
+      f.names.forEach((n, i) => { if (f.atBound[i]) warns.push(`${MN[k]}: ${PNAME[n]} عند حدّه الأدنى (0)، لذا لا يُحسب له CI. النموذج الأبسط يكفي.`); else if (ok(f.ci[i]) && f.ci[i] > Math.abs(f.p[n]) && !(f.fixed && f.fixed[n])) warns.push(`${MN[k]}: الـ CI لـ ${PNAME[n]} أوسع من قيمته، فهو غير محدد جيداً من هذه البيانات${n === 'lambda' || n === 'eta0' ? '. الهضبة عند القص المنخفض لا تظهر بوضوح' : ''}.`); });
+    }
+    const em = r.etaMeas.map(v => fm(v === null ? null : v * 1000, 4)).join(' / ');
+    h += wcard(w, 'نتائج المطابقة', tbl(['النموذج', 'المعاملات ± 95 % CI', `R² (${r.mode})`, 'R² (τ)', 'MAPE %', 'AICc', 'η @ 40/100/170/511 s⁻¹ (mPa·s)'], rowsH) +
+      `<p class="note">N = ${r.d.gd.length} نقطة، γ̇ من ${fm(r.d.gd[0], 3)} إلى ${fm(r.d.gd[r.d.gd.length - 1], 3)} s⁻¹. اللزوجة المقاسة (استيفاء) عند 40/100/170/511: <span class="ltr">${em}</span> mPa·s. ★ = أقل AICc.</p>` + warns.map(t => wn(t)).join(''));
+  }
+  $('oRheo').innerHTML = h;
+  const ser = [], show = S.rheo.show;
+  for (const w of WHO) {
+    const r = R.rheo[w]; if (!r) continue;
+    const curve = (eta, lab, k) => { const g = logspace(r.manual ? 0.1 : Math.min(...r.d.gd), r.manual ? 1000 : Math.max(...r.d.gd), 80); ser.push({ x: g, y: g.map(v => show === 'tau' ? eta(v) * v : eta(v) * 1000), c: k ? ['#2bd66f', '#ff6fae', '#b689ff'][k - 1] : COL[w], mode: 'l', dash: w === 'ref', label: lab }); };
+    if (r.manual) { curve(r.manual.eta, `${nm(w)}: ${MN[r.manual.model]} (Parameters)`); continue; }
+    ser.push({ x: r.d.gd, y: show === 'tau' ? r.d.tau : r.d.eta.map(v => v * 1000), c: COL[w], mode: 'p', open: w === 'ref', label: nm(w) });
+    const ks = S.rheo.curves === 'all' ? ['PL', 'HB', 'CA'] : [S.rheo.curves === 'best' ? r.best : S.rheo.curves];
+    ks.forEach(k => { const f = r.fits[k]; if (f) curve(f.eta, `${nm(w)}: ${MN[k]}`, S.rheo.curves === 'all' ? ['PL', 'HB', 'CA'].indexOf(k) + 1 : 0); });
+  }
+  plot('cRheo', { xlog: true, ylog: true, xl: 'γ̇ (1/s)', yl: show === 'tau' ? 'τ (Pa)' : 'η (mPa·s)', series: ser });
+};
+OUT.thermal = R => {
+  const rr = [], ser = [];
+  const lines = [['η الابتدائية (mPa·s)', r => fm(r.eta0)], ['أقصى حرارة (°C)', r => fm(r.Tmax)], ['بداية الـ hold (min)', r => fm(r.tHold)], ['η عند بداية الـ hold (mPa·s)', r => fm(r.etaHold)],
+    ['احتفاظ بعد التسخين (η_hold/η₀ %)', r => fm(r.retentionHeat)], ['η في النهاية (mPa·s)', r => fm(r.etaEnd) + ` @ ${fm(r.tEnd)} min`], [`<b>نسبة الاحتفاظ % (مرجع: ${S.thermal.refPt === 'hold' ? 'بداية hold' : 'أول قراءة'})</b>`, r => `<b>${fm(r.retention)}</b>`],
+    [`زمن الهبوط تحت ${fm(num(S.thermal.thr))} mPa·s (min)`, r => r.tThr === null ? `> ${fm(r.tEnd)} (لم تهبط)` : fm(r.tThr)], ['متوسط η خلال الـ hold', r => fm(r.etaMeanHold)],
+    ['k خلال الـ hold (1/min) ± CI', r => r.hold ? pm(r.hold.k, r.hold.ciK) : '—'], ['t½ = ln2/k (min)', r => r.hold && r.hold.half ? fm(r.hold.half) : '—'], ['R² (ln η مقابل t)', r => r.hold ? fm(r.hold.r2, 4) : '—'],
+    ['E<sub>a</sub> للتدفق أثناء التسخين (kJ/mol) ± CI', r => r.arr ? pm(r.arr.Ea, r.arr.ciEa) : '—'], ['R² (Arrhenius)', r => r.arr ? fm(r.arr.r2, 4) : '—']];
+  for (const [l, f] of lines) rr.push(tr([l, ...WHO.map(w => R.thermal[w] ? f(R.thermal[w]) : '—')]));
+  for (const w of WHO) { const r = R.thermal[w]; if (!r) continue;
+    ser.push({ x: r.t, y: r.eta, c: COL[w], mode: 'pl', open: w === 'ref', label: `${nm(w)}: η` }, { x: r.t, y: r.T, c: COL2[w], mode: 'l', dot: true, y2: true, label: `${nm(w)}: T` });
+    if (r.hold) { const tt = r.t.slice(r.ih); ser.push({ x: tt, y: tt.map(r.hold.fn), c: '#2bd66f', mode: 'l', dash: true, lw: 1.2 }); } }
+  if (num(S.thermal.thr) > 0 && ser.length) { const all = ser.flatMap(s => s.x); ser.push({ x: [Math.min(...all), Math.max(...all)], y: [num(S.thermal.thr), num(S.thermal.thr)], c: '#ff4545', mode: 'l', dot: true, lw: 1, label: 'العتبة' }); }
+  $('oTh').innerHTML = card(`النتائج عند ${fm(num(S.thermal.gd))} s⁻¹`, tbl(['', `<span class="mine">${nm('mine')}</span>`, `<span class="refc">${nm('ref')}</span>`], rr) +
+    `<p class="note">الخط الأخضر المتقطع = مطابقة first-order خلال الـ hold. E<sub>a</sub> تُحسب فقط إذا ارتفعت الحرارة 10 °C على الأقل قبل الـ hold.</p>`);
+  plot('cTh', { xl: 't (min)', yl: 'η (mPa·s)', y2: true, y2l: 'T (°C)', series: ser });
+};
+OUT.ve = R => {
+  const k = S.ve.kind, ser = [], ser2 = [], rr = [];
+  if (k === 'freq') {
+    const lines = [['السلوك', r => r.char === 'solid' ? 'G′ > G″ في كل المدى (gel-like)' : r.char === 'liquid' ? 'G″ > G′ في كل المدى (liquid-like)' : 'يوجد تقاطع'],
+      ['ω<sub>c</sub> التقاطع (rad/s)', r => r.wc ? fm(r.wc) : '—'], ['G عند التقاطع (Pa)', r => r.Gc ? fm(r.Gc) : '—'], ['λ = 1/ω<sub>c</sub> (s)', r => r.lambdaC ? fm(r.lambdaC) : r.char === 'solid' ? `> ${fm(1 / r.x[0])}` : r.char === 'liquid' ? `< ${fm(1 / r.x[r.x.length - 1])}` : '—'],
+      ...[0.1, 1, 10].flatMap((wv, i) => [[`G′ / G″ @ ${wv} rad/s (Pa)`, r => `${fm(r.at[i].G1)} / ${fm(r.at[i].G2)}`], [`tan δ @ ${wv} rad/s`, r => fm(r.at[i].tand)]]), ['|η*| @ 1 rad/s (Pa·s)', r => fm(r.at[1].etaStar)],
+      ['ميل G′ ، G″ عند ω منخفض', r => `${fm(r.slopeG1, 3)} ، ${fm(r.slopeG2, 3)}`], ['Maxwell: G (Pa) ± CI', r => r.maxwell ? pm(r.maxwell.G, r.maxwell.ci[0]) : '—'], ['Maxwell: λ (s) ± CI', r => r.maxwell ? pm(r.maxwell.lambda, r.maxwell.ci[1]) : '—'], ['Maxwell: R² (log) ، MAPE %', r => r.maxwell ? `${fm(r.maxwell.r2, 4)} ، ${fm(r.maxwell.mape, 3)}` : '—']];
+    for (const [l, f] of lines) rr.push(tr([l, ...WHO.map(w => R.ve[w].freq ? f(R.ve[w].freq) : '—')]));
+    for (const w of WHO) { const r = R.ve[w].freq; if (!r) continue;
+      ser.push({ x: r.x, y: r.G1, c: COL[w], mode: 'pl', label: `${nm(w)}: G′` }, { x: r.x, y: r.G2, c: COL[w], mode: 'pl', open: true, dash: true, label: `${nm(w)}: G″` });
+      if (r.maxwell) { const ww = logspace(r.x[0], r.x[r.x.length - 1], 60); ser.push({ x: ww, y: ww.map(v => r.maxwell.fn(v, 0)), c: '#2bd66f', mode: 'l', lw: 1, dot: true }, { x: ww, y: ww.map(v => r.maxwell.fn(v, 1)), c: '#2bd66f', mode: 'l', lw: 1, dot: true }); }
+      ser2.push({ x: r.x, y: r.tand, c: COL[w], mode: 'pl', label: `${nm(w)}: tan δ` }); }
+    $('oVe').innerHTML = card('نتائج Frequency sweep', tbl(['', `<span class="mine">${nm('mine')}</span>`, `<span class="refc">${nm('ref')}</span>`], rr) + '<p class="note">المنقّط الأخضر = مطابقة single-mode Maxwell.</p>');
+    plot('cVe', { xlog: true, ylog: true, xl: 'ω (rad/s)', yl: 'G′, G″ (Pa)', series: ser });
+  } else {
+    const lines = [['هضبة G′ في الـ LVE (Pa)', r => fm(r.plateau)], ['tan δ في الـ LVE', r => fm(r.tandLVE)], [`نهاية الـ LVE (انخفاض ${fm(num(S.ve.tol))} %)`, r => r.lve ? fm(r.lve) : 'لم تُبلغ'], ['نقطة التدفق G′ = G″', r => r.flow ? fm(r.flow) : 'لا تقاطع'], ['G عند نقطة التدفق (Pa)', r => r.flowG ? fm(r.flowG) : '—']];
+    for (const [l, f] of lines) rr.push(tr([l, ...WHO.map(w => R.ve[w].amp ? f(R.ve[w].amp) : '—')]));
+    for (const w of WHO) { const r = R.ve[w].amp; if (!r) continue;
+      ser.push({ x: r.x, y: r.G1, c: COL[w], mode: 'pl', label: `${nm(w)}: G′` }, { x: r.x, y: r.G2, c: COL[w], mode: 'pl', open: true, dash: true, label: `${nm(w)}: G″` });
+      ser2.push({ x: r.x, y: r.tand, c: COL[w], mode: 'pl', label: `${nm(w)}: tan δ` }); }
+    $('oVe').innerHTML = card('نتائج Amplitude sweep', tbl(['', `<span class="mine">${nm('mine')}</span>`, `<span class="refc">${nm('ref')}</span>`], rr) + '<p class="note">الوحدة هي وحدة المحور الأفقي المُدخل (strain % أو τ Pa).</p>');
+    plot('cVe', { xlog: true, ylog: true, xl: 'γ (%) / τ (Pa)', yl: 'G′, G″ (Pa)', series: ser });
+  }
+  plot('cTd', { xlog: true, ylog: true, xl: k === 'freq' ? 'ω (rad/s)' : 'γ (%) / τ (Pa)', yl: 'tan δ', series: ser2.concat(ser2.length ? [{ x: ser2.flatMap(s => s.x).sort((a, b) => a - b).filter((v, i, a) => i === 0 || i === a.length - 1), y: [1, 1], c: '#ff4545', mode: 'l', dot: true, lw: 1, label: 'tan δ = 1' }] : []) });
+};
+OUT.prop = R => {
+  const rr = [], ser = [], warns = [];
+  const lines = [['نموذج الريولوجيا', r => r.fluid.manual ? MN[r.fluid.model] + ' (Parameters)' : MN[r.fluid.model]], ['<b>سرعة الترسيب v (mm/s)</b>', r => `<b>${fm(r.v * 1000)}</b>`], ['Re الجسيم', r => fm(r.Re, 3)], ['C<sub>D</sub>', r => fm(r.Cd, 4)],
+    ['γ̇ المميِّز = v/d (1/s)', r => fm(r.gd, 3)], ['اللزوجة الظاهرية عنده (mPa·s)', r => fm(r.mu * 1000)], ['Stokes power-law (mm/s)', r => r.vStokes ? fm(r.vStokes * 1000) : '—'],
+    ['φ (%)', r => fm(r.phi * 100, 3)], ['أُس Richardson-Zaki m', r => fm(r.m, 3)], ['<b>الترسيب المعاق v<sub>h</sub> (mm/s)</b>', r => `<b>${fm(r.vh * 1000)}</b>`],
+    [`مسافة الترسيب خلال ${fm(num(S.prop.tpump))} min (m)`, r => fm(r.dist)], [`زمن سقوط ${fm(num(S.prop.H))} m (min)`, r => fm(r.tH)], ['Y = τ₀/(gΔρd)', r => r.Y ? fm(r.Y, 3) : '—'],
+    ['المقاسة (mm/s) ، المقاسة ÷ المحسوبة', r => r.vmeas ? `${fm(r.vmeas * 1000)} ، ${fm(r.vmeas / r.v, 3)}` : '—']];
+  for (const [l, f] of lines) rr.push(tr([l, ...WHO.map(w => R.prop[w] ? f(R.prop[w]) : '—')]));
+  for (const w of WHO) { const r = R.prop[w]; if (!r) continue;
+    ser.push({ x: r.curve.map(p => p[0]), y: r.curve.map(p => p[1]), c: COL[w], mode: 'l', dash: w === 'ref', label: nm(w) });
+    if (r.vmeas) ser.push({ x: [S.prop.mesh === 'custom' ? num(S.prop.dmm) : FL.MESH[S.prop.mesh]], y: [r.vmeas * 1000], c: COL[w], mode: 'p', sq: true, label: `${nm(w)}: مقاسة` });
+    const rh = R.rheo[w]; if (rh && rh.d && r.gd < rh.d.gd[0]) warns.push(`${nm(w)}: معدل القص المميِّز (${fm(r.gd, 2)} s⁻¹) أقل من أدنى معدل مقاس (${fm(rh.d.gd[0], 2)} s⁻¹)، فالنتيجة استقراء. ${r.fluid.model === 'PL' ? 'نموذج Power-law يبالغ في اللزوجة عند القص المنخفض، فيقلّل سرعة الترسيب. جرّب Carreau.' : ''}`);
+    if (r.Re > 1) warns.push(`${nm(w)}: Re = ${fm(r.Re, 3)} > 1، أي خارج الجريان الزاحف. الـ drag محسوب بمنحنى Schiller-Naumann مع اللزوجة الظاهرية، وهذا تقريب.`);
+    if (r.fluid.model === 'HB' && r.Y) warns.push(`${nm(w)}: مع yield stress قد تبقى الحبيبة معلّقة إن تجاوز Y قيمة حرجة (≈ 0.04 إلى 0.2 في الأدبيات حسب التعريف). الحساب هنا يفترض أنها تتحرك.`); }
+  $('oProp').innerHTML = card('النتائج', tbl(['', `<span class="mine">${nm('mine')}</span>`, `<span class="refc">${nm('ref')}</span>`], rr) + warns.map(t => wn(t)).join('') +
+    `<p class="note">القطر المستخدم: ${fm(S.prop.mesh === 'custom' ? num(S.prop.dmm) : FL.MESH[S.prop.mesh])} mm. الحساب لا يشمل المرونة، ولا القص الناتج عن جريان المائع في الكسر، ولا أثر الجدار.</p>`);
+  plot('cProp', { ylog: true, xl: 'd (mm)', yl: 'v (mm/s)', series: ser, zero: false });
+};
+OUT.brk = R => {
+  const rr = [], ser = [];
+  const lines = [['η الابتدائية / النهائية (mPa·s)', b => b.b ? `${fm(b.b.eta0)} / ${fm(b.b.etaEnd)}` : '—'], ['الانخفاض %', b => b.b ? fm(b.b.reduction, 3) : '—'],
+    ['First-order: k (1/min) ± CI', b => b.b && b.b.first ? pm(b.b.first.k, b.b.first.ciK) : '—'], ['First-order: t½ (min) ، R²', b => b.b && b.b.first ? `${fm(b.b.first.half)} ، ${fm(b.b.first.r2, 4)}` : '—'],
+    ['مع هضبة: k (1/min) ± CI', b => b.b && b.b.plateau ? pm(b.b.plateau.k, b.b.plateau.ci[1]) : '—'], ['مع هضبة: η∞ (mPa·s) ± CI', b => b.b && b.b.plateau ? pm(b.b.plateau.etaInf, b.b.plateau.ci[2]) : '—'],
+    ['مع هضبة: t½ (min) ، R² (log)', b => b.b && b.b.plateau ? `${fm(b.b.plateau.half)} ، ${fm(b.b.plateau.r2, 4)}` : '—'],
+    [`<b>زمن الوصول إلى ≤ ${fm(num(S.brk.crit))} mPa·s (min)</b>: من البيانات`, b => b.b ? (b.b.tBreak === null || b.b.tBreak === undefined ? '<b>لم يُبلغ</b>' : `<b>${fm(b.b.tBreak)}</b>`) : '—'], ['… من نموذج الهضبة', b => b.b && b.b.tBreakModel ? fm(b.b.tBreakModel) : '—'],
+    ['<b>Residue (mg/L) ± SD</b>', b => b.res && !b.res.err ? `<b>${pm(b.res.mgL, null)}</b>${ok(b.res.sdMgL) ? ' ± ' + fm(b.res.sdMgL, 2) : ''} (n=${b.res.reps.length})` : '—'],
+    ['Residue % من كتلة البوليمر ± SD', b => b.res && !b.res.err && b.res.pct !== null ? fm(b.res.pct) + (ok(b.res.sdPct) ? ' ± ' + fm(b.res.sdPct, 2) : '') : '—'],
+    ['E<sub>a</sub> للكسر (kJ/mol) ± CI', b => b.arr ? pm(b.arr.Ea, b.arr.ciEa) + ` (n=${b.arr.n})` : '—']];
+  for (const [l, f] of lines) rr.push(tr([l, ...WHO.map(w => f(R.brk[w]))]));
+  for (const w of WHO) { const b = R.brk[w].b; if (!b) continue; const tt = Array.from({ length: 60 }, (_, i) => b.t[b.t.length - 1] * i / 59);
+    ser.push({ x: b.t, y: b.eta, c: COL[w], mode: 'p', open: w === 'ref', label: nm(w) });
+    if (b.plateau) ser.push({ x: tt, y: tt.map(b.plateau.fn), c: COL[w], mode: 'l', dash: w === 'ref', label: `${nm(w)}: first-order + هضبة` });
+    if (b.first) ser.push({ x: tt, y: tt.map(b.first.fn), c: '#2bd66f', mode: 'l', dot: true, lw: 1 }); }
+  if (num(S.brk.crit) > 0 && ser.length) { const all = ser.flatMap(s => s.x); ser.push({ x: [Math.min(...all), Math.max(...all)], y: [num(S.brk.crit), num(S.brk.crit)], c: '#ff4545', mode: 'l', dot: true, lw: 1, label: 'معيار الكسر' }); }
+  $('oBrk').innerHTML = card('النتائج', tbl(['', `<span class="mine">${nm('mine')}</span>`, `<span class="refc">${nm('ref')}</span>`], rr) + '<p class="note">المنقّط الأخضر = first-order البسيط (ln η خطي مع t).</p>');
+  plot('cBrk', { ylog: true, xl: 't (min)', yl: 'η (mPa·s)', series: ser, zero: false });
+};
+OUT.frac = R => {
+  const rr = [], warns = [];
+  const head = ['', ...['PKN', 'KGD'].flatMap(m => WHO.map(w => `${m}<br><span class="${w === 'mine' ? 'mine' : 'refc'}">${nm(w)}</span>`))];
+  const lines = [['K (Pa·sⁿ) ، n المستخدمة', (f) => `${fm(f.o.K)} ، ${fm(f.o.n, 3)}`], ['C<sub>L</sub> (m/√min) ، S<sub>p</sub> (L/m²)', f => `${fm(f.o.CL * Math.sqrt(60))} ، ${fm(f.o.Sp * 1000, 3)}`],
+    ['<b>نصف الطول x<sub>f</sub> (m)</b>', (f, m) => `<b>${fm(f[m].L)}</b>`], ['العرض عند البئر w<sub>w</sub> (mm)', (f, m) => fm(f[m].ww * 1000)], ['<b>العرض المتوسط w̄ (mm)</b>', (f, m) => `<b>${fm(f[m].wb * 1000)}</b>`],
+    ['<b>كفاءة المائع η (%)</b>', (f, m) => `<b>${fm(f[m].eff * 100, 3)}</b>`], ['الضغط الصافي p<sub>net</sub> (MPa / psi)', (f, m) => `${fm(f[m].pnet / 1e6, 3)} / ${fm(f[m].pnet / 6894.757, 4)}`],
+    ['اللزوجة المكافئة μ<sub>e</sub> (mPa·s)', (f, m) => fm(f[m].mu * 1000)], ['معدل القص في الكسر (1/s)', (f, m) => fm(f[m].gd, 3)], ['حجم الكسر / المضخوخ (m³)', (f, m) => `${fm(f[m].Vf, 3)} / ${fm(f[m].Vi, 3)}`], ['x<sub>f</sub>/h', (f, m) => fm(f[m].L / f.o.h, 3)]];
+  for (const [l, fn] of lines) rr.push(tr([l, ...['PKN', 'KGD'].flatMap(m => WHO.map(w => { const f = R.frac[w]; return f && f.o ? fn(f, m) : '—'; }))]));
+  for (const w of WHO) { const f = R.frac[w];
+    if (!f) warns.push(`${nm(w)}: لا توجد ريولوجيا Power-law. أدخل بيانات أو Parameters في تبويب الريولوجيا.`);
+    else if (f.err === 'fl') warns.push(`${nm(w)}: بيانات الـ fluid loss غير كافية (نقطتان على الأقل ومساحة الترشيح).`);
+    else if (f.err === 'job') warns.push('بيانات العملية ناقصة أو غير صالحة (ν يجب أن تكون أقل من 0.5).');
+    else { if (f.pl.manual && S.rheo[w].tau0 > 0) warns.push(`${nm(w)}: τ₀ تُهمَل هنا، فنماذج الكسر تستخدم Power-law فقط.`);
+      ['PKN', 'KGD'].forEach(m => { if (!f[m].conv) warns.push(`${nm(w)} ${m}: لم يتقارب الحل تماماً.`); }); } }
+  const fm0 = R.frac.mine && R.frac.mine.o ? R.frac.mine : R.frac.ref && R.frac.ref.o ? R.frac.ref : null;
+  if (fm0) { const r = fm0.PKN.L / fm0.o.h; warns.push(r > 1.5 ? `x<sub>f</sub>/h ≈ ${fm(r, 2)} > 1، فالـ PKN هو الأنسب لهذه الحالة.` : `x<sub>f</sub>/h ≈ ${fm(r, 2)}، فالـ KGD أقرب للواقع هنا.`); }
+  $('oFrac').innerHTML = card('النتائج عند نهاية الضخ', tbl(head, rr) + warns.map(t => wn(t, t.includes('الأنسب') || t.includes('أقرب') ? 'i' : 'a')).join(''));
+  const s1 = [], s2 = [];
+  for (const w of WHO) { const f = R.frac[w]; if (!f || !f.o) continue;
+    for (const [m, dash] of [['PKN', false], ['KGD', true]]) { const s = f['s' + m], t = s.map((_, i) => num(S.frac.t) * (i + 1) / s.length);
+      s1.push({ x: t, y: s.map(v => v.L), c: COL[w], mode: 'l', dash, label: `${nm(w)} ${m}` }); s2.push({ x: t, y: s.map(v => v.wb * 1000), c: COL[w], mode: 'l', dash, label: `${nm(w)} ${m}` }); } }
+  plot('cFl', { xl: 't (min)', yl: 'x_f (m)', series: s1 }); plot('cFw', { xl: 't (min)', yl: 'w̄ (mm)', series: s2 });
+  const fx = WHO.map(w => R.frac[w] && R.frac[w].flr);
+  const flRows = [['C<sub>w</sub> (cm/√min) ± CI', x => pm(x.Cw, x.ciCw)], ['C<sub>w</sub> (m/√min)', x => fm(x.CwSI)], ['C<sub>w</sub> (ft/√min)', x => fm(x.Cw * 0.0328084)],
+    ['S<sub>p</sub> (L/m²)', x => fm(x.Sp * 10, 3) + (x.SpRaw < 0 ? ' (تقاطع سالب ← 0)' : '')], ['S<sub>p</sub> (gal/100 ft²)', x => fm(x.Sp * 24.5424, 3)], ['R²', x => fm(x.r2, 4)], ['عدد النقاط', x => x.n]];
+  $('oFl').innerHTML = fx.some(Boolean) ? card('اختبار الـ fluid loss <span class="ltr">V/A = S<sub>p</sub> + 2·C<sub>w</sub>·√t</span>', tbl(['', `<span class="mine">${nm('mine')}</span>`, `<span class="refc">${nm('ref')}</span>`], flRows.map(([l, f]) => tr([l, ...fx.map(x => x ? f(x) : '—')]))) +
+    '<p class="note">C<sub>w</sub> هو معامل الـ wall-building فقط. الـ C<sub>L</sub> الكلي في المكمن يجمعه مع C<sub>v</sub> و C<sub>c</sub>.</p>') : '';
+};
+OUT.surf = R => {
+  const su = S.surf, rg = FL.ringZW(num(su.ring.P), num(su.ring.R), num(su.ring.r), num(su.ring.drho));
+  $('oRing').innerHTML = num(su.ring.P) > 0 ? (rg ? `معامل التصحيح f = <b class="ltr">${fm(rg.f)}</b> ← γ = <b class="ltr">${fm(rg.gamma)}</b> mN/m` : 'المدخلات خارج مجال معادلة Zuidema-Waters.') : '';
+  const pf = num(su.plate.F); $('oPlate').innerHTML = pf > 0 ? `γ = <b class="ltr">${fm(FL.plate(pf, num(su.plate.w), num(su.plate.t), num(su.plate.theta)))}</b> mN/m` : '';
+  const sd = num(su.spin.d); if (sd > 0) { const s = FL.spinning(sd, num(su.spin.rpm), num(su.spin.drho), num(su.spin.nref) || 1, num(su.spin.L)); $('oSpin').innerHTML = `IFT = <b class="ltr">${fm(s.gamma)}</b> mN/m${s.LD ? ` ، L/D = ${fm(s.LD, 3)}${s.LD < 4 ? ' <span style="color:var(--amber)">(أقل من 4، فمعادلة Vonnegut غير دقيقة)</span>' : ''}` : ''}`; } else $('oSpin').innerHTML = '';
+  const cu = { mM: 'mM', M: 'mol/L', gL: 'g/L', wt: 'wt%' }[su.cunit], rr = [], ser = [], ser2 = [];
+  const lines = [[`<b>CMC (${cu})</b>`, s => s.cmc && !s.cmc.err ? `<b>${fm(s.cmc.cmc)}</b>` : s.cmc ? s.cmc.err : '—'], ['γ<sub>CMC</sub> (mN/m)', s => s.cmc && !s.cmc.err ? fm(s.cmc.gcmc) : '—'], ['Π<sub>CMC</sub> = γ₀ − γ<sub>CMC</sub>', s => s.cmc && !s.cmc.err ? fm(s.cmc.pi) : '—'],
+    ['ميل ما قبل الـ CMC dγ/dlnC (mN/m) ± CI', s => s.cmc && !s.cmc.err ? pm(s.cmc.pre.b, s.cmc.pre.ciB) : '—'], ['Γ<sub>max</sub> (µmol/m²)', s => s.cmc && !s.cmc.err ? fm(s.cmc.Gamma * 1e6) : '—'], ['A<sub>min</sub> (nm²/جزيء)', s => s.cmc && !s.cmc.err ? fm(s.cmc.Amin) : '—'],
+    [`C20 (${cu}) ، pC20`, s => s.cmc && !s.cmc.err && s.cmc.C20 ? `${fm(s.cmc.C20)} ، ${s.cmc.pC20 ? fm(s.cmc.pC20, 3) : '—'}` : '—'], ['CMC/C20', s => s.cmc && s.cmc.ratio ? fm(s.cmc.ratio, 3) : '—'],
+    ['نقاط قبل / بعد الانكسار', s => s.cmc && !s.cmc.err ? `${s.cmc.k} / ${s.cmc.C.length - s.cmc.k}` : '—'],
+    ['<b>أقل IFT (mN/m)</b>', s => s.ift && !s.ift.err ? `<b>${fm(s.ift.min, 3)}</b>` : '—'], [`عند ${esc(su.iftx)}`, s => s.ift && !s.ift.err ? fm(s.ift.xmin) : '—'], ['التصنيف', s => s.ift && !s.ift.err ? ({ ultralow: 'ultralow (< 10⁻² mN/m)', low: 'منخفض (< 1)', normal: 'عادي' })[s.ift.cls] : '—']];
+  for (const [l, f] of lines) rr.push(tr([l, ...WHO.map(w => f(R.surf[w]))]));
+  for (const w of WHO) { const s = R.surf[w];
+    if (s.cmc && !s.cmc.err) { const c = s.cmc, x1 = logspace(c.C[0], c.cmc, 20), x2 = logspace(c.cmc, c.C[c.C.length - 1], 10);
+      ser.push({ x: c.C, y: c.y, c: COL[w], mode: 'p', open: w === 'ref', label: nm(w) }, { x: x1, y: x1.map(v => c.pre.f(Math.log(v))), c: COL[w], mode: 'l', dash: w === 'ref', lw: 1.2 }, { x: x2, y: x2.map(v => c.post.f(Math.log(v))), c: COL[w], mode: 'l', dash: w === 'ref', lw: 1.2 }); }
+    if (s.ift && !s.ift.err) ser2.push({ x: s.ift.x, y: s.ift.y, c: COL[w], mode: 'pl', open: w === 'ref', label: nm(w) }); }
+  $('oSurf').innerHTML = card('النتائج', tbl(['', `<span class="mine">${nm('mine')}</span>`, `<span class="refc">${nm('ref')}</span>`], rr) + `<p class="note">Gibbs بـ n = ${su.nG} عند ${fm(num(su.T))} °C. pC20 يحتاج وحدة مولية، أو الكتلة المولية مع g/L و wt%.</p>`);
+  plot('cCmc', { xlog: true, xl: `C (${cu})`, yl: 'γ (mN/m)', series: ser, zero: false }); plot('cIft', { ylog: true, xl: esc(su.iftx), yl: 'IFT (mN/m)', series: ser2, zero: false });
+};
+/* ---------------- comparison ---------------- */
+const CMP = [
+  ['الريولوجيا', [['rheo_n', 'n (Power-law)', '', R => w => { const p = plOf(R, w); return p && p.n; }], ['rheo_K', 'K (Power-law)', 'Pa·sⁿ', R => w => { const p = plOf(R, w); return p && p.K; }],
+    ['rheo_e100', 'η @ 100 s⁻¹', 'mPa·s', R => w => { const f = fluidOf(R, w, 'best'); return f && f.etaAt[1] * 1000; }], ['rheo_e170', 'η @ 170 s⁻¹', 'mPa·s', R => w => { const f = fluidOf(R, w, 'best'); return f && f.etaAt[2] * 1000; }],
+    ['rheo_eta0', 'η₀ (Carreau)', 'Pa·s', R => w => { const r = R.rheo[w]; return r && r.fits && r.fits.CA && r.fits.CA.eta0; }], ['rheo_tau0', 'τ₀ (HB)', 'Pa', R => w => { const r = R.rheo[w]; return r && r.fits ? r.fits.HB && r.fits.HB.tau0 : r && r.manual && r.manual.p.tau0; }]]],
+  ['الثبات الحراري', [['th_ret', 'نسبة الاحتفاظ', '%', R => w => R.thermal[w] && R.thermal[w].retention], ['th_end', 'η النهائية', 'mPa·s', R => w => R.thermal[w] && R.thermal[w].etaEnd], ['th_k', 'k خلال الـ hold', '1/min', R => w => R.thermal[w] && R.thermal[w].hold && R.thermal[w].hold.k], ['th_thr', 'زمن الهبوط تحت العتبة', 'min', R => w => R.thermal[w] && R.thermal[w].tThr]]],
+  ['اللزوجة المرنة', [['ve_G1', 'G′ @ 1 rad/s', 'Pa', R => w => R.ve[w].freq && R.ve[w].freq.at[1].G1], ['ve_G2', 'G″ @ 1 rad/s', 'Pa', R => w => R.ve[w].freq && R.ve[w].freq.at[1].G2], ['ve_td', 'tan δ @ 1 rad/s', '', R => w => R.ve[w].freq && R.ve[w].freq.at[1].tand],
+    ['ve_wc', 'ω<sub>c</sub> التقاطع', 'rad/s', R => w => R.ve[w].freq && R.ve[w].freq.wc], ['ve_lam', 'λ = 1/ω<sub>c</sub>', 's', R => w => R.ve[w].freq && R.ve[w].freq.lambdaC], ['ve_lve', 'نهاية الـ LVE', '', R => w => R.ve[w].amp && R.ve[w].amp.lve], ['ve_fp', 'نقطة التدفق', '', R => w => R.ve[w].amp && R.ve[w].amp.flow]]],
+  ['الـ proppant', [['pr_v', 'سرعة الترسيب', 'mm/s', R => w => R.prop[w] && R.prop[w].v * 1000], ['pr_vh', 'الترسيب المعاق', 'mm/s', R => w => R.prop[w] && R.prop[w].vh * 1000], ['pr_vm', 'السرعة المقاسة', 'mm/s', R => w => R.prop[w] && R.prop[w].vmeas && R.prop[w].vmeas * 1000]]],
+  ['الـ breaker', [['bk_k', 'k (مع هضبة)', '1/min', R => w => R.brk[w].b && R.brk[w].b.plateau && R.brk[w].b.plateau.k], ['bk_t', 'زمن الكسر', 'min', R => w => R.brk[w].b && R.brk[w].b.tBreak], ['bk_red', 'الانخفاض', '%', R => w => R.brk[w].b && R.brk[w].b.reduction],
+    ['bk_res', 'Residue', 'mg/L', R => w => R.brk[w].res && R.brk[w].res.mgL], ['bk_rp', 'Residue من البوليمر', '%', R => w => R.brk[w].res && R.brk[w].res.pct]]],
+  ['الكسر (بيانات العملية نفسها)', [['fr_pl', 'PKN x<sub>f</sub>', 'm', R => w => R.frac[w] && R.frac[w].PKN && R.frac[w].PKN.L], ['fr_pw', 'PKN w̄', 'mm', R => w => R.frac[w] && R.frac[w].PKN && R.frac[w].PKN.wb * 1000], ['fr_pe', 'PKN كفاءة', '%', R => w => R.frac[w] && R.frac[w].PKN && R.frac[w].PKN.eff * 100],
+    ['fr_kl', 'KGD x<sub>f</sub>', 'm', R => w => R.frac[w] && R.frac[w].KGD && R.frac[w].KGD.L], ['fr_kw', 'KGD w̄', 'mm', R => w => R.frac[w] && R.frac[w].KGD && R.frac[w].KGD.wb * 1000], ['fr_ke', 'KGD كفاءة', '%', R => w => R.frac[w] && R.frac[w].KGD && R.frac[w].KGD.eff * 100]]],
+  ['Surface / IFT', [['sf_cmc', 'CMC', 'وحدة الإدخال', R => w => R.surf[w].cmc && R.surf[w].cmc.cmc], ['sf_g', 'γ<sub>CMC</sub>', 'mN/m', R => w => R.surf[w].cmc && R.surf[w].cmc.gcmc], ['sf_G', 'Γ<sub>max</sub>', 'µmol/m²', R => w => R.surf[w].cmc && R.surf[w].cmc.Gamma && R.surf[w].cmc.Gamma * 1e6],
+    ['sf_A', 'A<sub>min</sub>', 'nm²', R => w => R.surf[w].cmc && R.surf[w].cmc.Amin], ['sf_ift', 'أقل IFT', 'mN/m', R => w => R.surf[w].ift && R.surf[w].ift.min]]],
+];
+function cmpRows(R) {
+  const out = [];
+  for (const [g, items] of CMP) for (const [k, l, u, f] of items) {
+    const v = f(R), a = v('mine'), b = v('ref'), man = num(S.cmp.manual[k]), p = ok(man) ? man : b;
+    out.push({ g, k, l, u, mine: ok(a) ? a : null, ref: ok(b) ? b : null, man: ok(man) ? man : null, d: ok(a) && ok(p) && p !== 0 ? 100 * (a - p) / Math.abs(p) : null });
+  }
+  return out;
+}
+OUT.cmp = R => {
+  const rs = cmpRows(R); let g = '', h = [];
+  for (const r of rs) { if (r.g !== g) { g = r.g; h.push(`<tr class="grp"><td colspan="6">${g}</td></tr>`); }
+    h.push(tr([`${r.l}${r.u ? ` <small class="note">(${r.u})</small>` : ''}`, fm(r.mine), fm(r.ref), `<input type="number" step="any" data-k="cmp.manual.${r.k}" value="${r.man === null ? '' : r.man}">`, r.d === null ? '—' : `${r.d > 0 ? '+' : ''}${fm(r.d, 3)} %`])); }
+  $('oCmp').innerHTML = tbl(['المؤشر', `<span class="mine">${nm('mine')}</span>`, `<span class="refc">${nm('ref')}</span> (محسوب)`, 'قيمة البحث (يدوي)', 'الفرق (عيّنتي − البحث)'], h) +
+    (S.meta.cite ? `<p class="note">المرجع: ${esc(S.meta.cite)}</p>` : '') + '<p class="note">الفرق % = (عيّنتي − البحث) ÷ |البحث| × 100. القيمة اليدوية تُقدَّم على المحسوبة.</p>';
+  $('csvBtn').onclick = () => { const q = s => `"${String(s).replace(/<[^>]+>/g, '').replace(/"/g, '""')}"`;
+    const lines = [['group', 'metric', 'unit', S.meta.mine, S.meta.ref + ' (computed)', 'paper (manual)', 'diff %'].map(q).join(',')].concat(rs.map(r => [r.g, r.l, r.u, r.mine ?? '', r.ref ?? '', r.man ?? '', r.d === null ? '' : r.d.toFixed(2)].map(q).join(',')));
+    const b = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv' }), a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'frac-lab-comparison.csv'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); };
+};
+OUT.ref = () => {};
+
+/* ---------------- control ---------------- */
+function renderTab() {
+  document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === S.tab));
+  $('main').innerHTML = TAB[S.tab](); calc();
+}
+let timer = null;
+function calc() { clearTimeout(timer); timer = null; try { OUT[S.tab](compute()); } catch (e) { console.error(e); toast('خطأ في الحساب: ' + e.message); } }
+function schedule() { save(); clearTimeout(timer); timer = setTimeout(calc, 250); }
+function onInput(e) {
+  const el = e.target.closest('[data-k]'); if (!el) return;
+  const v = el.type === 'checkbox' ? el.checked : el.type === 'number' ? (el.value === '' ? '' : +el.value) : el.value;
+  set(el.dataset.k, v);
+  if (el.dataset.k.startsWith('cmp.manual.') && e.type === 'input') { save(); return; }
+  if (el.dataset.k === 'prop.mesh' && FL.MESH[v]) S.prop.dmm = FL.MESH[v];
+  if (el.dataset.rr) { save(); renderTab(); } else schedule();
+}
+function loadExample() {
+  const e = FL.makeExample(), st = clone(DEF); st.tab = S.tab;
+  st.meta.mine = 'مثال: جل guar (بيانات مصطنعة)'; st.meta.ref = 'المرجع (أدخل بيانات البحث)';
+  st.rheo.mine.text = e.rheo; st.thermal.mine.text = e.thermal; st.ve.mine.freq = e.ve; st.ve.mine.amp = e.amp;
+  Object.assign(st.brk.mine, { text: e.brk, res: e.res, arr: e.arr }); Object.assign(st.frac.mine, { clsrc: 'test', fl: e.fl }); Object.assign(st.surf.mine, { cmc: e.cmc, ift: e.ift });
+  st.surf.ring.P = 75; st.surf.spin.d = 0.35; st.surf.spin.L = 2.4;
+  S = st; save(); renderTab(); toast('حُمّلت بيانات مثال مصطنعة (synthetic) لعيّنتك فقط. بطاقات المرجع فارغة لبيانات البحث.');
+}
+function bind() {
+  $('main').addEventListener('input', onInput); $('main').addEventListener('change', e => { const k = e.target.dataset && e.target.dataset.k; if (k && k.startsWith('cmp.manual.')) onInput(e); });
+  $('main').addEventListener('toggle', e => { const d = e.target.closest && e.target.closest('details.proto'); if (d) { S.proto[d.dataset.proto] = d.open; save(); } }, true);
+  $('tabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (b) { S.tab = b.dataset.tab; save(); renderTab(); } });
+  $('exBtn').onclick = () => { if (confirm('تحميل المثال يستبدل بياناتك الحالية. هل صدّرت نسخة JSON؟ متابعة؟')) loadExample(); };
+  $('clrBtn').onclick = () => { if (confirm('مسح كل البيانات والبدء من جديد؟')) { S = clone(DEF); save(); renderTab(); } };
+  $('expBtn').onclick = () => { const b = new Blob([JSON.stringify(S, null, 1)], { type: 'application/json' }), a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'frac-lab-' + new Date().toISOString().slice(0, 10) + '.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); };
+  $('impFile').addEventListener('change', e => { const f = e.target.files[0]; if (!f) return; f.text().then(t => { const o = JSON.parse(t); if (!o.rheo || !o.meta) throw new Error('format'); S = merge(clone(DEF), o); save(); renderTab(); toast('استُوردت البيانات.'); }).catch(() => toast('تعذّرت قراءة الملف (المتوقع ملف JSON مُصدَّر من هذه الأداة).')); e.target.value = ''; });
+  $('prtBtn').onclick = () => window.print();
+  let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(calc, 150); });
+}
+bind(); renderTab();
+window.__fraclab = { state: () => S, compute };
+})();
+</script>
+<script>if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(() => {});</script>
+</body>
+</html>

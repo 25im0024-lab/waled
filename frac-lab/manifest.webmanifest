@@ -1,0 +1,15 @@
+{
+  "id": "./",
+  "name": "Frac-Fluid Lab — مختبر سوائل التكسير",
+  "short_name": "Frac-Fluid Lab",
+  "description": "Laboratory analysis of hydraulic-fracturing fluids: rheology fitting with confidence intervals, thermal stability, oscillation, proppant settling, breaker, PKN/KGD fracture geometry, surface and interfacial tension, and comparison with published data.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#040b15",
+  "theme_color": "#0b2340",
+  "lang": "ar",
+  "dir": "rtl",
+  "categories": ["education", "productivity"],
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

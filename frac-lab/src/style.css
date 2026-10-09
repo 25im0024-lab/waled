@@ -1,0 +1,72 @@
+:root{color-scheme:dark;
+  --bg:#040b15;--panel:#0a1a2f;--panel2:#0d223d;--line:#1e4f7d;--line2:#15385b;--text:#dcecff;--muted:#8fa9c6;
+  --cyan:#36c8ff;--green:#2bd66f;--amber:#ffb627;--red:#ff4545;--mono:ui-monospace,"Cascadia Mono",Consolas,monospace}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg) radial-gradient(1200px 600px at 50% -10%,#0b2340 0,var(--bg) 60%) fixed;color:var(--text);font:14px/1.55 "Segoe UI",Tahoma,"Noto Sans Arabic",system-ui,sans-serif}
+button,select,input,textarea{font:inherit;color:inherit}
+a{color:var(--cyan)}
+.app{padding:10px 16px 30px;max-width:1700px;margin:0 auto}
+.hdr{background:linear-gradient(270deg,#0e2a4d,#081627 70%);border:1px solid var(--line);border-radius:5px;padding:10px 14px;margin-bottom:10px}
+.title{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.title h1{margin:0;font-size:22px}.title h1 span{color:var(--cyan);font-size:15px;margin-inline-start:6px;direction:ltr;unicode-bidi:isolate}
+.toolbar{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.warnbox{margin:8px 0;font-size:12.5px;color:#ffe3a6;background:#3a2900;border:1px solid #7a5a00;border-radius:3px;padding:5px 9px}
+.tabs{display:flex;gap:4px;flex-wrap:wrap}
+.tabs button{background:#0a1d34;border:1px solid var(--line2);border-radius:4px 4px 0 0;padding:6px 12px;cursor:pointer;color:var(--muted);font-weight:600}
+.tabs button.on{background:linear-gradient(#167fb0,#0b4868);color:#fff;border-color:#7fdcff}
+.grid{display:grid;grid-template-columns:minmax(330px,0.85fr) minmax(0,1.45fr);gap:10px;align-items:start}
+.col{display:flex;flex-direction:column;gap:10px;min-width:0}
+@media (max-width:1100px){.grid{grid-template-columns:1fr}}
+.card{background:linear-gradient(180deg,var(--panel2),var(--panel) 40%);border:1px solid var(--line);border-radius:5px;min-width:0}
+.card>h2{margin:0;padding:7px 11px;font-size:14.5px;font-weight:700;border-bottom:1px solid var(--line2);background:linear-gradient(270deg,#123259,transparent);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.card>h2 small{font-weight:400;color:var(--muted);font-size:12px}
+.card>h2 .dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+.body{padding:9px 11px}
+.form{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:7px 10px}
+.form label{display:flex;flex-direction:column;gap:2px;font-size:12.5px;color:#bcd3ea}
+.form label.chk{flex-direction:row;align-items:center;gap:6px}
+.form label.wide{grid-column:1/-1}
+input,select,textarea{background:#081830;border:1px solid var(--line);border-radius:3px;padding:4px 6px;min-width:0}
+input[type=number]{direction:ltr;text-align:left}
+input:focus,select:focus,textarea:focus{outline:1px solid var(--cyan)}
+textarea{width:100%;font:12.5px var(--mono);resize:vertical;direction:ltr;text-align:left}
+.btn{background:linear-gradient(#173556,#0f2440);border:1px solid #2b5f90;border-radius:3px;padding:4px 10px;cursor:pointer;font-weight:600;font-size:13px;color:#cfe3f7;text-decoration:none;display:inline-flex;align-items:center;min-height:30px}
+.btn:hover{border-color:var(--cyan)}.btn.cy{background:linear-gradient(#167fb0,#0b4868);border-color:#7fdcff;color:#fff}.btn.sm{min-height:24px;font-size:12px;padding:2px 8px}
+.tw{overflow-x:auto}
+.res{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+.res th{color:var(--muted);font-weight:600;font-size:12px;padding:4px 6px;border-bottom:1px solid var(--line2);text-align:right;white-space:nowrap}
+.res td{padding:3px 6px;border-bottom:1px solid #10294466;white-space:nowrap}
+.res td.n{direction:ltr;text-align:left;unicode-bidi:isolate}
+.res tr.best td{background:#0e3a24}
+.res tr.grp td{color:var(--cyan);font-weight:700;padding-top:9px;border-bottom:1px solid var(--line2)}
+.res input{width:100px;direction:ltr}
+.mine{color:var(--cyan)}.refc{color:var(--amber)}
+.wn{margin-top:6px;font-size:12.5px;border-radius:3px;padding:5px 9px;border:1px solid}
+.wn.a{background:#3a2900;border-color:#7a5a00;color:#ffe3a6}.wn.i{background:#08283d;border-color:#1e5f8d;color:#cfe9ff}
+.note{font-size:12.5px;color:var(--muted)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:6px;margin-bottom:6px}
+.kpi{background:#081830;border:1px solid var(--line2);border-radius:3px;padding:5px 8px}
+.kpi span{display:block;font-size:12px;color:var(--muted)}.kpi b{font-size:17px;direction:ltr;unicode-bidi:isolate;display:block;text-align:right}
+canvas{display:block;width:100%;direction:ltr}
+.charts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:800px){.charts{grid-template-columns:1fr}}
+details.proto{background:#07182c;border:1px solid var(--line);border-radius:5px;margin-bottom:10px}
+details.proto>summary{cursor:pointer;padding:8px 12px;font-weight:700;color:var(--green)}
+details.proto>div{padding:0 16px 10px;font-size:13.5px}
+details.proto ol,details.proto ul{padding-inline-start:22px;margin:6px 0}
+details.proto li{margin:3px 0}
+.pnote{color:#cfe0f2;margin:8px 0 4px}
+.refs li{margin:4px 0;font-size:13px}
+.refs small,h3 small{color:var(--muted);font-weight:400}
+.ltr{direction:ltr;unicode-bidi:isolate}
+code{direction:ltr;unicode-bidi:isolate;background:#081830;border:1px solid var(--line2);border-radius:3px;padding:0 4px;font-size:12.5px}
+#toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);display:flex;flex-direction:column;gap:6px;z-index:50;pointer-events:none;width:min(520px,92vw)}
+#toast div{background:#2a1d00;border:1px solid var(--amber);color:#ffe5a8;padding:8px 12px;border-radius:4px;font-size:13px;animation:fade 4s forwards}
+@keyframes fade{0%,85%{opacity:1}100%{opacity:0}}
+@media print{
+  :root{color-scheme:light}html,body{background:#fff;color:#000}
+  .toolbar,.tabs,.btn,#toast,details.proto:not([open]){display:none!important}
+  .grid{grid-template-columns:1fr}.card{background:#fff;border-color:#999;break-inside:avoid}.card>h2{background:#e8eef5;color:#000}
+  input,select,textarea{background:#fff;color:#000;border-color:#999}.kpi{background:#fff;border-color:#999}
+  .res td,.res th{color:#000}.warnbox{color:#000;background:#fff3cf}.note{color:#333}details.proto{background:#fff}
+}
