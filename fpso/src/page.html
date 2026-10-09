@@ -189,6 +189,28 @@
     </div>
   </section>
 
+  <section class="card c12" id="fieldCard">
+    <h2><span>Field Data — import real production and calibrate <span class="qm" data-info="fielddata">?</span></span> <small id="fdFmt">no file loaded</small></h2>
+    <div class="body fd">
+      <div class="fd-l">
+        <div class="row"><label class="btn sm cy fd-file">Load CSV file<input type="file" id="fdFile" accept=".csv,.txt,text/csv" hidden></label><span class="note" id="fdName">or drop a file on this card</span></div>
+        <div class="ctl"><label>Field / well</label><select id="fdEnt" disabled></select></div>
+        <div class="ctl"><label>Period</label><input type="range" id="fdIdx" min="0" max="0" value="0" disabled><output id="fdLbl">—</output></div>
+        <div class="kvt" id="fdKv"></div>
+        <div class="row" style="margin-top:6px"><button class="btn sm cy" id="fdApply" disabled>Calibrate the simulator to this period</button><button class="btn sm" id="fdReset">Back to the training field</button></div>
+        <div id="fdRes"></div>
+        <details class="note fd-help"><summary>Where to get field data (free, official)</summary>
+          <ul>
+            <li><b>Sodir FactPages (Norway):</b> open the field production table (monthly or yearly, by field) and export it as CSV. FPSO fields include NORNE, ALVHEIM, SKARV, GOLIAT, ÅSGARD and JOHAN CASTBERG.</li>
+            <li><b>Equinor Volve data (open licence):</b> in “Volve production data”, save the daily production sheet as CSV. It has per-well rates, BHP, WHP and choke.</li>
+            <li><b>Your own data:</b> a CSV with a date (or year and month) column and oil, gas and water columns. Rates default to Sm³/d; bbl, stb, scf, Mscf and MMscf are read from the headers. An optional well or field column groups the rows.</li>
+          </ul>
+          <p>The file is read in your browser only. Nothing is uploaded.</p></details>
+      </div>
+      <div class="fd-r"><canvas id="fdChart" dir="ltr"></canvas><div class="legend" id="fdLeg"></div></div>
+    </div>
+  </section>
+
   <section class="card c12">
     <h2>Trends <small id="trendWin"></small>
       <span class="seg"><button class="btn sm" data-win="3600">1 h</button><button class="btn sm on" data-win="21600">6 h</button><button class="btn sm" data-win="86400">24 h</button><button class="btn sm" data-win="259200">3 d</button></span></h2>
@@ -236,6 +258,7 @@
 <script src="i18n-ar.js"></script>
 <script src="info.js"></script>
 <script src="sim.js"></script>
+<script src="field.js"></script>
 <script src="scene.js"></script>
 <script src="interior.js"></script>
 <script src="ui.js"></script>

@@ -276,6 +276,72 @@ let actx = null;
 function beep(f) { try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); const o = actx.createOscillator(), g = actx.createGain(); o.type = 'square'; o.frequency.value = f; g.gain.setValueAtTime(0.05, actx.currentTime); g.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime + 0.35); o.connect(g).connect(actx.destination); o.start(); o.stop(actx.currentTime + 0.36); } catch (e) { /* no audio */ } }
 const res = r => { if (r && r.ok === false && r.msg) { toast(r.msg); st.lastMsg = sim.s.t; } };
 
+/* ---------------- field data: import, chart, calibration ---------------- */
+const FD = window.FPSO_FIELD, fd = { data: null, ent: null, ser: [], i: 0, res: null };
+function fdLoad(text, name) {
+  try { fd.data = FD.parse(text); } catch (e) { toast(F('Could not read the file: {e}', { e: T(e.message) })); return; }
+  const ents = Object.keys(fd.data.entities); if (!ents.length) { toast('No production rows found in the file'); return; }
+  $('fdName').textContent = name || ''; $('fdFmt').textContent = T(fd.data.format);
+  $('fdEnt').innerHTML = ents.map(k => `<option>${k.replace(/</g, '&lt;')}</option>`).join(''); $('fdEnt').disabled = false;
+  fdEntity(ents[0]); toast(F('{n} loaded: {m} series', { n: name || 'CSV', m: ents.length }));
+}
+function fdEntity(k) {
+  fd.ent = k; fd.ser = FD.stats(fd.data.entities[k]);
+  let best = 0; fd.ser.forEach((p, i) => { if (p.qo > fd.ser[best].qo) best = i; });   // start at peak oil rate
+  const r = $('fdIdx'); r.max = fd.ser.length - 1; r.value = best; r.disabled = false; fd.i = best; $('fdApply').disabled = false; fdShow();
+}
+function fdShow() {
+  const p = fd.ser[fd.i]; if (!p) return; txt('fdLbl', p.label);
+  const extra = isFinite(p.bhp) && p.bhp > 0 ? `<span>${T('Measured BHP / WHP')}</span><b class="w">${fu('press', p.bhp, 0)} / ${fu('press', p.whp, 0)}</b>` : '';
+  $('fdKv').innerHTML = `<span>${T('Oil')}</span><b class="a">${fu('liq', p.qo, 0)}</b><span>${T('Water')}</span><b class="c">${fu('liq', p.qw, 0)}</b><span>${T('Gas')}</span><b>${fu('gas', p.qg / 1e6, 2)}</b>
+    <span>${T('Water cut')}</span><b class="w">${nf(p.wc * 100, 1)} %</b><span>GOR</span><b class="w">${fu('gor', p.gor, 0)}</b><span>${T('Cumulative oil')}</span><b class="w">${fu('vol', p.cumO, 0)}</b>${extra}`;
+  fdChart();
+}
+function fdChart() {
+  const cv0 = $('fdChart'); if (!cv0) return; const dpr = window.devicePixelRatio || 1, W = cv0.clientWidth, H = cv0.clientHeight;
+  if (cv0.width !== Math.round(W * dpr)) { cv0.width = Math.round(W * dpr); cv0.height = Math.round(H * dpr); }
+  const c = cv0.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, W, H);
+  const S = fd.ser, L = 58, R = 54, Tp = 10, B = 24, pw = W - L - R, ph = H - Tp - B;
+  c.font = '10.5px system-ui,sans-serif'; c.fillStyle = '#7f9dbd';
+  if (!S.length) { c.textAlign = 'center'; c.fillText(T('Load a production CSV to see its history here'), W / 2, H / 2); return; }
+  const t0 = S[0].t, t1 = S[S.length - 1].t || t0 + 1, xt = t => L + (t - t0) / Math.max(1, t1 - t0) * pw;
+  const yL = Math.max(1, ...S.map(p => Math.max(cv('liq', p.qo), cv('liq', p.qw)))) * 1.08, yG = Math.max(1e-6, ...S.map(p => cv('gas', p.qg / 1e6))) * 1.08;
+  c.strokeStyle = '#15385b'; c.lineWidth = 1; c.textAlign = 'right';
+  for (let k = 0; k <= 4; k++) { const y = Tp + ph * (1 - k / 4); c.beginPath(); c.moveTo(L, y); c.lineTo(L + pw, y); c.stroke(); c.fillStyle = '#ffb627'; c.fillText(nf(yL * k / 4, 0), L - 6, y + 3); c.fillStyle = '#ffe14d'; c.textAlign = 'left'; c.fillText(nf(yG * k / 4, 2), L + pw + 6, y + 3); c.textAlign = 'right'; }
+  c.fillStyle = '#7f9dbd'; c.textAlign = 'left'; c.fillText(un('liq'), 4, Tp + 8); c.textAlign = 'right'; c.fillText(un('gas'), W - 4, Tp + 8);
+  const y0 = new Date(t0).getUTCFullYear(), y1 = new Date(t1).getUTCFullYear(), stepY = Math.max(1, Math.ceil((y1 - y0 + 1) / 10)); c.textAlign = 'center'; c.fillStyle = '#7f9dbd';
+  for (let y = y0; y <= y1 + 1; y += stepY) { const x = xt(Date.UTC(y, 0, 1)); if (x >= L && x <= L + pw) { c.fillText(String(y), x, H - 8); c.strokeStyle = '#102a45'; c.beginPath(); c.moveTo(x, Tp); c.lineTo(x, Tp + ph); c.stroke(); } }
+  const line = (f, col, sc) => { c.strokeStyle = col; c.lineWidth = 1.6; c.beginPath(); S.forEach((p, i) => { const x = xt(p.t), y = Tp + ph * (1 - f(p) / sc); i ? c.lineTo(x, y) : c.moveTo(x, y); }); c.stroke(); };
+  line(p => cv('liq', p.qw), '#3fb0ff', yL); line(p => cv('gas', p.qg / 1e6), '#ffe14d', yG); line(p => cv('liq', p.qo), '#ffb627', yL);
+  c.setLineDash([4, 3]); c.strokeStyle = '#b689ff'; c.lineWidth = 1.2; c.beginPath(); S.forEach((p, i) => { const x = xt(p.t), y = Tp + ph * (1 - p.wc); i ? c.lineTo(x, y) : c.moveTo(x, y); }); c.stroke(); c.setLineDash([]);
+  const p = S[fd.i]; if (p) { const x = xt(p.t); c.strokeStyle = '#7dffb0'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(x, Tp); c.lineTo(x, Tp + ph); c.stroke(); }
+  $('fdLeg').innerHTML = `<span><i style="background:#ffb627"></i>${T('Oil')}</span><span><i style="background:#3fb0ff"></i>${T('Water')}</span><span><i style="background:#ffe14d"></i>${T('Gas')} (${un('gas')})</span><span><i style="background:#b689ff"></i>${T('Water cut')} (0–100 %)</span>`;
+}
+function fdApply() {
+  const p = fd.ser[fd.i]; if (!p) return; $('fdApply').disabled = true; $('fdRes').innerHTML = `<p class="note">${T('Calibrating…')}</p>`;
+  setTimeout(() => {
+    try {
+      const r = FD.calibrate(F_, p, { name: `${fd.ent} · ${p.label}` }); sim = r.sim; fd.res = r; st.lastMsg = 0;
+      const row = (n, a, b, e, q, d) => `<tr><td>${T(n)}</td><td>${q ? fu(q, a, d) : a}</td><td>${q ? fu(q, b, d) : b}</td><td class="${e === '' ? '' : Math.abs(e) < 5 ? 'ok' : 'bad'}">${e === '' ? '' : (e > 0 ? '+' : '') + nf(e, 1) + ' %'}</td></tr>`;
+      const pr = isFinite(p.bhp) && p.bhp > 0 ? row('BHP (measured vs model, not fitted)', p.bhp, sim.s.wells.reduce((a, w) => a + w.Pwf, 0) / sim.s.wells.length, (sim.s.wells.reduce((a, w) => a + w.Pwf, 0) / sim.s.wells.length - p.bhp) / p.bhp * 100, 'press', 0) : '';
+      $('fdRes').innerHTML = `<table class="fdt"><thead><tr><th></th><th>${T('Field')}</th><th>${T('Model')}</th><th>${T('Error')}</th></tr></thead><tbody>
+        ${row('Oil', r.target.qo, r.model.qo, r.err.qo, 'liq', 0)}${row('Water', r.target.qw, r.model.qw, r.err.qw, 'liq', 0)}${row('Gas', r.target.qg / 1e6, r.model.qg / 1e6, r.err.qg, 'gas', 2)}
+        ${row('Water cut', nf(r.target.wc * 100, 1) + ' %', nf(r.model.wc * 100, 1) + ' %', '')}${row('GOR', r.target.gor, r.model.gor, (r.model.gor - r.target.gor) / Math.max(1, r.target.gor) * 100, 'gor', 0)}${pr}</tbody></table>
+        <p class="note">${F('Fitted: size factor ×{s} (productivity, choke capacity, flowline/riser friction and separator volume scaled together), well water cut and GOR; {g} gas turbines. Reservoir pressure, PVT and equipment curves stay generic, so pressures are indicative only.', { s: nf(r.size, 2), g: r.gts })}</p>`;
+      toast(F('Simulator calibrated to {n}', { n: `${fd.ent} ${p.label}` })); drawTrend(); updateUI();
+    } catch (e) { $('fdRes').innerHTML = `<p class="note">${T(e.message)}</p>`; }
+    $('fdApply').disabled = false;
+  }, 30);
+}
+function fdBind() {
+  $('fdFile').addEventListener('change', e => { const f = e.target.files[0]; if (!f) return; const rd = new FileReader(); rd.onload = () => fdLoad(rd.result, f.name); rd.readAsText(f); e.target.value = ''; });
+  const card = $('fieldCard'); card.addEventListener('dragover', e => { e.preventDefault(); card.classList.add('drop'); }); card.addEventListener('dragleave', () => card.classList.remove('drop'));
+  card.addEventListener('drop', e => { e.preventDefault(); card.classList.remove('drop'); const f = e.dataTransfer.files[0]; if (!f) return; const rd = new FileReader(); rd.onload = () => fdLoad(rd.result, f.name); rd.readAsText(f); });
+  $('fdEnt').addEventListener('change', e => fdEntity(e.target.value)); $('fdIdx').addEventListener('input', e => { fd.i = +e.target.value; fdShow(); });
+  $('fdApply').onclick = fdApply;
+  $('fdReset').onclick = () => { FD.restore(CFG); sim = new F_.FpsoSim(); fd.res = null; $('fdRes').innerHTML = ''; st.lastMsg = 0; drawTrend(); updateUI(); toast('Back to the training field'); };
+}
+
 /* ---------------- events ---------------- */
 function bind() {
   const q = (sel, fn, ev = 'click') => document.querySelectorAll(sel).forEach(el => el.addEventListener(ev, e => fn(el, e)));
@@ -332,9 +398,10 @@ function bind() {
   q('[data-sc]', el => { sim.scenario(el.dataset.sc); toast(F('Scenario: {n}', { n: el.textContent })); });
   const reset = hot => { sim = new F_.FpsoSim({ hot }); st.lastMsg = 0; $('instr').close(); drawTrend(); toast(hot ? 'Reset: producing' : 'Reset: wells shut in'); };
   $('resetHot').onclick = () => reset(true); $('resetCold').onclick = () => reset(false);
-  window.addEventListener('resize', () => { drawTrend(); drawPlan(); });
+  fdBind();
+  window.addEventListener('resize', () => { drawTrend(); drawPlan(); fdChart(); });
 }
-function setLang(l) { if (I.setLang) I.setLang(l); document.querySelectorAll('[data-lang]').forEach(b => on(b, b.dataset.lang === I.lang)); buildParams(); buildWells(); buildComp(); SCN.build(); SCN.setLabels(st.labels); buildRovGo(); buildCrew(); if (st.cam === 'in') { IN.show(IN.cur()); buildInGo(); } buildLegend(); showInfo(st.info); $('soundBtn').textContent = T(st.sound ? '🔊 Horn' : '🔇 Horn'); updateUI(); drawTrend(); drawPlan(); }
+function setLang(l) { if (I.setLang) I.setLang(l); document.querySelectorAll('[data-lang]').forEach(b => on(b, b.dataset.lang === I.lang)); buildParams(); buildWells(); buildComp(); SCN.build(); SCN.setLabels(st.labels); buildRovGo(); buildCrew(); if (st.cam === 'in') { IN.show(IN.cur()); buildInGo(); } buildLegend(); showInfo(st.info); if (fd.ser.length) fdShow(); else fdChart(); $('soundBtn').textContent = T(st.sound ? '🔊 Horn' : '🔇 Horn'); updateUI(); drawTrend(); drawPlan(); }
 
 /* ---------------- main loop ---------------- */
 let last = performance.now();
