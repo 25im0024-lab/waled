@@ -279,3 +279,17 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center}
 .cr>i{width:12px;height:8px;border-radius:6px 6px 1px 1px;margin-top:4px;box-shadow:0 0 0 1px #0006}
 .cr b{display:block;font-size:12.5px;color:#e6f0fa}.cr small{display:block;color:var(--muted);font-size:11px}.cr em{display:block;font-style:normal;color:var(--green);font-size:11.5px}
 #scene .cm{cursor:pointer}
+/* field data */
+.fd{display:grid;grid-template-columns:minmax(260px,380px) minmax(0,1fr);gap:12px}
+@media (max-width:900px){.fd{grid-template-columns:1fr}}
+.fd-r{display:flex;flex-direction:column;gap:4px;min-width:0}
+#fdChart{width:100%;height:300px;display:block;background:#06111f;border:1px solid var(--line2);border-radius:3px}
+.fd select{width:100%;background:#0a1828;border:1px solid var(--line);border-radius:3px;padding:3px 6px}
+.fdt{width:100%;border-collapse:collapse;margin-top:8px;font-size:12.5px;table-layout:fixed}
+.fdt th,.fdt td{padding:3px 6px;border-bottom:1px solid var(--line2);text-align:right;font-variant-numeric:tabular-nums}
+.fdt th:first-child,.fdt td:first-child{text-align:left;color:#bcd3ea}
+.fdt td.ok{color:var(--green)}.fdt td.bad{color:var(--amber)}
+[dir=rtl] .fdt th:first-child,[dir=rtl] .fdt td:first-child{text-align:right}[dir=rtl] .fdt td,[dir=rtl] .fdt th{text-align:left}
+.fd-help{margin-top:8px}.fd-help summary{cursor:pointer;color:var(--cyan)}.fd-help ul{padding-inline-start:18px;margin:6px 0}
+#fieldCard.drop{outline:2px dashed var(--cyan);outline-offset:-4px}
+.qm{display:inline-grid;place-items:center;width:18px;height:18px;border:1px solid var(--line);border-radius:50%;font-size:11px;cursor:pointer;color:var(--cyan)}
