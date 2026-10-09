@@ -288,7 +288,7 @@ function fdLoad(text, name) {
 function fdEntity(k) {
   fd.ent = k; fd.ser = FD.stats(fd.data.entities[k]);
   let best = 0; fd.ser.forEach((p, i) => { if (p.qo > fd.ser[best].qo) best = i; });   // start at peak oil rate
-  const r = $('fdIdx'); r.max = fd.ser.length - 1; r.value = best; r.disabled = false; fd.i = best; $('fdApply').disabled = false; fdShow();
+  const r = $('fdIdx'); r.max = fd.ser.length - 1; r.value = best; r.disabled = false; fd.i = best; fd.dca = null; $('dcKv').innerHTML = ''; $('fdApply').disabled = false; $('dcFit').disabled = false; fdShow();
 }
 function fdShow() {
   const p = fd.ser[fd.i]; if (!p) return; txt('fdLbl', p.label);
@@ -304,7 +304,8 @@ function fdChart() {
   const S = fd.ser, L = 58, R = 54, Tp = 10, B = 24, pw = W - L - R, ph = H - Tp - B;
   c.font = '10.5px system-ui,sans-serif'; c.fillStyle = '#7f9dbd';
   if (!S.length) { c.textAlign = 'center'; c.fillText(T('Load a production CSV to see its history here'), W / 2, H / 2); return; }
-  const t0 = S[0].t, t1 = S[S.length - 1].t || t0 + 1, xt = t => L + (t - t0) / Math.max(1, t1 - t0) * pw;
+  const D = fd.dca, fcEnd = D && D.fc.points.length ? D.fc.points[D.fc.points.length - 1].t : 0;
+  const t0 = S[0].t, t1 = Math.max(S[S.length - 1].t || t0 + 1, fcEnd), xt = t => L + (t - t0) / Math.max(1, t1 - t0) * pw;
   const yL = Math.max(1, ...S.map(p => Math.max(cv('liq', p.qo), cv('liq', p.qw)))) * 1.08, yG = Math.max(1e-6, ...S.map(p => cv('gas', p.qg / 1e6))) * 1.08;
   c.strokeStyle = '#15385b'; c.lineWidth = 1; c.textAlign = 'right';
   for (let k = 0; k <= 4; k++) { const y = Tp + ph * (1 - k / 4); c.beginPath(); c.moveTo(L, y); c.lineTo(L + pw, y); c.stroke(); c.fillStyle = '#ffb627'; c.fillText(nf(yL * k / 4, 0), L - 6, y + 3); c.fillStyle = '#ffe14d'; c.textAlign = 'left'; c.fillText(nf(yG * k / 4, 2), L + pw + 6, y + 3); c.textAlign = 'right'; }
@@ -314,8 +315,11 @@ function fdChart() {
   const line = (f, col, sc) => { c.strokeStyle = col; c.lineWidth = 1.6; c.beginPath(); S.forEach((p, i) => { const x = xt(p.t), y = Tp + ph * (1 - f(p) / sc); i ? c.lineTo(x, y) : c.moveTo(x, y); }); c.stroke(); };
   line(p => cv('liq', p.qw), '#3fb0ff', yL); line(p => cv('gas', p.qg / 1e6), '#ffe14d', yG); line(p => cv('liq', p.qo), '#ffb627', yL);
   c.setLineDash([4, 3]); c.strokeStyle = '#b689ff'; c.lineWidth = 1.2; c.beginPath(); S.forEach((p, i) => { const x = xt(p.t), y = Tp + ph * (1 - p.wc); i ? c.lineTo(x, y) : c.moveTo(x, y); }); c.stroke(); c.setLineDash([]);
+  if (D) { const YR = 365.25 * 864e5, fit = []; for (let t = D.ft.t0; t <= S[S.length - 1].t; t += YR / 24) fit.push([t, FD.arpsQ(D.ft.qi, D.ft.Di, D.ft.b, (t - D.ft.t0) / YR)]);
+    const pl = (arr, col, dash) => { c.strokeStyle = col; c.lineWidth = 2; c.setLineDash(dash); c.beginPath(); arr.forEach(([t, q], i) => { const x = xt(t), y = Tp + ph * (1 - cv('liq', q) / yL); i ? c.lineTo(x, y) : c.moveTo(x, y); }); c.stroke(); c.setLineDash([]); };
+    pl(fit, '#7dffb0', [2, 2]); pl(D.fc.points.map(p => [p.t, p.qo]), '#ff8a5a', [7, 4]); }
   const p = S[fd.i]; if (p) { const x = xt(p.t); c.strokeStyle = '#7dffb0'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(x, Tp); c.lineTo(x, Tp + ph); c.stroke(); }
-  $('fdLeg').innerHTML = `<span><i style="background:#ffb627"></i>${T('Oil')}</span><span><i style="background:#3fb0ff"></i>${T('Water')}</span><span><i style="background:#ffe14d"></i>${T('Gas')} (${un('gas')})</span><span><i style="background:#b689ff"></i>${T('Water cut')} (0–100 %)</span>`;
+  $('fdLeg').innerHTML = `<span><i style="background:#ffb627"></i>${T('Oil')}</span><span><i style="background:#3fb0ff"></i>${T('Water')}</span><span><i style="background:#ffe14d"></i>${T('Gas')} (${un('gas')})</span><span><i style="background:#b689ff"></i>${T('Water cut')} (0–100 %)</span>${D ? `<span><i style="background:#7dffb0"></i>${T('Arps fit')}</span><span><i style="background:#ff8a5a"></i>${T('Forecast')}</span>` : ''}`;
 }
 function fdApply() {
   const p = fd.ser[fd.i]; if (!p) return; $('fdApply').disabled = true; $('fdRes').innerHTML = `<p class="note">${T('Calibrating…')}</p>`;
@@ -333,20 +337,85 @@ function fdApply() {
     $('fdApply').disabled = false;
   }, 30);
 }
+/* ---------------- PVT (black-oil correlations) ---------------- */
+const PV = window.FPSO_PVT, pv = { api: 35, sg: 0.8, T: 90, Rsb: 150, P: 300 };
+const fluid = () => ({ api: pv.api, sg: pv.sg, T: pv.T, Rsb: pv.Rsb });
+function pvtShow() {
+  const fl = fluid(), r = PV.props(fl, pv.P);
+  txt('oApi', nf(pv.api, 1) + ' °API'); txt('oSg', nf(pv.sg, 2)); txt('oT', fu('temp', pv.T, 0)); txt('oRs', fu('gor', pv.Rsb, 0)); txt('oP', fu('press', pv.P, 0));
+  $('pvKv').innerHTML = `<span>${T('Bubble-point pressure Pb')}</span><b class="a">${fu('press', r.Pb, 1)}</b><span>${T('Solution GOR Rs')}</span><b>${fu('gor', r.Rs, 0)}</b>
+    <span>${T('Oil FVF Bo')}</span><b>${nf(r.Bo, 3)} rm³/Sm³</b><span>${T('Oil viscosity μo')} (${T('dead')} ${nf(r.mud, 2)})</span><b>${nf(r.muo, 3)} cP</b>
+    <span>${T('Oil compressibility co')}</span><b class="w">${isFinite(r.co) ? (r.co * 1e5).toFixed(1) + '×10⁻⁵ 1/bar' : T('(saturated)')}</b>
+    <span>${T('Gas z-factor / Bg')}</span><b class="w">${nf(r.z, 3)} / ${r.Bg.toExponential(2)}</b><span>${T('Gas viscosity μg')}</span><b class="w">${nf(r.mug, 4)} cP</b>
+    <span>${T('Reservoir oil density / stock-tank')}</span><b class="w">${nf(r.rhoO, 0)} / ${nf(r.rhoSTO, 0)} kg/m³</b>`;
+  $('pvWarn').textContent = PV.check(fl).map(T).join(' · ');
+  pvtChart();
+}
+function pvtChart() {
+  const cv0 = $('pvChart'); if (!cv0) return; const dpr = window.devicePixelRatio || 1, W = cv0.clientWidth, H = cv0.clientHeight;
+  if (cv0.width !== Math.round(W * dpr)) { cv0.width = Math.round(W * dpr); cv0.height = Math.round(H * dpr); }
+  const c = cv0.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, W, H); c.font = '10.5px system-ui,sans-serif';
+  const fl = fluid(), Pb = PV.props(fl, 100).Pb, Pmax = Math.max(400, Pb * 1.4, sim.s.Pr * 1.15), tb = PV.table(fl, Pmax, 80), L = 54, R = 54, pw = W - L - R, gap = 26, ph = (H - 20 - gap) / 2;
+  const panel = (top, a, b, ca, cb, la, lb, fa, fb) => {
+    const ya = Math.max(...tb.map(a)) * 1.08, yb = Math.max(...tb.map(b)) * 1.08, xa = p => L + p / Pmax * pw;
+    c.strokeStyle = '#15385b'; c.lineWidth = 1;
+    for (let k = 0; k <= 3; k++) { const y = top + ph * (1 - k / 3); c.beginPath(); c.moveTo(L, y); c.lineTo(L + pw, y); c.stroke(); c.fillStyle = ca; c.textAlign = 'right'; c.fillText(fa(ya * k / 3), L - 5, y + 3); c.fillStyle = cb; c.textAlign = 'left'; c.fillText(fb(yb * k / 3), L + pw + 5, y + 3); }
+    const ln = (f, col, sc, dash) => { c.strokeStyle = col; c.lineWidth = 1.7; c.setLineDash(dash || []); c.beginPath(); tb.forEach((p, i) => { const x = xa(p.P), y = top + ph * (1 - f(p) / sc); i ? c.lineTo(x, y) : c.moveTo(x, y); }); c.stroke(); c.setLineDash([]); };
+    ln(a, ca, ya); ln(b, cb, yb, [5, 3]);
+    c.fillStyle = ca; c.textAlign = 'left'; c.fillText(la, L + 4, top + 11); c.fillStyle = cb; c.textAlign = 'right'; c.fillText(lb, L + pw - 4, top + 11);
+    const xb = xa(Pb); c.strokeStyle = '#ffb627'; c.setLineDash([2, 3]); c.beginPath(); c.moveTo(xb, top); c.lineTo(xb, top + ph); c.stroke(); c.setLineDash([]);
+    const xp = xa(pv.P); c.strokeStyle = '#7dffb0'; c.beginPath(); c.moveTo(xp, top); c.lineTo(xp, top + ph); c.stroke();
+  };
+  panel(4, p => p.Bo, p => cv('gor', p.Rs), '#36c8ff', '#ffe14d', 'Bo (rm³/Sm³)', `Rs (${un('gor')})`, v => v.toFixed(2), v => v.toFixed(0));
+  panel(4 + ph + gap, p => p.muo, p => p.z, '#ff8a5a', '#b689ff', 'μo (cP)', 'z', v => v.toFixed(2), v => v.toFixed(2));
+  c.fillStyle = '#7f9dbd'; c.textAlign = 'center'; for (let k = 0; k <= 5; k++) { const p = Pmax * k / 5; c.fillText(nf(cv('press', p), 0), L + p / Pmax * pw, H - 4); }
+  c.textAlign = 'left'; c.fillText(un('press'), 4, H - 4);
+  $('pvLeg').innerHTML = `<span><i style="background:#ffb627"></i>Pb ${fu('press', Pb, 0)}</span><span><i style="background:#7dffb0"></i>${T('read-out pressure')}</span>`;
+}
+function pvtApply() {
+  const fl = fluid(), r = PV.props(fl, CFG.Pr0); FD.snapshot(CFG);
+  if (!(r.Pb > 5) || r.Pb > CFG.Pr0 * 1.5) { toast('This fluid gives an unrealistic bubble point for this reservoir'); return; }
+  const g0 = CFG.wells.reduce((a, w) => a + w.gor, 0) / CFG.wells.length;
+  CFG.Pb = +r.Pb.toFixed(1); CFG.Bo = +PV.props(fl, r.Pb).Bob.toFixed(3); CFG.Bg = +PV.props(fl, CFG.Pr0).Bg.toFixed(5); CFG.rhoO = Math.round(r.rhoSTO);
+  CFG.wells.forEach(w => { w.gor = w.gor * fl.Rsb / g0; });
+  sim = new F_.FpsoSim(); st.lastMsg = 0; drawTrend(); updateUI();
+  toast(F('Simulator restarted with this fluid: Pb {p}, Bo {b}. “Back to the training field” undoes it.', { p: fu('press', CFG.Pb, 0), b: nf(CFG.Bo, 3) }));
+}
+function pvtBind() {
+  const bindR = (id, k) => $(id).addEventListener('input', e => { pv[k] = +e.target.value; pvtShow(); });
+  bindR('pvApi', 'api'); bindR('pvSg', 'sg'); bindR('pvT', 'T'); bindR('pvRs', 'Rsb'); bindR('pvP', 'P');
+  $('pvApply').onclick = pvtApply; $('pvSync').onclick = () => { pv.P = Math.round(sim.s.Pr); $('pvP').value = pv.P; pvtShow(); };
+}
+
+/* ---------------- decline analysis (Arps) on the loaded field data ---------------- */
+function dcFit() {
+  if (!fd.ser.length) return; const lim = +$('dcLim').value / (UN.liq[st.units][1] || 1);
+  try {
+    const ft = FD.fitArps(fd.ser, fd.i), fc = FD.forecast(ft, Math.max(1, lim)), last = fd.ser[fd.ser.length - 1];
+    fd.dca = { ft, fc };
+    const kind = ft.b < 0.025 ? T('exponential') : ft.b > 0.975 ? T('harmonic') : T('hyperbolic');
+    $('dcKv').innerHTML = `<span>${T('Decline type')}</span><b class="w">${kind} (b = ${nf(ft.b, 2)})</b><span>${T('Initial decline Di')}</span><b class="w">${nf(ft.Di * 100, 1)} %/${T('yr')}</b>
+      <span>qi (${new Date(ft.t0).toISOString().slice(0, 7)})</span><b class="a">${fu('liq', ft.qi, 0)}</b><span>${T('Fit quality R² (ln q)')}</span><b class="${ft.r2 > 0.9 ? '' : 'a'}">${nf(ft.r2, 3)} (${ft.n} ${T('points')})</b>
+      <span>${T('Remaining to the economic limit')}</span><b class="c">${fu('vol', fc.Np, 0)}</b><span>${T('EUR (produced + remaining)')}</span><b class="c">${fu('vol', last.cumO + fc.Np, 0)}</b>
+      <span>${T('Economic limit reached')}</span><b class="w">${fc.reachedLimit ? new Date(fc.tLimit).getUTCFullYear() : T('not within 30 years')}</b>`;
+  } catch (e) { fd.dca = null; $('dcKv').innerHTML = `<span>${T(e.message)}</span><b></b>`; }
+  fdChart();
+}
 function fdBind() {
   $('fdFile').addEventListener('change', e => { const f = e.target.files[0]; if (!f) return; const rd = new FileReader(); rd.onload = () => fdLoad(rd.result, f.name); rd.readAsText(f); e.target.value = ''; });
   const card = $('fieldCard'); card.addEventListener('dragover', e => { e.preventDefault(); card.classList.add('drop'); }); card.addEventListener('dragleave', () => card.classList.remove('drop'));
   card.addEventListener('drop', e => { e.preventDefault(); card.classList.remove('drop'); const f = e.dataTransfer.files[0]; if (!f) return; const rd = new FileReader(); rd.onload = () => fdLoad(rd.result, f.name); rd.readAsText(f); });
   $('fdEnt').addEventListener('change', e => fdEntity(e.target.value)); $('fdIdx').addEventListener('input', e => { fd.i = +e.target.value; fdShow(); });
   $('fdApply').onclick = fdApply;
-  $('fdReset').onclick = () => { FD.restore(CFG); sim = new F_.FpsoSim(); fd.res = null; $('fdRes').innerHTML = ''; st.lastMsg = 0; drawTrend(); updateUI(); toast('Back to the training field'); };
+  $('dcFit').onclick = dcFit; $('dcClear').onclick = () => { fd.dca = null; $('dcKv').innerHTML = ''; fdChart(); };
+  $('fdReset').onclick = () => { FD.restore(CFG); fd.dca = null; sim = new F_.FpsoSim(); fd.res = null; $('fdRes').innerHTML = ''; st.lastMsg = 0; drawTrend(); updateUI(); toast('Back to the training field'); };
 }
 
 /* ---------------- events ---------------- */
 function bind() {
   const q = (sel, fn, ev = 'click') => document.querySelectorAll(sel).forEach(el => el.addEventListener(ev, e => fn(el, e)));
   q('[data-speed]', el => { st.speed = +el.dataset.speed; document.querySelectorAll('[data-speed]').forEach(b => on(b, b === el)); });
-  q('[data-units]', el => { st.units = el.dataset.units; document.querySelectorAll('[data-units]').forEach(b => on(b, b === el)); buildLegend(); updateUI(); drawTrend(); });
+  q('[data-units]', el => { st.units = el.dataset.units; document.querySelectorAll('[data-units]').forEach(b => on(b, b === el)); buildLegend(); updateUI(); drawTrend(); pvtShow(); txt('dcLimU', un('liq')); if (fd.ser.length) fdShow(); });
   q('[data-lang]', el => setLang(el.dataset.lang));
   $('soundBtn').onclick = () => { st.sound = !st.sound; $('soundBtn').textContent = T(st.sound ? '🔊 Horn' : '🔇 Horn'); on($('soundBtn'), st.sound); if (st.sound) beep(660); };
   $('instrBtn').onclick = () => $('instr').showModal(); $('instrClose').onclick = () => $('instr').close();
@@ -398,10 +467,10 @@ function bind() {
   q('[data-sc]', el => { sim.scenario(el.dataset.sc); toast(F('Scenario: {n}', { n: el.textContent })); });
   const reset = hot => { sim = new F_.FpsoSim({ hot }); st.lastMsg = 0; $('instr').close(); drawTrend(); toast(hot ? 'Reset: producing' : 'Reset: wells shut in'); };
   $('resetHot').onclick = () => reset(true); $('resetCold').onclick = () => reset(false);
-  fdBind();
-  window.addEventListener('resize', () => { drawTrend(); drawPlan(); fdChart(); });
+  fdBind(); pvtBind();
+  window.addEventListener('resize', () => { drawTrend(); drawPlan(); fdChart(); pvtChart(); });
 }
-function setLang(l) { if (I.setLang) I.setLang(l); document.querySelectorAll('[data-lang]').forEach(b => on(b, b.dataset.lang === I.lang)); buildParams(); buildWells(); buildComp(); SCN.build(); SCN.setLabels(st.labels); buildRovGo(); buildCrew(); if (st.cam === 'in') { IN.show(IN.cur()); buildInGo(); } buildLegend(); showInfo(st.info); if (fd.ser.length) fdShow(); else fdChart(); $('soundBtn').textContent = T(st.sound ? '🔊 Horn' : '🔇 Horn'); updateUI(); drawTrend(); drawPlan(); }
+function setLang(l) { if (I.setLang) I.setLang(l); document.querySelectorAll('[data-lang]').forEach(b => on(b, b.dataset.lang === I.lang)); buildParams(); buildWells(); buildComp(); SCN.build(); SCN.setLabels(st.labels); buildRovGo(); buildCrew(); if (st.cam === 'in') { IN.show(IN.cur()); buildInGo(); } buildLegend(); showInfo(st.info); if (fd.ser.length) fdShow(); else fdChart(); pvtShow(); txt('dcLimU', un('liq')); $('soundBtn').textContent = T(st.sound ? '🔊 Horn' : '🔇 Horn'); updateUI(); drawTrend(); drawPlan(); }
 
 /* ---------------- main loop ---------------- */
 let last = performance.now();

@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+message: "If you use these tools in teaching or research, please cite them as below."
+title: "Waled — Driller's Console, FPSO Console and Field Hydraulics: bilingual (Arabic/English) petroleum engineering simulators"
+type: software
+authors:
+  - given-names: Waleid
+    alias: 25im0024-lab
+license: MIT
+repository-code: "https://github.com/25im0024-lab/waled"
+url: "https://25im0024-lab.github.io/waled/"
+version: "1.1.0"
+date-released: "2026-10-09"
+keywords:
+  - drilling simulator
+  - FPSO
+  - drilling hydraulics
+  - API RP 13D
+  - black-oil PVT
+  - decline curve analysis
+  - petroleum engineering education

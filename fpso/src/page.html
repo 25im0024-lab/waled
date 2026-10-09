@@ -189,6 +189,22 @@
     </div>
   </section>
 
+  <section class="card c12" id="pvtCard">
+    <h2><span>Reservoir Fluid (PVT) — black-oil correlations <span class="qm" data-info="pvt">?</span></span> <small id="pvtNote">Standing · Vasquez-Beggs · Beggs-Robinson · Papay · Lee-Gonzalez-Eakin</small></h2>
+    <div class="body fd">
+      <div class="fd-l">
+        <div class="ctl"><label>Oil gravity (°API)</label><input type="range" id="pvApi" min="15" max="60" step="0.5" value="35"><output id="oApi"></output></div>
+        <div class="ctl"><label>Gas specific gravity (air = 1)</label><input type="range" id="pvSg" min="0.55" max="1.2" step="0.01" value="0.8"><output id="oSg"></output></div>
+        <div class="ctl"><label>Reservoir temperature</label><input type="range" id="pvT" min="40" max="150" step="1" value="90"><output id="oT"></output></div>
+        <div class="ctl"><label>Solution GOR at Pb</label><input type="range" id="pvRs" min="20" max="400" step="5" value="150"><output id="oRs"></output></div>
+        <div class="ctl"><label>Pressure for the read-out</label><input type="range" id="pvP" min="5" max="500" step="5" value="300"><output id="oP"></output></div>
+        <div class="kvt" id="pvKv"></div><div class="note" id="pvWarn"></div>
+        <div class="row" style="margin-top:6px"><button class="btn sm cy" id="pvApply">Use this fluid in the simulator</button><button class="btn sm" id="pvSync">Read-out at reservoir pressure</button></div>
+      </div>
+      <div class="fd-r"><canvas id="pvChart" dir="ltr"></canvas><div class="legend" id="pvLeg"></div></div>
+    </div>
+  </section>
+
   <section class="card c12" id="fieldCard">
     <h2><span>Field Data — import real production and calibrate <span class="qm" data-info="fielddata">?</span></span> <small id="fdFmt">no file loaded</small></h2>
     <div class="body fd">
@@ -199,6 +215,10 @@
         <div class="kvt" id="fdKv"></div>
         <div class="row" style="margin-top:6px"><button class="btn sm cy" id="fdApply" disabled>Calibrate the simulator to this period</button><button class="btn sm" id="fdReset">Back to the training field</button></div>
         <div id="fdRes"></div>
+        <div class="sub-h">Decline analysis (Arps) <span class="qm" data-info="dca">?</span></div>
+        <div class="ctl"><label>Economic limit (oil)</label><input type="number" id="dcLim" min="0" step="50" value="500"><output id="dcLimU"></output></div>
+        <div class="row"><button class="btn sm cy" id="dcFit" disabled>Fit decline from the selected period to the end</button><button class="btn sm" id="dcClear">Clear</button></div>
+        <div class="kvt" id="dcKv"></div>
         <details class="note fd-help"><summary>Where to get field data (free, official)</summary>
           <ul>
             <li><b>Sodir FactPages (Norway):</b> open the field production table (monthly or yearly, by field) and export it as CSV. FPSO fields include NORNE, ALVHEIM, SKARV, GOLIAT, ÅSGARD and JOHAN CASTBERG.</li>
@@ -259,6 +279,7 @@
 <script src="info.js"></script>
 <script src="sim.js"></script>
 <script src="field.js"></script>
+<script src="pvt.js"></script>
 <script src="scene.js"></script>
 <script src="interior.js"></script>
 <script src="ui.js"></script>
