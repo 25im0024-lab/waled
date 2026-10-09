@@ -136,6 +136,29 @@ function calibrate(F, target, opts) {
     err: { qo: err(s.wellsQin.o, qo), qw: err(mod.qw, qw), qg: err(mod.qg, qg) }, iterations: hist.length, size: +S.toFixed(2), J: W.map(w => +w.J.toFixed(1)), gts: CFG.power.gts, lift: lift() };
 }
 
-const API = { parseCSV, parse, parseDate, stats, calibrate, restore };
+/* ---------- decline-curve analysis: Arps (1945), Trans. AIME 160, 228–247 ----------
+   q(t) = qi / (1 + b·Di·t)^(1/b)  (b = 0: exponential qi·e^(−Di·t); b = 1: harmonic). t in years, Di nominal 1/yr.
+   Fit: grid over b ∈ [0, 1] and Di, qi by least squares on ln q (closed form for fixed b, Di). */
+const arpsQ = (qi, Di, b, t) => b < 1e-6 ? qi * Math.exp(-Di * t) : qi / Math.pow(1 + b * Di * t, 1 / b);
+function fitArps(series, i0, i1) {
+  const YR = 365.25 * 864e5, pts = series.slice(i0, (i1 === undefined ? series.length - 1 : i1) + 1).filter(p => p.qo > 0);
+  if (pts.length < 4) throw new Error('Need at least 4 producing periods to fit a decline');
+  const t0 = pts[0].t, T = pts.map(p => (p.t - t0) / YR), Y = pts.map(p => Math.log(p.qo)), n = pts.length, ym = Y.reduce((a, y) => a + y, 0) / n;
+  let best = null;
+  for (let bi = 0; bi <= 20; bi++) { const b = bi / 20;
+    for (let k = 0; k <= 160; k++) { const Di = 0.005 * Math.pow(10, k / 40);           // 0.005 … 50 1/yr
+      const g = T.map(t => b < 1e-6 ? -Di * t : -Math.log(1 + b * Di * t) / b), lnqi = Y.reduce((a, y, j) => a + y - g[j], 0) / n;
+      const sse = Y.reduce((a, y, j) => a + (y - lnqi - g[j]) ** 2, 0); if (!best || sse < best.sse) best = { b, Di, qi: Math.exp(lnqi), sse }; } }
+  const sst = Y.reduce((a, y) => a + (y - ym) ** 2, 0); best.r2 = sst > 0 ? 1 - best.sse / sst : 1; best.t0 = t0; best.n = n; best.tEnd = T[n - 1];
+  return best;
+}
+/* forecast from the end of the data to the economic limit (or 30 years); volumes in Sm3 */
+function forecast(fit, qLim, years) {
+  const YR = 365.25 * 864e5, out = [], dt = 1 / 12; years = years || 30; let Np = 0, t = fit.tEnd;
+  for (let k = 0; k < years * 12; k++) { const q = arpsQ(fit.qi, fit.Di, fit.b, t + dt / 2); if (q < qLim) break; Np += q * dt * 365.25; t += dt; out.push({ t: fit.t0 + t * YR, qo: arpsQ(fit.qi, fit.Di, fit.b, t) }); }
+  return { points: out, Np, tLimit: fit.t0 + t * YR, reachedLimit: out.length < years * 12 };
+}
+function snapshot(CFG) { if (!DEFAULT) DEFAULT = deep(CFG); }
+const API = { parseCSV, parse, parseDate, stats, calibrate, restore, snapshot, fitArps, forecast, arpsQ };
 if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.FPSO_FIELD = API;
 })(typeof window !== 'undefined' ? window : globalThis);

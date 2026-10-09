@@ -1,0 +1,31 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Driller's Console simulator
+        run: node drillers-console/tests/sim-smoke.js
+      - name: Field Hydraulics (API RP 13D)
+        run: node drillers-console/hydraulics/tests/core-test.js
+      - name: FPSO simulator
+        run: node fpso/tests/sim-smoke.js
+      - name: FPSO field data and calibration
+        run: node fpso/tests/field-test.js
+      - name: FPSO PVT correlations and Arps decline
+        run: node fpso/tests/pvt-dca-test.js
+      - name: Built pages match their sources
+        run: |
+          node drillers-console/build.js
+          node drillers-console/hydraulics/build.js
+          node fpso/build.js
+          git diff --exit-code -- drillers-console/index.html drillers-console/hydraulics/index.html fpso/index.html

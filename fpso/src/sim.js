@@ -148,7 +148,8 @@ class FpsoSim {
     const s = this.s;
     // voidage (rm3/d): oil + water + free gas below Pb; replaced by water injection and gas reinjection
     let qo = 0, qw = 0, qg = 0; s.wells.forEach(w => { qo += w.qo; qw += w.qw; qg += w.qg; });
-    const Rs = (gor) => gor * Math.min(1, s.Pr / CFG.Pb);
+    // solution gas below Pb follows Standing (1947): Rs ∝ (p/18.2 + 1.4)^1.2048 with p in psia
+    const rsr = s.Pr >= CFG.Pb ? 1 : Math.pow((s.Pr * 14.5038 / 18.2 + 1.4) / (CFG.Pb * 14.5038 / 18.2 + 1.4), 1.2048), Rs = (gor) => gor * rsr;
     let free = 0; s.wells.forEach((w, i) => { free += w.qo * Math.max(0, CFG.wells[i].gor - Rs(CFG.wells[i].gor)); });
     const vout = qo * CFG.Bo + qw + free * CFG.Bg, vin = s.wi.q + s.gasUse.reinj * 1e6 * CFG.Bg;
     this.d.vrr = vout > 1 ? vin / vout : 0;
