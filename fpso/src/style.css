@@ -239,3 +239,43 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center}
 
 .scene-card .scene-legend{top:auto;bottom:8px;left:8px;right:auto}
 [dir=rtl] .scene-card .scene-legend{left:auto;right:8px}
+
+/* ROV camera */
+.cam-body{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(220px,1fr);gap:10px}
+@media (max-width:820px){.cam-body{grid-template-columns:1fr}}
+.cam{position:relative;aspect-ratio:16/9;background:#01080f;border:1px solid #2a5a85;border-radius:4px;overflow:hidden;cursor:crosshair}
+#camSvg{position:absolute;inset:0;width:100%;height:100%;display:block;filter:saturate(.75) contrast(1.08)}
+#camShade,.snow,.scan,.xhair,#camHud{position:absolute;inset:0;pointer-events:none}
+.scan{background:repeating-linear-gradient(0deg,rgba(0,0,0,.18) 0 1px,transparent 1px 3px);mix-blend-mode:multiply}
+.snow{opacity:.55;background-image:radial-gradient(circle,#cfe8f4 .6px,transparent 1px),radial-gradient(circle,#a9c8d8 .5px,transparent 1px);
+  background-size:37px 41px,53px 29px;background-position:0 0,11px 7px;animation:snow 9s linear infinite}
+@keyframes snow{to{background-position:-40px 82px,-30px 58px}}
+.xhair{background:linear-gradient(#7dffb0,#7dffb0) center/22px 1px no-repeat,linear-gradient(#7dffb0,#7dffb0) center/1px 22px no-repeat;opacity:.55}
+.xhair::before{content:"";position:absolute;inset:7%;background:linear-gradient(rgba(125,255,176,.5),rgba(125,255,176,.5)) left top/18px 1px no-repeat,linear-gradient(rgba(125,255,176,.5),rgba(125,255,176,.5)) left top/1px 18px no-repeat,linear-gradient(rgba(125,255,176,.5),rgba(125,255,176,.5)) right top/18px 1px no-repeat,linear-gradient(rgba(125,255,176,.5),rgba(125,255,176,.5)) right top/1px 18px no-repeat,linear-gradient(rgba(125,255,176,.5),rgba(125,255,176,.5)) left bottom/18px 1px no-repeat,linear-gradient(rgba(125,255,176,.5),rgba(125,255,176,.5)) left bottom/1px 18px no-repeat,linear-gradient(rgba(125,255,176,.5),rgba(125,255,176,.5)) right bottom/18px 1px no-repeat,linear-gradient(rgba(125,255,176,.5),rgba(125,255,176,.5)) right bottom/1px 18px no-repeat}
+#camHud{padding:8px 10px;font:600 12px/1.45 var(--mono);color:#7dffb0;text-shadow:0 0 3px #000,0 0 6px #000;display:flex;flex-direction:column;gap:2px}
+#camHud b{color:#e8fff0}
+#camHud .tg{color:#ffe14d}
+#camHud .lv{margin-top:auto;color:#bfe9ff}
+#camHud .rec{position:absolute;right:10px;top:8px;color:#ff5a5a;background:#000a;padding:0 5px;border-radius:2px;animation:blink 1.2s steps(2) infinite}
+.cam-ctl{display:flex;flex-direction:column;gap:4px;min-width:0}
+.cam-ctl .sub-h{margin-top:2px}
+.rov-go .btn{font-size:11px;padding:3px 7px}
+.pilot{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.pad{display:grid;grid-template-columns:repeat(3,34px);grid-template-rows:repeat(3,28px);gap:2px}
+.pad [data-nudge="0,-1"]{grid-column:2;grid-row:1}.pad [data-nudge="-1,0"]{grid-column:1;grid-row:2}.pad [data-nudge="1,0"]{grid-column:3;grid-row:2}.pad [data-nudge="0,1"]{grid-column:2;grid-row:3}
+.pad .btn{padding:0;min-width:0}
+.zv{font:700 14px var(--mono);min-width:32px;text-align:center}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+#scene #rov{touch-action:none}
+#camHud>div{unicode-bidi:plaintext}
+#camHud>div:first-child{padding-right:110px}
+@media (max-width:560px){#camHud{font-size:10px;padding:6px 8px}#camHud>div:first-child{padding-right:0;padding-top:14px}#camHud .rec{top:5px;right:8px}}
+/* camera mode, crew list */
+.cam-mode{display:flex;margin-bottom:4px}.cam-mode .btn{flex:1}
+#inSvg{position:absolute;inset:0;width:100%;height:100%;display:block}
+.crew{display:flex;flex-direction:column;gap:3px;max-height:330px;overflow:auto}
+.cr{display:grid;grid-template-columns:12px 1fr;gap:8px;align-items:start;padding:4px 6px;border:1px solid var(--line2);border-radius:3px;background:#0a1828;cursor:pointer}
+.cr:hover{border-color:var(--cyan)}
+.cr>i{width:12px;height:8px;border-radius:6px 6px 1px 1px;margin-top:4px;box-shadow:0 0 0 1px #0006}
+.cr b{display:block;font-size:12.5px;color:#e6f0fa}.cr small{display:block;color:var(--muted);font-size:11px}.cr em{display:block;font-style:normal;color:var(--green);font-size:11.5px}
+#scene .cm{cursor:pointer}
