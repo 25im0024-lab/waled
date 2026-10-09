@@ -52,9 +52,9 @@
   </section>
 
   <section class="card c6 scene-card">
-    <h2>Field Layout — From Subsea Wells to Offloading <small>tap any part for an explanation</small></h2>
-    <div class="body"><svg id="scene" viewBox="0 0 1000 760" aria-label="Animated FPSO field layout"></svg>
-      <div class="scene-legend"><span><i style="background:#ffb627"></i>Oil</span><span><i style="background:#ffe14d"></i>Gas</span><span><i style="background:#3fb0ff"></i>Water</span><span><i style="background:#9b7cff"></i>Lift gas</span></div>
+    <h2>Field Layout — From Subsea Wells to Offloading <small>tap any part for an explanation · drag the ROV</small> <span class="seg"><button class="btn sm" data-light="day">Day</button><button class="btn sm on" data-light="dusk">Dusk</button><button class="btn sm" data-light="night">Night</button><button class="btn sm on" id="lblBtn">Labels</button></span></h2>
+    <div class="body"><svg id="scene" viewBox="0 0 1100 760" aria-label="Animated FPSO field layout"></svg>
+      <div class="scene-legend"><span><i style="background:#ffb627"></i>Oil</span><span><i style="background:#ffe14d"></i>Gas</span><span><i style="background:#3fb0ff"></i>Water</span><span><i style="background:#9b7cff"></i>Lift gas</span><span><i style="background:#7bd35a"></i>Umbilical</span></div>
     </div>
   </section>
 
@@ -62,6 +62,50 @@
     <h2>Explanation <small id="infoTag">overview</small></h2>
     <div class="body" id="info"></div>
   </section>
+
+  <section class="card c8 cam-card">
+    <h2>Live Cameras <small>subsea ROV · inside the FPSO</small></h2>
+    <div class="body cam-body">
+      <div class="cam" dir="ltr">
+        <svg id="camSvg" viewBox="380 480 200 112" aria-label="ROV camera view"><use href="#world"/></svg><svg id="inSvg" viewBox="0 0 320 180" preserveAspectRatio="xMidYMid slice" aria-label="Inside the FPSO" style="display:none"></svg>
+        <div id="camShade"></div><div class="snow"></div><div class="scan"></div><div class="xhair"></div>
+        <div id="camHud"></div>
+      </div>
+      <div class="cam-ctl">
+        <span class="seg cam-mode"><button class="btn sm on" data-cam="rov">Subsea ROV</button><button class="btn sm" data-cam="in">Inside the FPSO</button></span>
+        <div id="inCtl" style="display:none"><div class="sub-h">Look inside</div><div class="row rov-go" id="inGo"></div><p class="note">Cutaway views show the inside of pressurised equipment (schematic); CCTV views are what the control room sees. Everything moves with the live process.</p></div>
+        <div id="rovCtl"><div class="sub-h">Fly the ROV to</div>
+        <div class="row rov-go" id="rovGo"></div>
+        <div class="sub-h">Pilot</div>
+        <div class="pilot">
+          <div class="pad" dir="ltr"><button class="btn sm" data-nudge="0,-1" title="Up">▲</button><button class="btn sm" data-nudge="-1,0" title="Left">◀</button><button class="btn sm" data-nudge="1,0" title="Right">▶</button><button class="btn sm" data-nudge="0,1" title="Down">▼</button></div>
+          <div class="row"><button class="btn sm" id="rovOut">Zoom −</button><b id="rovZoom" class="zv">×5</b><button class="btn sm" id="rovIn">Zoom +</button><button class="btn sm on" id="rovLights">Lights</button></div>
+        </div>
+        </div>
+        <button class="btn sm cy" id="camExplain">Explain what the camera sees</button>
+        <p class="note" id="rovNote">Tap the camera image to steer the ROV there. The camera shows the same live model: flows, valve lamps and mooring tensions change with the process.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="c4 stack">
+  <section class="card">
+    <h2>Helideck &amp; Crew Change <small id="heliState"></small></h2>
+    <div class="body">
+      <div class="kvt">
+        <span>Helicopter</span><b id="hSt">—</b><span>Persons on board (POB)</span><b id="hPob" class="w">—</b><span>Flights completed</span><b id="hFl" class="w">—</b>
+        <span>Flight limits (wind / Hs)</span><b id="hLim" class="w">—</b><span>Weather now</span><b id="hWx">—</b>
+      </div>
+      <div class="row" style="margin-top:6px"><button class="btn sm cy" id="heliBtn">Request crew-change flight</button><button class="btn sm amb" id="heliTo">Take off</button></div>
+      <div class="prog"><i id="heliProg"></i></div>
+      <p class="note">The helideck sits on top of the accommodation block, at the stern end of the FPSO, as far as possible from the flare and the process modules. Flights are cancelled when wind or deck motion are above limits, or during an ESD.</p>
+    </div>
+  </section>
+  <section class="card">
+    <h2>Crew on Board <small id="crewPob"></small></h2>
+    <div class="body"><div class="crew" id="crewList"></div><p class="note">Tap a person to see where they work and what they do. People in the drawing can be tapped too.</p></div>
+  </section>
+  </div>
 
   <section class="card c6">
     <h2>Wells, Manifold &amp; Risers <small id="subseaNote"></small></h2>
@@ -192,6 +236,8 @@
 <script src="i18n-ar.js"></script>
 <script src="info.js"></script>
 <script src="sim.js"></script>
+<script src="scene.js"></script>
+<script src="interior.js"></script>
 <script src="ui.js"></script>
 <script>if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(() => {});</script>
 </body>

@@ -38,6 +38,7 @@ const CFG = {
   pw: { cap: 30000, base: 12, limit: 30 },    // produced-water treatment capacity Sm3/d, base OIW mg/L, discharge limit mg/L
   cargo: { cap: 254000, min: 0.05, lightDraft: 9.0, wpa: 16240 },   // m3 (≈1.6 MMbbl), m, m2
   tanker: { cap: 159000, rate: 6360, hsLimit: 4.0, approach: 7200, hookup: 5400, disconnect: 3600, depart: 3600 },
+  heli: { inbound: 420, onDeck: 1800, outbound: 300, windMax: 30, hsMax: 5.0, seats: 19 },   // crew-change flight (s, m/s, m)
   moor: { lines: 9, kl: 18, T0: 1500, MBL: 8000, Af: 3200, As: 9500, Cdw: 0.9, Ccur: 0.6, AcF: 1300, AcS: 5600, cw: 8, dyn: 55 },
 };
 
@@ -91,7 +92,7 @@ class FpsoSim {
       wi: { on: on, rate: on ? 21000 : 0 },
       meg: false, esd: false, psd: false,
       env: { wind: 12, windDir: 0, hs: 2.0, waveDir: 10, cur: 0.5, curDir: 30 },
-      tankerReq: false, offRate: CFG.tanker.rate,
+      tankerReq: false, offRate: CFG.tanker.rate, heliReq: false,
     };
     this.s = {
       t: 0, Pr: CFG.Pr0, Np: CFG.wells.map(() => 0),
@@ -102,6 +103,7 @@ class FpsoSim {
       power: { diesel: false, demand: 0 },
       wi: { q: 0 }, cargo: 0.55 * CFG.cargo.cap, oiwFoul: 0, wellsQin: { o: 0, w: 0, g: 0 },
       tanker: { st: 'none', t: 0, cargo: 0, emergency: false },
+      heli: { st: 'none', t: 0, pob: 118, flights: 0 },
       moor: { heading: 0, offset: 0, offDir: 180, failed: new Array(CFG.moor.lines).fill(false) },
       cum: { oil: 0, gas: 0, water: 0, flare: 0, offloaded: 0 },
     };
@@ -266,6 +268,12 @@ class FpsoSim {
     }
     if (tk.st === 'disconnect' && tk.t > T.disconnect) { tk.st = 'departing'; tk.t = 0; c.tankerReq = false; }
     if (tk.st === 'departing' && tk.t > T.depart) { tk.st = 'none'; tk.t = 0; tk.cargo = 0; }
+    // crew-change helicopter: inbound -> on the helideck -> outbound (weather limits: wind and deck motion)
+    const hk = s.heli, H = CFG.heli, fly = c.env.wind <= H.windMax && c.env.hs <= H.hsMax && !c.esd; hk.t += dt;
+    if (hk.st === 'none' && c.heliReq) { if (fly) { hk.st = 'inbound'; hk.t = 0; this._log('HELI', 'Crew-change helicopter inbound', 3, 'EVENT'); } else { c.heliReq = false; this.note('Helicopter flight cancelled — weather outside limits'); } }
+    if (hk.st === 'inbound' && hk.t > H.inbound) { hk.st = 'landed'; hk.t = 0; hk.flights++; this._log('HELI', 'Helicopter landed on the helideck', 3, 'EVENT'); }
+    if (hk.st === 'landed' && hk.t > H.onDeck) { hk.st = 'outbound'; hk.t = 0; c.heliReq = false; this._log('HELI', 'Helicopter departed — crew change complete', 3, 'EVENT'); }
+    if (hk.st === 'outbound' && hk.t > H.outbound) { hk.st = 'none'; hk.t = 0; }
     s.cum.oil += s.sep.qoOut * dt / DAY; s.cum.water += s.sep.qwOut * dt / DAY; s.cum.gas += s.comp.q * dt / DAY; s.cum.flare += s.sep.flareQ * dt / DAY;
   }
   /* ---------- turret mooring: weathervaning, mean offset and line tensions (quasi-static) ---------- */
@@ -329,6 +337,13 @@ class FpsoSim {
   psd(why) { this.c.psd = true; this._log('PSD', 'Process shutdown: ' + why, 1, 'EVENT'); }
   resetPsd() { if (this.s.sep.LT > 92) return this.note('Lower the separator level before resetting PSD'); if (this.s.cargo > 0.99 * CFG.cargo.cap) return this.note('Cargo tanks full — offload first'); this.c.psd = false; this._log('PSD', 'PSD reset — open wells gradually', 3, 'EVENT'); return { ok: true }; }
   restartComp(i) { if (this.s.comp.tripped[i]) { this.s.comp.tripped[i] = false; this._log('COMP', 'Compressor train ' + (i ? 'B' : 'A') + ' restarted', 3, 'EVENT'); } this.c.comp[i] = true; }
+  heliTakeoff() {
+    const hk = this.s.heli, H = CFG.heli, c = this.c;
+    if (hk.st !== 'landed') return this.note('No helicopter on the helideck');
+    if (c.env.wind > H.windMax || c.env.hs > H.hsMax || c.esd) return this.note('Take-off refused — weather outside limits or ESD active');
+    hk.st = 'outbound'; hk.t = 0; c.heliReq = false; this._log('HELI', 'Helicopter cleared for take-off by the HLO', 3, 'EVENT'); return { ok: true };
+  }
+  callHeli() { if (this.s.heli.st !== 'none') return this.note('A helicopter flight is already in progress'); this.c.heliReq = true; return { ok: true }; }
   callTanker() { if (this.s.tanker.st !== 'none') return this.note('A tanker is already in the offloading sequence'); this.c.tankerReq = true; return { ok: true }; }
   stopOffload() { this.c.tankerReq = false; }
   scenario(name) {

@@ -41,6 +41,12 @@ check(s.power.demand > 20 && s.power.demand < 60 && !s.power.diesel, 'power 20â€
 // 11. reservoir: no injection -> pressure falls faster than with injection
 { const a = new FpsoSim(), b = new FpsoSim(); a.c.decline = b.c.decline = 200; b.c.wi.on = false; run(a, 6 * 3600, 5); run(b, 6 * 3600, 5);
   check(b.s.Pr < a.s.Pr - 1, `pressure support: with WI ${f(a.s.Pr)} bar, without ${f(b.s.Pr)} bar`); }
-// 12. cold start
+// 12. helicopter: lands in normal weather, cancelled in a storm
+{ m = new FpsoSim(); m.callHeli(); run(m, 1200); const st1 = m.s.heli.st; run(m, 3000); check(st1 === 'landed' && m.s.heli.flights === 1 && ['outbound', 'none'].includes(m.s.heli.st), `crew-change flight: ${st1} -> ${m.s.heli.st}`);
+  const n = new FpsoSim(); n.scenario('storm'); n.callHeli(); run(n, 60); check(n.s.heli.st === 'none' && n.msg.length > 0, 'flight cancelled in storm (wind/sea state limits)'); }
+// 12b. take-off on command; refused when nothing is on deck
+{ const k = new FpsoSim(); check(k.heliTakeoff().ok === false, 'take-off refused with no helicopter on deck'); k.callHeli(); run(k, 600); const st0 = k.s.heli.st; const r = k.heliTakeoff();
+  check(st0 === 'landed' && r.ok && k.s.heli.st === 'outbound', `take-off on command: ${st0} -> ${k.s.heli.st}`); }
+// 13. cold start
 { const c = new FpsoSim({ hot: false }); run(c, 60); check(c.s.wellsQin.L === 0 && c.alarmList().every(a => a.prio > 1 || a.id === 'HYD'), 'cold start: wells closed'); }
 console.log(fail.length ? 'FAILURES: ' + fail.length : 'ALL CHECKS PASSED'); process.exit(fail.length ? 1 : 0);

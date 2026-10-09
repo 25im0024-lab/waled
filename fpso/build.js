@@ -8,7 +8,9 @@ const html = rd('src/page.html')
   .replace('<script src="i18n-ar.js"></script>', () => '<script>\n' + rd('src/i18n-ar.js') + '</script>')
   .replace('<script src="info.js"></script>', () => '<script>\n' + rd('src/info.js') + '</script>')
   .replace('<script src="sim.js"></script>', () => '<script>\n' + rd('src/sim.js') + '</script>')
+  .replace('<script src="scene.js"></script>', () => '<script>\n' + rd('src/scene.js') + '</script>')
+  .replace('<script src="interior.js"></script>', () => '<script>\n' + rd('src/interior.js') + '</script>')
   .replace('<script src="ui.js"></script>', () => '<script>\n' + rd('src/ui.js') + '</script>');
-if (/(href|src)="(style\.css|[./]*drillers-console\/src\/i18n\.js|i18n-ar\.js|info\.js|sim\.js|ui\.js)"/.test(html)) throw new Error('unresolved asset reference');
+if (/(href|src)="(style\.css|[./]*drillers-console\/src\/i18n\.js|i18n-ar\.js|info\.js|sim\.js|scene\.js|interior\.js|ui\.js)"/.test(html)) throw new Error('unresolved asset reference');
 fs.writeFileSync(path.join(__dirname, 'index.html'), html);
 console.log('fpso/index.html', (html.length / 1024).toFixed(0) + ' KB');

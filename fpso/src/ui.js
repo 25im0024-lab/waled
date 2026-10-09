@@ -6,7 +6,7 @@ let sim = new F_.FpsoSim();
 const $ = id => document.getElementById(id);
 const I = window.I18N || { t: x => x, f: (x, v) => x.replace(/\{(\w+)\}/g, (m, k) => v[k]), lang: 'en' };
 const T = x => I.t(x), F = (x, v) => I.f(x, v);
-const st = { units: 'si', speed: 1, win: 21600, sound: false, hover: null, lastUi: 0, lastTrend: 0, lastMsg: 0, hidden: {}, beepT: 0, info: 'overview', anim: { flow: 0, wave: 0 } };
+const st = { units: 'si', speed: 1, win: 21600, sound: false, hover: null, lastUi: 0, lastTrend: 0, lastMsg: 0, hidden: {}, beepT: 0, info: 'overview', labels: true, cam: 'rov' };
 const clamp = (x, a, b) => x < a ? a : x > b ? b : x;
 
 /* ---------------- units ---------------- */
@@ -46,169 +46,63 @@ function buildComp() {
   $('compRow').innerHTML = [0, 1].map(i => `<div class="comp"><b>${T('Train')} ${i ? 'B' : 'A'}</b> <span class="lamp" id="cl${i}"></span><span class="seg"><button class="btn sm" data-con="${i}">${T('Run')}</button><button class="btn sm" data-coff="${i}">${T('Stop')}</button></span></div>`).join('');
 }
 
-/* ---------------- field layout scene ---------------- */
-const SEA = 250, BED = 598, PX = 2.2, TUR = 196, HULL0 = 140, HULL1 = 800, MAN = 500;
-const TREES = [120, 310, 690, 870], WIX = 960;
-let SC = {};
-function callout(x, y, key, title, sub, w) {
-  w = w || 196;
-  return `<g class="co" data-info="${key}" transform="translate(${x} ${y})"><rect width="${w}" height="40" rx="3"/><text x="8" y="16" class="ct">${T(title)}</text><text x="8" y="33" class="cs" id="co_${key}">${T(sub)}</text></g>`;
-}
-function buildScene() {
-  let h = `<defs>
-  <linearGradient id="gSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#14254a"/><stop offset=".55" stop-color="#5b4a73"/><stop offset=".85" stop-color="#e58a4a"/><stop offset="1" stop-color="#f6b25c"/></linearGradient>
-  <linearGradient id="gSea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0d4d7a"/><stop offset=".5" stop-color="#083356"/><stop offset="1" stop-color="#03182b"/></linearGradient>
-  <linearGradient id="gHull" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a2f36"/><stop offset=".62" stop-color="#1b1f24"/><stop offset=".63" stop-color="#8a1f1f"/><stop offset="1" stop-color="#5c1212"/></linearGradient>
-  <linearGradient id="gYel" x1="0" x2="1"><stop offset="0" stop-color="#9d7500"/><stop offset=".45" stop-color="#ffd84a"/><stop offset="1" stop-color="#8f6a00"/></linearGradient>
-  <linearGradient id="gSteel" x1="0" x2="1"><stop offset="0" stop-color="#55697e"/><stop offset=".5" stop-color="#cfdbe6"/><stop offset="1" stop-color="#4c5f73"/></linearGradient>
-  <linearGradient id="gOil" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#c98b24"/><stop offset="1" stop-color="#6e4310"/></linearGradient>
-  <linearGradient id="gRes" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#ffb42e"/><stop offset="1" stop-color="#8c4b07"/></linearGradient>
-  <radialGradient id="gSun" cx=".88" cy=".9" r=".35"><stop offset="0" stop-color="#ffd27a" stop-opacity=".9"/><stop offset="1" stop-color="#ffd27a" stop-opacity="0"/></radialGradient>
-  <filter id="glow"><feGaussianBlur stdDeviation="2.4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-  <pattern id="rock" width="24" height="12" patternUnits="userSpaceOnUse"><rect width="24" height="12" fill="#2b2620"/><path d="M0 12 L6 4 L12 9 L18 2 L24 8" stroke="#3a332a" fill="none"/></pattern></defs>
-  <rect width="1000" height="${SEA}" fill="url(#gSky)"/><rect width="1000" height="${SEA}" fill="url(#gSun)"/>
-  <g opacity=".35" fill="#20304f"><ellipse cx="160" cy="70" rx="120" ry="16"/><ellipse cx="520" cy="45" rx="160" ry="14"/><ellipse cx="830" cy="95" rx="140" ry="12"/></g>
-  <rect y="${SEA}" width="1000" height="${BED - SEA}" fill="url(#gSea)"/>
-  <g opacity=".18" fill="#9fe0ff">${[0, 1, 2, 3, 4, 5].map(i => `<path d="M${120 + i * 150} ${SEA} L${80 + i * 150} ${BED} L${170 + i * 150} ${BED} Z"/>`).join('')}</g>`;
-  // subsurface: seabed, strata, reservoir, OWC
-  h += `<rect y="${BED}" width="1000" height="${760 - BED}" fill="#241d16"/><rect y="${BED}" width="1000" height="16" fill="url(#rock)"/>
-  <path d="M0 640 C200 632 400 652 600 640 S900 630 1000 642 V662 C800 652 600 670 400 660 S100 650 0 664Z" fill="#3a2f22"/>
-  <path d="M0 676 C220 660 420 690 640 672 S900 662 1000 676 V700 C800 690 600 712 400 700 S150 690 0 704Z" fill="#4a3a28"/>
-  <g data-info="reservoir" class="hot"><path id="resOil" d="M40 712 C200 694 360 700 520 696 S820 700 960 716 L960 728 C800 722 600 726 500 726 S200 724 40 730Z" fill="url(#gRes)" filter="url(#glow)" opacity=".9"/>
-  <path d="M40 730 C200 724 400 726 500 726 S800 722 960 728 L960 744 C760 740 500 746 300 744 S100 744 40 746Z" fill="#1f5f8f" opacity=".75"/>
-  <path d="M40 730 C200 724 400 726 500 726 S800 722 960 728" stroke="#7fd0ff" stroke-dasharray="6 4" fill="none"/>
-  <text x="880" y="758" class="sl">OWC</text></g>`;
-  // wells: downhole paths, trees, flowlines
-  const tip = [190, 360, 640, 820];
-  TREES.forEach((x, i) => {
-    h += `<path d="M${x} ${BED - 4} C${x} ${650} ${(x + tip[i]) / 2} ${680} ${tip[i]} 712" stroke="#9fb3c8" stroke-width="2.4" fill="none"/>
-    <path id="dh${i}" class="flow" d="M${tip[i]} 712 C${(x + tip[i]) / 2} 680 ${x} 650 ${x} ${BED - 4}" stroke="#ffb627" stroke-width="2" fill="none"/>
-    <path d="M${x} ${BED} H${MAN}" stroke="#16222e" stroke-width="7" fill="none"/><path id="fl${i}" class="flow" d="M${x} ${BED} H${MAN}" stroke="#ffb627" stroke-width="3" fill="none" transform="translate(0 ${(i % 2) * 3 - 1})"/>
-    <g data-info="wells" class="hot" transform="translate(${x} ${BED - 4})"><rect x="-9" y="-30" width="18" height="30" fill="url(#gYel)" stroke="#3a2a00"/><rect x="-16" y="-20" width="32" height="7" fill="url(#gYel)" stroke="#3a2a00"/><rect x="-5" y="-38" width="10" height="9" fill="#c49b18"/><circle id="tl${i}" cx="0" cy="-44" r="4" fill="#2bd66f" filter="url(#glow)"/>
-    <text x="0" y="16" class="sl" text-anchor="middle">${CFG.wells[i].id}</text></g>`;
-  });
-  // water injection well
-  h += `<path d="M${WIX} ${BED - 4} C${WIX} 660 ${WIX - 30} 700 ${WIX - 60} 738" stroke="#9fb3c8" stroke-width="2.4" fill="none"/><path id="dhWi" class="flow" d="M${WIX} ${BED - 4} C${WIX} 660 ${WIX - 30} 700 ${WIX - 60} 738" stroke="#3fb0ff" stroke-width="2" fill="none"/>
-  <path d="M${MAN + 40} ${BED + 4} H${WIX}" stroke="#16222e" stroke-width="6"/><path id="flWi" class="flow" d="M${MAN + 40} ${BED + 4} H${WIX}" stroke="#3fb0ff" stroke-width="2.6"/>
-  <g data-info="injection" class="hot" transform="translate(${WIX} ${BED - 4})"><rect x="-8" y="-26" width="16" height="26" fill="#3b78b5" stroke="#0d2a48"/><rect x="-13" y="-17" width="26" height="6" fill="#3b78b5"/><text x="0" y="16" class="sl" text-anchor="middle">WI-1</text></g>`;
-  // manifold
-  h += `<g data-info="manifold" class="hot" transform="translate(${MAN} ${BED - 6})"><rect x="-46" y="-26" width="92" height="26" fill="url(#gYel)" stroke="#3a2a00"/>${[-34, -18, -2, 14, 30].map(x => `<rect x="${x}" y="-38" width="8" height="12" fill="#c49b18"/>`).join('')}<path d="M-46 -12 H46 M-46 -20 H46" stroke="#8f6a00"/></g>`;
-  // risers (lazy wave): production x2, gas lift, water injection
-  const riser = (dx, id, col, w) => { const x0 = TUR + dx, x1 = MAN - 30 + dx * 3; return `<path d="M${x1} ${BED - 32} C${x1 - 10} 480 ${x0 + 150} 500 ${x0 + 120} 440 S${x0 + 10} 380 ${x0} ${SEA + 60}" stroke="#16222e" stroke-width="${w + 3}" fill="none"/><path id="${id}" class="flow" d="M${x1} ${BED - 32} C${x1 - 10} 480 ${x0 + 150} 500 ${x0 + 120} 440 S${x0 + 10} 380 ${x0} ${SEA + 60}" stroke="${col}" stroke-width="${w}" fill="none"/>`; };
-  h += `<g data-info="risers" class="hot">${riser(-6, 'rs0', '#ffb627', 3.4)}${riser(-2, 'rs1', '#ffb627', 3.4)}${riser(2, 'rsGl', '#9b7cff', 2.2)}${riser(6, 'rsWi', '#3fb0ff', 2.2)}
-  ${[0, 1, 2, 3, 4].map(i => `<rect x="${TUR + 100 + i * 12}" y="${438 + Math.abs(i - 2) * 4}" width="10" height="14" rx="3" fill="#ffcf3a" stroke="#6a5000"/>`).join('')}</g>`;
-  // mooring lines (catenaries to anchors)
-  const moor = [[-40, 540], [10, 590], [60, 598], [430, 598], [560, 590]];
-  h += `<g data-info="turret" class="hot">${moor.map((a, j) => `<path id="ml${j}" d="M${TUR} ${SEA + 62} Q${(TUR + a[0]) / 2} ${a[1] - 10} ${a[0]} ${a[1]}" stroke="#c9d6e3" stroke-width="1.6" fill="none"/>`).join('')}</g>`;
-  // waves (drawn over hull bottom later) — hull group translated by draft
-  h += `<g id="hull">
-    <path data-info="storage" class="hot" d="M${HULL0 + 30} 0 H${HULL1} V${32 * PX} H${HULL0 + 40} C${HULL0 + 10} ${32 * PX} ${HULL0} ${20 * PX} ${HULL0} 0 Z" fill="url(#gHull)" stroke="#05080c"/>
-    <g data-info="storage" class="hot">${[0, 1, 2, 3, 4].map(k => `<rect x="${320 + k * 82}" y="${8}" width="74" height="${24 * PX - 4}" rx="10" fill="#0c1218" stroke="#5c6a78"/><rect id="ct${k}" x="${322 + k * 82}" y="${8}" width="70" height="0" rx="9" fill="url(#gOil)"/>`).join('')}
-    <text x="520" y="${30 * PX}" class="sl" text-anchor="middle" fill="#ffd9a8">${T('CARGO TANKS')}</text></g>
-    <path d="M${HULL0 + 4} -4 H${HULL1}" stroke="#7f8a96" stroke-width="3"/>
-    <!-- turret -->
-    <g data-info="turret" class="hot"><rect x="${TUR - 18}" y="-34" width="36" height="${32 * PX + 46}" fill="url(#gYel)" stroke="#3a2a00"/><rect x="${TUR - 26}" y="-44" width="52" height="12" fill="#e2b52c" stroke="#3a2a00"/>${[0, 1, 2, 3].map(k => `<path d="M${TUR - 18} ${-20 + k * 30} H${TUR + 18}" stroke="#8f6a00"/>`).join('')}</g>
-    <!-- flare tower -->
-    <g data-info="flare" class="hot"><path d="M232 -4 L246 -150 L260 -4 M236 -40 H256 M239 -80 H253 M242 -120 H250 M236 -40 L253 -80 M256 -40 L239 -80 M239 -80 L250 -120 M253 -80 L242 -120" stroke="#9fb3c8" stroke-width="2" fill="none"/>
-      <path id="flame" d="M246 -150 c-12 -14 -4 -30 0 -44 c4 14 14 30 0 44z" fill="#ffb627" filter="url(#glow)"/><path id="flame2" d="M246 -152 c-6 -8 -2 -18 0 -26 c2 8 8 18 0 26z" fill="#fff3b0"/></g>
-    <!-- process modules -->
-    <g data-info="separator" class="hot"><rect x="290" y="-46" width="150" height="42" fill="#3b4652" stroke="#8fa2b5"/>
-      <rect x="300" y="-38" width="88" height="22" rx="11" fill="url(#gSteel)" stroke="#2e3b48"/><rect id="sepLiq" x="302" y="-26" width="84" height="8" rx="4" fill="#c98b24"/><rect x="396" y="-36" width="36" height="16" rx="8" fill="url(#gSteel)"/><text x="365" y="-50" class="sl" text-anchor="middle">${T('SEPARATION')}</text></g>
-    <g data-info="compression" class="hot"><rect x="450" y="-64" width="120" height="60" fill="#46505b" stroke="#8fa2b5"/>${[0, 1, 2].map(k => `<rect x="${460 + k * 36}" y="-56" width="28" height="22" fill="#5c6a78" stroke="#9fb3c8"/><circle cx="${474 + k * 36}" cy="-24" r="8" fill="#2b3640" stroke="#9fb3c8"/>`).join('')}
-      <path d="M470 -64 V-96 M500 -64 V-104 M530 -64 V-96" stroke="#9fb3c8" stroke-width="5"/><circle id="cA" cx="458" cy="-58" r="4"/><circle id="cB" cx="562" cy="-58" r="4"/><text x="510" y="-108" class="sl" text-anchor="middle">${T('GAS COMPRESSION')}</text></g>
-    <g data-info="power" class="hot"><rect x="580" y="-50" width="70" height="46" fill="#3e4954" stroke="#8fa2b5"/><path d="M596 -50 V-86 M616 -50 V-90 M636 -50 V-86" stroke="#7f8a96" stroke-width="7"/><g id="smoke" opacity="0">${[0, 1, 2].map(k => `<circle cx="${596 + k * 20}" cy="-98" r="7" fill="#555"/>`).join('')}</g><text x="615" y="-96" class="sl" text-anchor="middle">${T('POWER')}</text></g>
-    <g data-info="water" class="hot"><rect x="658" y="-40" width="62" height="36" fill="#34506b" stroke="#8fa2b5"/>${[0, 1, 2, 3].map(k => `<rect x="${664 + k * 14}" y="-34" width="8" height="24" rx="3" fill="#7fb6e0"/>`).join('')}<text x="689" y="-46" class="sl" text-anchor="middle">${T('WATER')}</text></g>
-    <g data-info="accommodation" class="hot"><rect x="728" y="-92" width="66" height="88" fill="#e9eef3" stroke="#9aa6b2"/>${[0, 1, 2, 3, 4].map(k => `<path d="M734 ${-82 + k * 16} H788" stroke="#4f6c8a" stroke-width="4" stroke-dasharray="6 3"/>`).join('')}<rect x="740" y="-110" width="40" height="18" fill="#dfe6ee"/><path d="M760 -110 V-132" stroke="#9aa6b2" stroke-width="2"/></g>
-    <path d="M300 -4 H720" stroke="#ffb627" stroke-width="2" opacity=".6"/>
-    <g><path d="M560 -64 L600 -150 L640 -110" stroke="#ffcf3a" stroke-width="4" fill="none"/><path d="M640 -110 V-80" stroke="#c9d6e3"/></g>
-  </g>`;
-  // shuttle tanker group
-  h += `<g id="tanker" data-info="tanker" class="hot"><path d="M0 0 H150 C160 0 168 10 168 22 V36 H10 C4 36 0 26 0 18Z" fill="url(#gHull)" stroke="#05080c"/><rect x="120" y="-26" width="34" height="26" fill="#e9eef3"/><rect x="128" y="-36" width="18" height="10" fill="#dfe6ee"/>
-    <path d="M10 -2 H118" stroke="#7f8a96" stroke-width="2"/><rect x="40" y="-8" width="60" height="6" fill="#4f5b66"/><text x="84" y="52" class="sl" text-anchor="middle">${T('SHUTTLE TANKER')}</text></g>
-  <path id="hawser" d="" stroke="#e8e0c8" stroke-width="1.5" fill="none"/><path id="hose" d="" stroke="#16222e" stroke-width="5" fill="none"/><path id="hoseF" class="flow" d="" stroke="#ffb627" stroke-width="2.4" fill="none"/>`;
-  // sea surface (animated) over the hulls
-  h += `<path id="waves" d="" fill="#0d4d7a" opacity=".55"/><path id="waveLine" d="" stroke="#bfe9ff" stroke-width="1.2" fill="none" opacity=".8"/>`;
-  // wind indicator
-  h += `<g transform="translate(36 200)"><circle r="22" fill="#0b1e36aa" stroke="#4f6c8a"/><path id="windArrow" d="M0 -16 L6 0 H2 V16 H-2 V0 H-6Z" fill="#dcecff"/><text y="38" class="sl" text-anchor="middle" id="windTxt">—</text></g>`;
-  // callouts (like an infographic)
-  h += callout(8, 46, 'turret', 'TURRET MOORING', 'Keeps the FPSO on station', 200)
-    + callout(290, 8, 'separator', 'PROCESSING', 'Separates oil, gas and water', 210)
-    + callout(520, 8, 'compression', 'GAS COMPRESSION', 'Export, lift and fuel gas', 210)
-    + callout(800, 96, 'tanker', 'SHUTTLE TANKER', 'Receives crude oil', 192)
-    + callout(560, 300, 'storage', 'CRUDE OIL STORAGE', 'Stored in the hull tanks', 210)
-    + callout(330, 372, 'risers', 'RISERS', 'Well fluids to the FPSO', 170)
-    + callout(560, 466, 'manifold', 'SUBSEA MANIFOLD', 'Combines production from wells', 230)
-    + callout(8, 470, 'flowlines', 'FLOWLINES', 'Connect wells to the manifold', 220)
-    + callout(758, 520, 'wells', 'SUBSEA WELLHEADS', 'Control production from the reservoir', 236)
-    + callout(560, 676, 'reservoir', 'RESERVOIR', 'Oil, gas and water', 170)
-    + callout(8, 120, 'flare', 'FLARE', 'Safe disposal of excess gas', 200);
-  $('scene').innerHTML = `<style>.sl{font:10.5px system-ui,sans-serif;fill:#cfe3f7}.co rect{fill:#071425e6;stroke:#ffcf3a;stroke-width:1}.ct{font:700 13px system-ui,sans-serif;fill:#ffcf3a;letter-spacing:.03em}.cs{font:12px system-ui,sans-serif;fill:#e6f0fa}.co,.hot{cursor:pointer}.co:hover rect{stroke:#fff}.hot:hover{filter:brightness(1.25)}</style>` + h;
-  for (const id of ['hull', 'tanker', 'hawser', 'hose', 'hoseF', 'waves', 'waveLine', 'flame', 'flame2', 'smoke', 'sepLiq', 'cA', 'cB', 'windArrow', 'windTxt', 'rs0', 'rs1', 'rsGl', 'rsWi', 'flWi', 'dhWi', 'ct0', 'ct1', 'ct2', 'ct3', 'ct4', 'ml0', 'ml1', 'ml2', 'ml3', 'ml4',
-    'dh0', 'dh1', 'dh2', 'dh3', 'fl0', 'fl1', 'fl2', 'fl3', 'tl0', 'tl1', 'tl2', 'tl3', 'co_separator', 'co_storage', 'co_compression', 'co_tanker', 'co_risers', 'co_manifold', 'co_wells', 'co_reservoir', 'co_flare', 'co_turret', 'co_flowlines']) SC[id] = document.getElementById(id);
-}
-function flowAnim(el, q, qRef) {
-  if (!el) return;
-  if (q > qRef * 0.002) { el.style.animationPlayState = 'running'; el.style.animationDuration = clamp(2.2 * qRef / Math.max(q, 1e-9), 0.3, 8).toFixed(2) + 's'; el.style.opacity = 1; }
-  else { el.style.animationPlayState = 'paused'; el.style.opacity = 0.2; }
-}
+/* ---------------- field layout scene, helicopter and ROV camera (scene.js) ----------------
+   The world is drawn once per language; the ROV camera re-renders it magnified through <use href="#world">. */
+const SCN = window.FpsoScene({ T, fu, nf, CFG, rtl: () => I.lang === 'ar' });
 const tensionCol = r => r > 0.55 ? '#ff4545' : r > 0.4 ? '#ffb627' : '#c9d6e3';
-function updateScene(dtA) {
-  const s = sim.s, d = sim.d, c = sim.c, A = st.anim;
-  A.wave += dtA;
-  // hull floats at its draft
-  const draft = d.draft || 12, yDeck = SEA - (32 - draft) * PX, heave = Math.sin(A.wave * 0.9) * Math.min(c.env.hs, 8) * 0.35;
-  SC.hull.setAttribute('transform', `translate(0 ${(yDeck + heave).toFixed(2)})`);
-  const frac = s.cargo / CFG.cargo.cap, th = (24 * PX - 4) * frac;
-  for (let k = 0; k < 5; k++) { SC['ct' + k].setAttribute('y', 8 + (24 * PX - 4) - th); SC['ct' + k].setAttribute('height', Math.max(0, th)); }
-  // sea surface
-  const amp = 1.5 + Math.min(c.env.hs, 9) * 1.4; let p = `M0 ${SEA + 40} V${SEA}`, l = '';
-  for (let x = 0; x <= 1000; x += 20) { const y = SEA + Math.sin(x / 38 + A.wave * 1.6) * amp * 0.6 + Math.sin(x / 91 - A.wave) * amp * 0.4; p += ` L${x} ${y.toFixed(1)}`; l += (x ? ' L' : 'M') + `${x} ${y.toFixed(1)}`; }
-  SC.waves.setAttribute('d', p + ` V${SEA + 40} Z`); SC.waveLine.setAttribute('d', l);
-  // flare
-  const fl = s.sep.flareQ, sc = clamp(0.35 + Math.sqrt(fl) * 1.4, 0.35, 3.2) * (0.9 + 0.1 * Math.sin(A.wave * 9));
-  for (const f of [SC.flame, SC.flame2]) f.setAttribute('transform', `translate(246 -150) scale(${sc.toFixed(2)}) translate(-246 150)`);
-  SC.smoke.setAttribute('opacity', s.power.diesel ? 0.7 : 0);
-  SC.sepLiq.setAttribute('width', (84 * clamp(s.sep.LT / 100, 0, 1)).toFixed(1));
-  SC.cA.setAttribute('fill', s.comp.tripped[0] ? '#ff4545' : c.comp[0] ? '#2bd66f' : '#28384b'); SC.cB.setAttribute('fill', s.comp.tripped[1] ? '#ff4545' : c.comp[1] ? '#2bd66f' : '#28384b');
-  // flows
-  const qL = s.wellsQin.L;
-  s.wells.forEach((w, i) => { flowAnim(SC['dh' + i], w.q, 5000); flowAnim(SC['fl' + i], w.q, 5000); SC['tl' + i].setAttribute('fill', w.q > 50 ? '#2bd66f' : sim.c.wells[i].open && w.ch > 5 ? '#ffb627' : '#ff4545'); });
-  flowAnim(SC.rs0, qL / 2, 9000); flowAnim(SC.rs1, qL / 2, 9000); flowAnim(SC.rsGl, s.gasUse.lift, 0.5); flowAnim(SC.rsWi, s.wi.q, 20000); flowAnim(SC.flWi, s.wi.q, 20000); flowAnim(SC.dhWi, s.wi.q, 20000);
-  // mooring line colours (side view shows the 5 drawn lines mapped onto the 9 lines)
-  const Tl = s.moor.T || []; [0, 1, 2, 3, 4].forEach(j => { const t = Math.max(Tl[j] || 0, Tl[j + 4] || 0); SC['ml' + j].setAttribute('stroke', s.moor.failed[j] ? '#ff4545' : tensionCol(t / CFG.moor.MBL)); SC['ml' + j].setAttribute('stroke-dasharray', s.moor.failed[j] ? '4 4' : ''); });
-  // shuttle tanker
-  const tk = s.tanker, Tc = CFG.tanker; let tx = 1100;
-  if (tk.st === 'approaching') tx = 1100 - 290 * clamp(tk.t / Tc.approach, 0, 1);
-  else if (['hookup', 'offloading', 'disconnect'].includes(tk.st)) tx = 810;
-  else if (tk.st === 'departing') tx = 810 + 290 * clamp(tk.t / Tc.depart, 0, 1);
-  const tDraft = 6 + 12 * tk.cargo / Tc.cap, ty = SEA - (20 - tDraft) * 1.4 + Math.sin(A.wave * 1.1 + 1) * Math.min(c.env.hs, 8) * 0.45;
-  SC.tanker.setAttribute('transform', `translate(${tx} ${ty.toFixed(1)}) scale(.95)`);
-  const conn = ['offloading', 'hookup', 'disconnect'].includes(tk.st) && tx < 900;
-  const sx = HULL1, sy = yDeck + heave + 4;
-  SC.hawser.setAttribute('d', conn ? `M${sx} ${sy} Q${(sx + tx) / 2} ${SEA + 6} ${tx + 4} ${ty + 4}` : '');
-  const hp = conn && tk.st !== 'hookup' ? `M${sx - 4} ${sy + 8} Q${(sx + tx) / 2} ${SEA + 20} ${tx + 6} ${ty + 10}` : '';
-  SC.hose.setAttribute('d', hp); SC.hoseF.setAttribute('d', hp); flowAnim(SC.hoseF, tk.st === 'offloading' ? c.offRate : 0, 6000);
-  // wind indicator: arrow points where the wind blows to
-  SC.windArrow.setAttribute('transform', `rotate(${(c.env.windDir + 180).toFixed(0)})`); SC.windTxt.textContent = fu('spd', c.env.wind, 0);
-  // live values on the callouts
-  SC.co_separator.textContent = `${fu('press', s.sep.P, 1)} · ${T('level')} ${nf(s.sep.LT, 0)} %`;
-  SC.co_storage.textContent = `${fu('vol', s.cargo, 0)} · ${nf(frac * 100, 0)} %`;
-  SC.co_compression.textContent = `${fu('gas', s.comp.q, 2)} · ${nf(s.comp.power, 1)} MW`;
-  SC.co_tanker.textContent = T(TK_TXT[tk.st]);
-  SC.co_risers.textContent = `${fu('liq', qL, 0)}`;
-  SC.co_manifold.textContent = `${fu('press', s.Pman, 1)}`;
-  SC.co_flare.textContent = `${fu('gas', s.sep.flareQ, 2)}`;
-  SC.co_reservoir.textContent = `${fu('press', s.Pr, 0)}`;
-  SC.co_turret.textContent = `${T('offset')} ${fu('len', s.moor.offset, 0)}`;
-  SC.co_flowlines.textContent = `${fu('temp', s.Tarr, 0)}`;
-}
 const TK_TXT = { none: 'No tanker', approaching: 'Approaching', hookup: 'Connecting hawser & hose', offloading: 'Offloading', disconnect: 'Disconnecting', departing: 'Departing' };
+const HELI_TXT = { none: 'No flight', inbound: 'Helicopter inbound', landed: 'On the helideck', outbound: 'Departing' };
+const ROV_KEYS = ['manifold', 't0', 't1', 't2', 't3', 'wi', 'ssiv', 'buoy', 'turret', 'hull', 'touchdown', 'anchor'];
+const IN = window.FpsoInside({ T, fu, nf, CFG });
+// crew: key, name, work place, hard-hat colour, camera view, explanation where they work
+const CREW_UI = [
+  ['oim', 'OIM — WALEID ALOBAID', 'Accommodation — OIM office', '#f4f7fa', 'ccr', 'accommodation'], ['cro', 'Control room operators', 'Central control room', '#f4f7fa', 'ccr', 'accommodation'],
+  ['proc', 'Process / production engineer', 'Separation module', '#f4f7fa', 'sep', 'separator'], ['mech', 'Mechanical technician', 'Gas compression module', '#ffd84a', 'comp', 'compression'],
+  ['elec', 'E&I technician', 'Power generation module', '#ffd84a', 'gt', 'power'], ['lab', 'Lab technician', 'Water treatment module', '#f4f7fa', null, 'water'],
+  ['marine', 'Marine & cargo superintendent', 'Cargo control room', '#f4f7fa', 'cargo', 'storage'], ['crane', 'Crane operator', 'Pedestal crane cab', '#ffd84a', null, null],
+  ['deck', 'Deck crew & banksman', 'Main deck', '#ffd84a', null, null], ['hlo', 'Helicopter landing officer (HLO)', 'Helideck', '#f4f7fa', null, 'helideck'],
+  ['rov', 'ROV supervisor & pilots', 'ROV control van', '#f4f7fa', 'rov', 'rov'], ['medic', 'Offshore medic', 'Sick bay', '#f4f7fa', null, 'accommodation']];
+const HELI_ACT = { none: 'Helideck on standby', inbound: 'Preparing the helideck — helicopter inbound', landed: 'Helicopter on deck — passengers and refuelling', outbound: 'Helicopter departing' };
+function crewAct(k) {
+  const s = sim.s, c = sim.c, d = sim.d, al = sim.alarmList().filter(a => a.active);
+  switch (k) {
+    case 'oim': return c.esd ? T('Leading the emergency response (ESD)') : F('In command — POB {n}', { n: s.heli.pob });
+    case 'cro': return al.length ? F('Handling {n} active alarms', { n: al.length }) : T('Monitoring the DCS — plant steady');
+    case 'proc': return s.sep.flareQ > 0.3 ? T('Investigating high flaring') : s.slug > 0.25 ? T('Mitigating riser slugging') : F('Separator {p}, level {l} %', { p: fu('press', s.sep.P, 1), l: nf(s.sep.LT, 0) });
+    case 'mech': return s.comp.tripped.some(x => x) ? T('Investigating a compressor trip') : T('Vibration and lube-oil checks on K-101A/B');
+    case 'elec': return s.power.diesel ? T('Turbines on diesel — restoring fuel gas') : F('Load {a} of {b} MW', { a: nf(s.power.demand, 1), b: nf(d.powerAvail, 0) });
+    case 'lab': return F('Oil-in-water sample: {v} mg/L', { v: nf(d.oiw, 0) });
+    case 'marine': return s.tanker.st === 'offloading' ? F('Offloading — tanker {p} % loaded', { p: nf(s.tanker.cargo / CFG.tanker.cap * 100, 0) }) : F('Cargo {p} %, draft {d}', { p: nf(s.cargo / CFG.cargo.cap * 100, 0), d: fu('len', d.draft, 1) });
+    case 'crane': return c.env.wind > 20 ? T('Lifting suspended — wind above limit') : T('Deck lifts to the laydown area');
+    case 'deck': return ['hookup', 'disconnect'].includes(s.tanker.st) ? T('Handling the hawser and offloading hose') : T('Slinging loads and guiding lifts');
+    case 'hlo': return T(HELI_ACT[s.heli.st]);
+    case 'rov': return F('ROV at: {t}', { t: SCN.rov.key ? T(SCN.TARGETS[SCN.rov.key][0]) : T('free flight') });
+    case 'medic': return T('Sick bay — on call');
+  }
+  return '';
+}
+function buildCrew() {
+  $('crewList').innerHTML = CREW_UI.map(([k, n, w, hat]) => `<div class="cr" data-crew-row="${k}" data-info="crew_${k}"><i style="background:${hat}"></i><div><b>${T(n)}</b><small>${T(w)}</small><em id="ca_${k}">—</em></div></div>`).join('');
+}
+function setCam(mode, view) {
+  st.cam = mode; const inMode = mode === 'in';
+  document.querySelectorAll('[data-cam]').forEach(b => on(b, b.dataset.cam === mode));
+  $('camSvg').style.display = inMode ? 'none' : ''; $('inSvg').style.display = inMode ? '' : 'none';
+  for (const el of document.querySelectorAll('#camShade,.cam .snow')) el.style.display = inMode ? 'none' : '';
+  $('inCtl').style.display = inMode ? '' : 'none'; $('rovCtl').style.display = inMode ? 'none' : ''; $('rovNote').style.display = inMode ? 'none' : '';
+  SCN.setCam(!inMode); if (inMode) { IN.show(view || IN.cur()); buildInGo(); }
+}
+function buildInGo() { $('inGo').innerHTML = Object.entries(IN.VIEWS).map(([k, v]) => `<button class="btn sm${IN.cur() === k ? ' on' : ''}" data-inview="${k}">${T(v[0])}</button>`).join(''); }
+function lookAt(view) { if (view === 'rov') setCam('rov'); else setCam('in', view); const card = $('camSvg').closest('.card'); if (card && card.scrollIntoView) card.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+function buildRovGo() { $('rovGo').innerHTML = ROV_KEYS.map(k => `<button class="btn sm${SCN.rov.key === k ? ' on' : ''}" data-rov="${k}">${T(SCN.TARGETS[k][0])}</button>`).join(''); }
 
 /* ---------------- explanation panel ---------------- */
 function showInfo(key) {
   st.info = key; const it = INFO[key] || INFO.overview; if (!it) return;
   const L = I.lang === 'ar' ? 1 : 0;
-  $('info').innerHTML = `<h3 class="ih">${it.t[L]}</h3><p class="is">${it.s[L]}</p>${it.b[L]}<div class="itags">${Object.keys(INFO).map(k => `<button class="btn sm${k === key ? ' on' : ''}" data-info="${k}">${INFO[k].t[L]}</button>`).join('')}</div>`;
+  const look = IN.INFO2VIEW[key] || (CREW_UI.find(c => 'crew_' + c[0] === key) || [])[4];
+  const who = CREW_UI.filter(c => c[5] === key).map(c => `<button class="btn sm" data-info="crew_${c[0]}">👷 ${INFO['crew_' + c[0]] ? INFO['crew_' + c[0]].t[L] : c[0]}</button>`).join('');
+  $('info').innerHTML = `<h3 class="ih">${it.t[L]}</h3><p class="is">${it.s[L]}</p>${it.b[L]}${look ? `<div class="row" style="margin:6px 0"><button class="btn sm cy" data-look="${look}">📷 ${T(look === 'rov' ? 'Show on the ROV camera' : 'Look inside (camera)')}</button></div>` : ''}${who ? `<div class="sub-h">${T('Who works here')}</div><div class="itags">${who}</div>` : ''}<div class="itags">${Object.keys(INFO).filter(k => !k.startsWith('crew_')).map(k => `<button class="btn sm${k === key ? ' on' : ''}" data-info="${k}">${INFO[k].t[L]}</button>`).join('')}</div>`;
   $('infoTag').textContent = it.t[L];
 }
 
@@ -347,6 +241,17 @@ function updateUI() {
   sync('sOff', 'oOff', c.offRate, fu('ofh', c.offRate, 0)); txt('tkState', T(TK_TXT[tk.st]));
   const Tc = CFG.tanker, dur = { approaching: Tc.approach, hookup: Tc.hookup, disconnect: Tc.disconnect, departing: Tc.depart }[tk.st];
   $('tkProg').style.width = (tk.st === 'offloading' ? tk.cargo / Tc.cap * 100 : dur ? clamp(tk.t / dur, 0, 1) * 100 : 0) + '%';
+  // helideck
+  const hk = s.heli, H = CFG.heli, fly = c.env.wind <= H.windMax && c.env.hs <= H.hsMax && !c.esd, hdur = { inbound: H.inbound, landed: H.onDeck, outbound: H.outbound }[hk.st];
+  txt('hSt', T(HELI_TXT[hk.st])); cls('hSt', hk.st === 'none' ? 'w' : hk.st === 'landed' ? 'c' : 'a'); txt('heliState', T(HELI_TXT[hk.st]));
+  txt('hPob', String(hk.pob)); txt('hFl', String(hk.flights));
+  txt('hLim', `${fu('spd', H.windMax, 0)} · Hs ${fu('len', H.hsMax, 1)}`);
+  txt('hWx', `${fu('spd', c.env.wind, 0)} · Hs ${fu('len', c.env.hs, 1)} — ${T(fly ? 'within limits' : 'outside limits')}`); cls('hWx', fly ? '' : 'r');
+  $('heliProg').style.width = (hdur ? clamp(hk.t / hdur, 0, 1) * 100 : 0) + '%';
+  $('heliBtn').disabled = hk.st !== 'none'; $('heliTo').disabled = hk.st !== 'landed';
+  txt('crewPob', `POB ${hk.pob}`); CREW_UI.forEach(([k]) => txt('ca_' + k, crewAct(k)));
+  on($('lblBtn'), st.labels); on($('rovLights'), SCN.rov.lights); txt('rovZoom', `×${SCN.rov.zoom}`);
+  document.querySelectorAll('[data-rov]').forEach(b => on(b, b.dataset.rov === SCN.rov.key));
   $('tkBtn').disabled = tk.st !== 'none';
   // mooring & environment
   const e = c.env;
@@ -398,6 +303,25 @@ function bind() {
   $('cleanBtn').onclick = () => { sim.c.cleanCyclones = !sim.c.cleanCyclones; };
   // offloading
   $('tkBtn').onclick = () => res(sim.callTanker()); $('tkStop').onclick = () => sim.stopOffload(); $('sOff').addEventListener('input', e => sim.c.offRate = +e.target.value);
+  // helideck
+  $('heliBtn').onclick = () => res(sim.callHeli());
+  $('heliTo').onclick = () => res(sim.heliTakeoff());
+  // cameras and crew
+  q('[data-cam]', el => setCam(el.dataset.cam));
+  $('inGo').addEventListener('click', e => { const b = e.target.closest('[data-inview]'); if (b) { IN.show(b.dataset.inview); buildInGo(); } });
+  document.addEventListener('click', e => { const b = e.target.closest('[data-look]'); if (b) lookAt(b.dataset.look); });
+  $('crewList').addEventListener('click', e => { const r = e.target.closest('[data-crew-row]'); if (!r) return; const k = r.dataset.crewRow, c = CREW_UI.find(x => x[0] === k);
+    SCN.highlight(k); if (c && c[4]) lookAt(c[4]); });
+  $('scene').addEventListener('click', e => { const m = e.target.closest('[data-crew]'); if (m) SCN.highlight(m.dataset.crew); });
+  // field layout labels and ROV camera
+  q('[data-light]', el => { SCN.setLight(el.dataset.light); document.querySelectorAll('[data-light]').forEach(b => on(b, b === el)); });
+  $('lblBtn').onclick = () => { st.labels = !st.labels; SCN.setLabels(st.labels); };
+  $('rovGo').addEventListener('click', e => { const b = e.target.closest('[data-rov]'); if (b) SCN.rovTo(b.dataset.rov); });
+  q('[data-nudge]', el => { const [dx, dy] = el.dataset.nudge.split(',').map(Number); SCN.nudge(dx * 100 / SCN.rov.zoom, dy * 60 / SCN.rov.zoom); });
+  $('rovIn').onclick = () => { SCN.rov.zoom = Math.min(12, SCN.rov.zoom + 1); }; $('rovOut').onclick = () => { SCN.rov.zoom = Math.max(2, SCN.rov.zoom - 1); };
+  $('rovLights').onclick = () => { SCN.rov.lights = !SCN.rov.lights; };
+  $('camExplain').onclick = () => { const k = st.cam === 'in' ? IN.VIEWS[IN.cur()][1] : $('camExplain').dataset.info; if (k) showInfo(k); };
+  $('camSvg').addEventListener('click', e => { const m = $('camSvg').getScreenCTM(); if (!m) return; const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse()); SCN.lookAt(p.x, p.y); });
   // environment
   const env = (id, k) => $(id).addEventListener('input', e => { sim.c.env[k] = +e.target.value; });
   env('sWind', 'wind'); env('sWindDir', 'windDir'); env('sHs', 'hs'); env('sWaveDir', 'waveDir'); env('sCur', 'cur'); env('sCurDir', 'curDir');
@@ -410,14 +334,15 @@ function bind() {
   $('resetHot').onclick = () => reset(true); $('resetCold').onclick = () => reset(false);
   window.addEventListener('resize', () => { drawTrend(); drawPlan(); });
 }
-function setLang(l) { if (I.setLang) I.setLang(l); document.querySelectorAll('[data-lang]').forEach(b => on(b, b.dataset.lang === I.lang)); buildParams(); buildWells(); buildComp(); buildScene(); buildLegend(); showInfo(st.info); $('soundBtn').textContent = T(st.sound ? '🔊 Horn' : '🔇 Horn'); updateUI(); drawTrend(); drawPlan(); }
+function setLang(l) { if (I.setLang) I.setLang(l); document.querySelectorAll('[data-lang]').forEach(b => on(b, b.dataset.lang === I.lang)); buildParams(); buildWells(); buildComp(); SCN.build(); SCN.setLabels(st.labels); buildRovGo(); buildCrew(); if (st.cam === 'in') { IN.show(IN.cur()); buildInGo(); } buildLegend(); showInfo(st.info); $('soundBtn').textContent = T(st.sound ? '🔊 Horn' : '🔇 Horn'); updateUI(); drawTrend(); drawPlan(); }
 
 /* ---------------- main loop ---------------- */
 let last = performance.now();
 function frame(now) {
   const dtR = Math.min(0.25, (now - last) / 1000); last = now;
   if (st.speed > 0) { const simT = dtR * st.speed, h = st.speed >= 3600 ? 4 : st.speed >= 600 ? 2 : 1; const n = Math.min(Math.ceil(simT / h), 2000); for (let i = 0; i < n; i++) sim.step(simT / n); }
-  updateScene(dtR * (st.speed ? 1 : 0));
+  SCN.update(sim, dtR * (st.speed ? 1 : 0), dtR);
+  if (st.cam === 'in') { IN.update(sim, dtR); if (now - (st.lastHud || 0) > 250) { $('camHud').innerHTML = IN.hud(sim); $('camExplain').disabled = false; st.lastHud = now; } }
   if (now - st.lastUi > 150) { updateUI(); drawPlan(); st.lastUi = now; }
   if (now - st.lastTrend > 1000) { drawTrend(); st.lastTrend = now; }
   requestAnimationFrame(frame);
