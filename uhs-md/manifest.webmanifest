@@ -2,7 +2,7 @@
   "id": "./",
   "name": "UHS Pore Lab",
   "short_name": "UHS Pore Lab",
-  "description": "Interactive molecular dynamics of underground hydrogen storage: H2, cushion gas, brine and methanogens in a calcite nanopore.",
+  "description": "Interactive 3D molecular dynamics of underground hydrogen storage: H2, cushion gas, brine and methanogens in a calcite nanopore.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

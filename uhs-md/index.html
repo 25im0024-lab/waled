@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>UHS Pore Lab</title>
-<meta name="description" content="Interactive molecular dynamics of underground hydrogen storage: H2 with CO2, CH4 or N2 cushion gas, brine and methanogenic bacteria in a calcite (carbonate) nanopore. Runs in the browser.">
+<meta name="description" content="Interactive 3D molecular dynamics of underground hydrogen storage: H2 with CO2, CH4 or N2 cushion gas, brine and methanogenic bacteria in a calcite (carbonate) nanopore. Runs in the browser.">
 <meta name="theme-color" content="#0b2340">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
@@ -18,6 +18,7 @@
   --warn-bg: #3a2900; --warn-line: #7a5a00; --warn-text: #ffe3a6;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html, body { margin: 0; background: var(--bg) radial-gradient(1200px 600px at 50% -10%, #0b2340 0, var(--bg) 60%) fixed; color: var(--text);
   font: 14.5px/1.55 "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; }
 a { color: var(--cyan); }
@@ -104,19 +105,29 @@ pre { background: #061224; border: 1px solid var(--line2); border-radius: 4px; p
 code { background: #081830; border: 1px solid var(--line2); border-radius: 3px; padding: 0 4px; font-size: 12.5px; }
 .warn { background: var(--warn-bg); border: 1px solid var(--warn-line); color: var(--warn-text); border-radius: 5px; padding: 9px 12px; font-size: 13.5px; margin: 0 0 12px; }
 footer { margin-top: 24px; border-top: 1px solid var(--line); padding-top: 10px; color: var(--muted); font-size: 12.5px; }
+
+.modes { margin: 0 0 8px; }
+.viewwrap { position: relative; }
+#view { aspect-ratio: 16 / 10; cursor: grab; }
+#view:active { cursor: grabbing; }
+.viewtools { position: absolute; top: 8px; right: 8px; display: flex; gap: 4px; }
+.viewtools .btn { min-height: 28px; padding: 3px 9px; font-size: 12.5px; background: #0b1d34cc; }
+.nogl { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 20px; color: var(--text2); margin: 0; }
+.nogl[hidden] { display: none; }
+@media (max-width: 600px) { #view { aspect-ratio: 4 / 5; } }
 </style>
 </head>
 <body>
 <div class="wrap">
 <header>
-  <h1>UHS Pore Lab<small>Hydrogen storage in a carbonate nanopore: live molecular dynamics with cushion gas, brine and bacteria</small></h1>
+  <h1>UHS Pore Lab<small>Hydrogen storage in a carbonate nanopore: live 3D molecular dynamics with cushion gas, brine and bacteria</small></h1>
   <nav class="links">
     <a class="btn" href="../">Home</a>
     <a class="btn" href="https://github.com/25im0024-lab/waled/tree/main/uhs-md" rel="noopener">LAMMPS model</a>
   </nav>
 </header>
 
-<p class="warn"><b>Teaching model.</b> This is a 2D coarse-grained simulation: each molecule is one Lennard-Jones site, water is a liquid-forming bead, and bacterial activity is sped up by many orders of magnitude. Use it for trends and intuition. For quantitative work, use the full 3D LAMMPS model (tab "Full LAMMPS model" below).</p>
+<p class="warn"><b>Two 3D views.</b> <b>Live simulator:</b> a coarse-grained 3D model you can change and run. Each molecule is one Lennard-Jones site, water is a liquid-forming bead, and bacterial activity is sped up by many orders of magnitude, so use it for trends and intuition. <b>LAMMPS run:</b> playback of the full atomistic 3D LAMMPS model (SPC/E water, NaCl, TraPPE gases, calcite (10-14) slab) with its analysed results.</p>
 
 <div class="layout">
   <aside class="panel" aria-label="Simulation settings">
@@ -142,9 +153,9 @@ footer { margin-top: 24px; border-top: 1px solid var(--line); padding-top: 10px;
     <div class="ctl"><label for="molality">Salinity (NaCl)</label><output for="molality"></output>
       <input type="range" id="molality" min="0" max="5" step="0.25"></div>
     <div class="ctl"><label for="film">Brine film on each wall</label><output for="film"></output>
-      <input type="range" id="film" min="0" max="20" step="1"></div>
+      <input type="range" id="film" min="0" max="16" step="1"></div>
     <div class="ctl"><label for="pore">Pore width</label><output for="pore"></output>
-      <input type="range" id="pore" min="40" max="120" step="5"></div>
+      <input type="range" id="pore" min="40" max="90" step="5"></div>
     <div class="ctl"><label for="wetting">Calcite wettability</label><output for="wetting"></output>
       <input type="range" id="wetting" min="300" max="1600" step="50"></div>
 
@@ -170,15 +181,34 @@ footer { margin-top: 24px; border-top: 1px solid var(--line); padding-top: 10px;
 
   <section class="stage" aria-label="Simulation">
     <div class="panel">
+      <div class="modes seg" role="tablist" aria-label="View">
+        <button role="tab" data-mode="live" aria-pressed="true">Live 3D simulator</button>
+        <button role="tab" data-mode="lammps" aria-pressed="false">LAMMPS run (3D)</button>
+      </div>
       <div class="viewbar">
         <div class="row" style="margin:0">
           <button class="btn pri" id="run">Pause</button>
-          <button class="btn" id="resetMsd" title="Restart the diffusion measurement">Reset MSD</button>
-          <label class="check" style="margin:0 6px">Speed <input type="range" id="speed" min="2" max="80" step="2" value="24" style="width:110px;accent-color:var(--cyan)"></label>
+          <span class="liveonly"><button class="btn" id="resetMsd" title="Restart the diffusion measurement">Reset MSD</button></span>
+          <label class="check liveonly" style="margin:0 6px">Speed <input type="range" id="speed" min="1" max="20" step="1" value="6" style="width:100px;accent-color:var(--cyan)"></label>
+          <label class="check lammpsonly" style="margin:0 6px" hidden>Frame <input type="range" id="frame" min="0" max="0" step="1" value="0" style="width:160px;accent-color:var(--cyan)"></label>
         </div>
         <span class="status" id="status"></span>
       </div>
-      <canvas id="view" width="1200" height="600" role="img" aria-label="Live view of the pore: calcite walls at top and bottom, brine films, gas molecules and microbes"></canvas>
+      <div class="viewwrap">
+        <canvas id="view" role="img" aria-label="3D view of the pore: calcite walls at top and bottom, brine films, gas molecules and microbes. Drag to rotate, scroll or pinch to zoom."></canvas>
+        <div class="viewtools">
+          <button class="btn" data-view="iso" title="Perspective view">3D</button>
+          <button class="btn" data-view="side" title="Side view">Side</button>
+          <button class="btn" data-view="top" title="Top view">Top</button>
+        </div>
+        <p class="nogl" hidden>This browser has no WebGL 2, so the 3D view cannot be drawn. The readouts and charts below still update.</p>
+      </div>
+      <div class="row" style="margin:6px 0 0">
+        <label class="check"><input type="checkbox" id="showWater" checked> Water</label>
+        <label class="check"><input type="checkbox" id="showRock" checked> Calcite</label>
+        <label class="check"><input type="checkbox" id="slice"> Slice (front half removed)</label>
+        <span class="hint" style="margin:0 0 0 auto">Drag to rotate · scroll/pinch to zoom · double-click to reset</span>
+      </div>
       <div class="legend" id="legend"></div>
     </div>
 
@@ -187,7 +217,7 @@ footer { margin-top: 24px; border-top: 1px solid var(--line); padding-top: 10px;
     <div class="charts">
       <div class="chart" id="cInv"><h4>H₂ inventory</h4><p class="sub">molecules vs time (ps)</p><canvas></canvas><div class="lg"></div><div class="tip"></div></div>
       <div class="chart" id="cP"><h4>Reservoir-equivalent pressure</h4><p class="sub">MPa vs time (ps)</p><canvas></canvas><div class="lg"></div><div class="tip"></div></div>
-      <div class="chart" id="cProf"><h4>Gas density across the pore</h4><p class="sub">molecules / nm² vs distance from bottom wall (Å); shaded = brine</p><canvas></canvas><div class="lg"></div><div class="tip"></div></div>
+      <div class="chart" id="cProf"><h4>Gas density across the pore</h4><p class="sub">molecules / nm³ vs distance from bottom wall (Å); shaded = brine</p><canvas></canvas><div class="lg"></div><div class="tip"></div></div>
     </div>
     <div class="row" style="margin:0"><button class="btn" id="csv">Download time series (CSV)</button></div>
   </section>
@@ -202,7 +232,7 @@ footer { margin-top: 24px; border-top: 1px solid var(--line); padding-top: 10px;
 
   <div class="tabpanel" role="tabpanel" id="tab-read" aria-labelledby="t-read">
     <h3>What you are looking at</h3>
-    <p>A slit pore in calcite (top and bottom walls). On a water-wet carbonate the walls carry a film of formation water (blue beads, grey beads = dissolved NaCl). Free gas fills the centre: H₂ (white) mixed with the cushion gas. Gas molecules drawn with a ring are dissolved in the brine. Green rods are methanogenic microbes attached to the walls; the dots on each rod show how much H₂ it has taken up.</p>
+    <p>A 3D slit pore in calcite (walls at the bottom and top, periodic sideways; the blue frame is one periodic cell). On a water-wet carbonate the walls carry a film of formation water (blue beads, grey beads = dissolved NaCl). Free gas fills the centre: H₂ (white) mixed with the cushion gas. Dissolved gas molecules are drawn enlarged. Green rods are methanogenic microbes on the walls; a microbe turns bright once it holds 4 H₂. Untick "Water" or use "Slice" to see inside. In the live simulator the calcite lattice is drawn schematically; in "LAMMPS run" every atom is real.</p>
     <h3>Experiments to try</h3>
     <ul>
       <li><b>Cushion-gas mixing.</b> Run "Withdraw" and watch the produced-gas purity. A CO₂ cushion stays mixed with H₂ in the pore. Raising the cushion fraction lowers the purity of recovered H₂.</li>
@@ -214,32 +244,32 @@ footer { margin-top: 24px; border-top: 1px solid var(--line); padding-top: 10px;
     <h3>Readouts</h3>
     <table>
       <tr><th>Readout</th><th>How it is computed</th></tr>
-      <tr><td>Reservoir-equivalent pressure</td><td>Free-gas areal density in the gas region, converted to 3D density (ρ₃ = ρ₂<sup>3/2</sup>) and passed through the Peng-Robinson equation of state with the current gas composition.</td></tr>
-      <tr><td>Dissolved H₂</td><td>H₂ molecules with 5 or more water/salt beads within 6 Å.</td></tr>
+      <tr><td>Reservoir-equivalent pressure</td><td>Free-gas density in the gas region, passed through the Peng-Robinson equation of state with the current gas composition.</td></tr>
+      <tr><td>Dissolved H₂</td><td>H₂ molecules with 14 or more water/salt beads within 6 Å.</td></tr>
       <tr><td>H₂ purity, pore centre</td><td>H₂ mole fraction among free gas in the middle third of the pore.</td></tr>
       <tr><td>Produced-gas purity</td><td>H₂ fraction of all molecules removed during "Withdraw".</td></tr>
-      <tr><td>D(H₂), lateral</td><td>Mean-square displacement along the pore, D = ⟨Δx²⟩ / 2t, since the last "Reset MSD".</td></tr>
+      <tr><td>D(H₂), lateral</td><td>Mean-square displacement parallel to the walls, D = ⟨Δx² + Δy²⟩ / 4t, since the last "Reset MSD".</td></tr>
     </table>
   </div>
 
   <div class="tabpanel" role="tabpanel" id="tab-model" aria-labelledby="t-model" hidden>
     <h3>Physics</h3>
     <ul>
-      <li><b>Dynamics:</b> velocity-Verlet, 2 fs time step, Berendsen thermostat (0.2 ps), cell lists, 10 Å cutoff. 2D, periodic along the pore.</li>
+      <li><b>Dynamics:</b> 3D, velocity-Verlet, 2 fs time step, Berendsen thermostat (0.2 ps), Verlet neighbour list, 8.5 Å cutoff. Periodic in x and y (40 Å), calcite walls at z = 0 and z = H.</li>
       <li><b>Gas molecules (one LJ site each):</b> H₂ σ = 2.96 Å, ε/k = 34.2 K (Buch 1994); CH₄ 3.73 Å, 148 K (TraPPE-UA); CO₂ 3.941 Å, 195.2 K and N₂ 3.798 Å, 71.4 K (one-site viscosity values, Svehla 1962).</li>
-      <li><b>Brine:</b> coarse-grained liquid beads (σ = 3.1 Å, ε/k = 740 K). Each bead stands for one water molecule; one salt bead stands for one dissolved Na⁺Cl⁻ pair. The salt binds water more strongly and excludes gas, which produces salting-out.</li>
-      <li><b>Gas–water coupling:</b> Lorentz-Berthelot with k<sub>ij</sub> = 0.50 (H₂), 0.52 (N₂), 0.47 (CH₄) and 0.18 (CO₂). The smaller CO₂ value stands in for the quadrupole a one-site model lacks, and gives the observed solubility order CO₂ ≫ CH₄ &gt; N₂ ≈ H₂.</li>
-      <li><b>Calcite walls:</b> 10-4 Lennard-Jones wall potentials. "Wettability" sets the water–wall well depth.</li>
-      <li><b>Gas loading:</b> Peng-Robinson density at (T, P) for the feed composition, mapped to 2D as ρ₂ = ρ₃<sup>2/3</sup>.</li>
+      <li><b>Brine:</b> coarse-grained liquid beads (σ = 3.1 Å, ε/k = 420 K). Each bead stands for one water molecule; one salt bead stands for one dissolved Na⁺Cl⁻ pair. The salt binds water more strongly and excludes gas, which produces salting-out.</li>
+      <li><b>Gas–water coupling:</b> Lorentz-Berthelot with k<sub>ij</sub> = 0.45 (H₂), 0.47 (N₂), 0.42 (CH₄) and 0.12 (CO₂). The smaller CO₂ value stands in for the quadrupole a one-site model lacks, and gives the observed solubility order CO₂ ≫ CH₄ &gt; N₂ ≈ H₂.</li>
+      <li><b>Calcite walls:</b> 9-3 Lennard-Jones wall potentials (an integrated LJ half-space). "Wettability" sets the water–wall well depth.</li>
+      <li><b>Gas loading:</b> Peng-Robinson density at (T, P) for the feed composition.</li>
       <li><b>Bacteria:</b> fixed microbes. Each takes up an H₂ molecule within 7 Å with the set probability per step. After 4 H₂ it takes one CO₂ (from the gas or, if allowed, from carbonate) and releases CH₄ + 2 H₂O. Hydrogen, carbon and oxygen atoms are conserved exactly (checked by the test suite).</li>
     </ul>
     <h3>Limits: read before drawing conclusions</h3>
     <ul>
-      <li>The model is 2D and coarse-grained, so solubilities, diffusion coefficients and interfacial properties are qualitative. Trends and rankings are the output, not numbers.</li>
+      <li>The live model is coarse-grained, so solubilities, diffusion coefficients and interfacial properties are qualitative. Trends and rankings are the output, not numbers. The "LAMMPS run" view is the atomistic model.</li>
       <li>Microbial kinetics are accelerated by roughly 10¹⁰ or more: real methanogenesis takes hours to days, the simulation shows picoseconds.</li>
       <li>There is no carbonate dissolution, pH or aqueous carbonate chemistry, and no electrostatics.</li>
       <li>Sulfate reducers (H₂S), homoacetogens and biofilm/EPS are not included.</li>
-      <li>Small system (a few hundred molecules): expect large fluctuations; average over time and repeat runs.</li>
+      <li>Small system (about a thousand molecules): expect fluctuations; average over time and repeat runs.</li>
     </ul>
   </div>
 
@@ -260,18 +290,18 @@ pip install numpy CoolProp matplotlib</pre>
 <footer>Open source (MIT). Runs entirely in your browser; nothing is sent anywhere. · <a href="https://github.com/25im0024-lab/waled" rel="noopener">GitHub</a></footer>
 </div>
 <script>
-/* UHS Pore Lab - physics engine.
- * 2D molecular dynamics of H2 + cushion gas + brine in a carbonate slit pore,
+/* UHS Pore Lab - 3D physics engine.
+ * Molecular dynamics of H2 + cushion gas + brine in a calcite slit pore,
  * with hydrogenotrophic methanogens on the pore walls and an optional
- * injection / withdrawal cycle.
+ * injection / withdrawal cycle. Periodic in x and y; calcite walls at
+ * z = 0 and z = H.
  *
  * Units: length A, time ps, mass g/mol, energy K (energy / kB).
  * Force F [K/A] gives acceleration a = 0.831446 * F / m  [A/ps^2].
  *
- * This is a 2D coarse-grained teaching model: every molecule is one
- * Lennard-Jones site and water is a liquid-forming LJ bead, not a real water
- * model. Results are qualitative trends; the LAMMPS model in this folder is
- * the quantitative tool.
+ * Coarse-grained teaching model: each molecule is one Lennard-Jones site and
+ * water is a liquid-forming LJ bead, not a real water model. Results are
+ * qualitative trends; the LAMMPS model in this folder is the quantitative tool.
  *
  * Works in the browser (window.UHS) and in Node (module.exports).
  */
@@ -295,8 +325,8 @@ pip install numpy CoolProp matplotlib</pre>
     CH4: { m: 16.043, sig: 3.73,  eps: 148.0, el: { C: 1, H: 4 },    color: '#ffb627', label: 'CH₄' },
     CO2: { m: 44.01,  sig: 3.941, eps: 195.2, el: { C: 1, O: 2 },    color: '#ff5d5d', label: 'CO₂' },
     N2:  { m: 28.014, sig: 3.798, eps: 71.4,  el: { N: 2 },          color: '#b48cff', label: 'N₂' },
-    W:   { m: 18.015, sig: 3.10,  eps: 740.0, el: { H: 2, O: 1 },    color: '#2f7fd8', label: 'H₂O' },
-    S:   { m: 58.44,  sig: 3.60,  eps: 740.0, el: { Na: 1, Cl: 1 },  color: '#d9e3ec', label: 'NaCl' },
+    W:   { m: 18.015, sig: 3.10,  eps: 420.0, el: { H: 2, O: 1 },    color: '#2f7fd8', label: 'H₂O' },
+    S:   { m: 58.44,  sig: 3.60,  eps: 420.0, el: { Na: 1, Cl: 1 },  color: '#d9e3ec', label: 'NaCl' },
   };
   const NAMES = Object.keys(SPECIES);
   const GASES = ['H2', 'CH4', 'CO2', 'N2'];
@@ -311,32 +341,7 @@ pip install numpy CoolProp matplotlib</pre>
     N2:  [126.19, 3.396, 0.037],
   };
 
-  /** Peng-Robinson mixture molar density [mol/m3] (vdW one-fluid, kij = 0). */
-  function prDensity(T, Pa, comp) {
-    let am = 0, bm = 0;
-    const ks = Object.keys(comp).filter(k => comp[k] > 0);
-    const a = {}, b = {};
-    for (const k of ks) {
-      const [Tc, PcM, w] = CRIT[k];
-      const Pc = PcM * 1e6;
-      const kap = 0.37464 + 1.54226 * w - 0.26992 * w * w;
-      const al = Math.pow(1 + kap * (1 - Math.sqrt(T / Tc)), 2);
-      a[k] = 0.45724 * R * R * Tc * Tc / Pc * al;
-      b[k] = 0.07780 * R * Tc / Pc;
-    }
-    for (const i of ks) {
-      bm += comp[i] * b[i];
-      for (const j of ks) am += comp[i] * comp[j] * Math.sqrt(a[i] * a[j]);
-    }
-    const A = am * Pa / (R * R * T * T), B = bm * Pa / (R * T);
-    // Z^3 + c2 Z^2 + c1 Z + c0 = 0
-    const c2 = -(1 - B), c1 = A - 3 * B * B - 2 * B, c0 = -(A * B - B * B - B * B * B);
-    const Z = largestCubicRoot(c2, c1, c0);
-    return { rho: Pa / (Z * R * T), Z };
-  }
-
-  /** Peng-Robinson pressure [Pa] at molar density rho [mol/m3]. */
-  function prPressure(T, rho, comp) {
+  function prMix(T, comp) {
     let am = 0, bm = 0;
     const ks = Object.keys(comp).filter(k => comp[k] > 0);
     const a = {}, b = {};
@@ -348,21 +353,27 @@ pip install numpy CoolProp matplotlib</pre>
       b[k] = 0.07780 * R * Tc / Pc;
     }
     for (const i of ks) { bm += comp[i] * b[i]; for (const j of ks) am += comp[i] * comp[j] * Math.sqrt(a[i] * a[j]); }
-    const v = 1 / rho;
-    return R * T / (v - bm) - am / (v * v + 2 * bm * v - bm * bm);
+    return { am, bm };
   }
 
-  function largestCubicRoot(c2, c1, c0) {
-    // Newton from a large start converges to the largest real root
-    let z = Math.max(1, -c2) + 1;
+  /** Peng-Robinson mixture molar density [mol/m3] (vdW one-fluid, kij = 0). */
+  function prDensity(T, Pa, comp) {
+    const { am, bm } = prMix(T, comp);
+    const A = am * Pa / (R * R * T * T), B = bm * Pa / (R * T);
+    const c2 = -(1 - B), c1 = A - 3 * B * B - 2 * B, c0 = -(A * B - B * B - B * B * B);
+    let z = Math.max(1, -c2) + 1; // Newton from above -> largest real root
     for (let it = 0; it < 200; it++) {
-      const f = ((z + c2) * z + c1) * z + c0;
-      const d = (3 * z + 2 * c2) * z + c1;
-      const dz = f / d;
-      z -= dz;
-      if (Math.abs(dz) < 1e-12) break;
+      const f = ((z + c2) * z + c1) * z + c0, d = (3 * z + 2 * c2) * z + c1, dz = f / d;
+      z -= dz; if (Math.abs(dz) < 1e-12) break;
     }
-    return z;
+    return { rho: Pa / (z * R * T), Z: z };
+  }
+
+  /** Peng-Robinson pressure [Pa] at molar density rho [mol/m3]. */
+  function prPressure(T, rho, comp) {
+    const { am, bm } = prMix(T, comp);
+    const v = 1 / rho;
+    return R * T / (v - bm) - am / (v * v + 2 * bm * v - bm * bm);
   }
 
   function mulberry32(seed) {
@@ -379,10 +390,10 @@ pip install numpy CoolProp matplotlib</pre>
     cushion: 'CO2', xCushion: 0.3,  // cushion-gas mole fraction in the feed
     T: 333.15, P_MPa: 10,
     molality: 1.0,                  // NaCl mol/kg
-    film: 12,                       // brine film thickness on each wall, A
-    pore: 80,                       // wall-to-wall distance, A
-    Lx: 140,                        // periodic length, A
-    wetting: 1100,                  // water-calcite well depth, K (higher = more water-wet)
+    film: 10,                       // brine film thickness on each wall, A
+    pore: 60,                       // wall-to-wall distance, A
+    L: 40,                          // periodic box length in x and y, A
+    wetting: 1000,                  // water-calcite well depth, K (higher = more water-wet)
     bio: true, microbes: 8,
     bioRate: 0.004,                 // H2 uptake probability per step for an H2 inside the capture radius
     carbonateCO2: true,             // CO2 from carbonate / HCO3- when no CO2 is captured
@@ -390,20 +401,22 @@ pip install numpy CoolProp matplotlib</pre>
     seed: 12345,
   };
 
-  // cross-interaction corrections (1 - k_ij) applied to sqrt(eps_i eps_j)
-  // gas-water k_ij: hydrophobic gases dissolve poorly. CO2 gets a smaller k
-  // because its quadrupole (absent in a one-site model) binds it to water,
-  // giving the observed order CO2 >> CH4 > N2 ~ H2.
-  const K_GAS_WATER = { H2: 0.50, N2: 0.52, CH4: 0.47, CO2: 0.18 };
-  const K_GAS_SALT = 0.75;   // dissolved salt excludes gas (salting-out)
+  // cross-interaction corrections (1 - k_ij) applied to sqrt(eps_i eps_j).
+  // Hydrophobic gases dissolve poorly; CO2 gets a smaller k because its
+  // quadrupole (absent in a one-site model) binds it to water, giving the
+  // observed order CO2 >> CH4 > N2 ~ H2.
+  const K_GAS_WATER = { H2: 0.45, N2: 0.47, CH4: 0.42, CO2: 0.12 };
+  const K_GAS_SALT = 0.75;    // dissolved salt excludes gas (salting-out)
   const K_WATER_SALT = -0.30; // hydration: salt binds water more strongly
-  const RC = 10.0;           // pair cutoff, A
-  const WALL_SIG = 3.0;      // calcite surface site size, A
-  const WALL_GAS = 25.0;     // gas-wall depth = WALL_GAS * sqrt(eps_gas) K
-  const W_RHO2 = 0.074;      // 2D liquid number density of W beads, 1/A^2
-  const BIO_RC = 7.0;        // microbe capture radius, A
+  const RC = 8.5;             // pair cutoff, A
+  const SKIN = 1.5;           // Verlet-list skin, A
+  const WALL_SIG = 3.0;       // calcite surface site size, A
+  const WALL_GAS = 25.0;      // gas-wall depth = WALL_GAS * sqrt(eps_gas) K
+  const W_RHO = 0.0252;       // number density of liquid W beads, 1/A^3
+  const BIO_RC = 7.0;         // microbe capture radius, A
+  const DIS_N = 14;           // water/salt neighbours within 6 A that make a gas molecule "dissolved"
 
-  function mix(i, j, wetting) {
+  function mix(i, j) {
     const a = SPECIES[NAMES[i]], b = SPECIES[NAMES[j]];
     let k = 0;
     const gi = isGas(i), gj = isGas(j);
@@ -424,151 +437,204 @@ pip install numpy CoolProp matplotlib</pre>
     const cfg = Object.assign({}, DEFAULTS, userCfg || {});
     const rnd = mulberry32(cfg.seed);
     const gauss = () => {
-      let u = 0, v = 0;
+      let u = 0;
       while (u === 0) u = rnd();
-      v = rnd();
-      return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+      return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * rnd());
     };
-    const Lx = cfg.Lx, H = cfg.pore;
+    const L = cfg.L, H = cfg.pore;
     const nsp = NAMES.length;
+    const wrap = v => ((v % L) + L) % L;
+    const mi = d => d - L * Math.round(d / L);
 
     // pair tables
     const E4 = new Float64Array(nsp * nsp), S2 = new Float64Array(nsp * nsp), ESH = new Float64Array(nsp * nsp);
     for (let i = 0; i < nsp; i++) for (let j = 0; j < nsp; j++) {
-      const p = mix(i, j, cfg.wetting);
+      const p = mix(i, j);
       E4[i * nsp + j] = 4 * p.eps;
       S2[i * nsp + j] = p.sig * p.sig;
       const sr6 = Math.pow(p.sig / RC, 6);
-      ESH[i * nsp + j] = 4 * p.eps * (sr6 * sr6 - sr6);  // energy shift at RC
+      ESH[i * nsp + j] = 4 * p.eps * (sr6 * sr6 - sr6);
     }
     const WE = new Float64Array(nsp), WS = new Float64Array(nsp);
     for (let s = 0; s < nsp; s++) { const w = wallParams(s, cfg.wetting); WE[s] = w.eps; WS[s] = w.sig; }
 
-    // particle storage (grown as needed)
-    let cap = 2048, n = 0;
-    let x = new Float64Array(cap), z = new Float64Array(cap), vx = new Float64Array(cap), vz = new Float64Array(cap);
-    let fx = new Float64Array(cap), fz = new Float64Array(cap), xu = new Float64Array(cap), x0 = new Float64Array(cap);
-    let sp = new Int8Array(cap), dis = new Uint8Array(cap);
+    // particle storage
+    let cap = 4096, n = 0;
+    let x, y, z, vx, vy, vz, fx, fy, fz, xu, yu, x0, y0, sp, dis;
+    (function alloc() {
+      x = new Float64Array(cap); y = new Float64Array(cap); z = new Float64Array(cap);
+      vx = new Float64Array(cap); vy = new Float64Array(cap); vz = new Float64Array(cap);
+      fx = new Float64Array(cap); fy = new Float64Array(cap); fz = new Float64Array(cap);
+      xu = new Float64Array(cap); yu = new Float64Array(cap); x0 = new Float64Array(cap); y0 = new Float64Array(cap);
+      sp = new Int8Array(cap); dis = new Uint8Array(cap);
+    })();
     function grow() {
       cap *= 2;
       const g = (A, T) => { const B = new T(cap); B.set(A); return B; };
-      x = g(x, Float64Array); z = g(z, Float64Array); vx = g(vx, Float64Array); vz = g(vz, Float64Array);
-      fx = g(fx, Float64Array); fz = g(fz, Float64Array); xu = g(xu, Float64Array); x0 = g(x0, Float64Array);
+      x = g(x, Float64Array); y = g(y, Float64Array); z = g(z, Float64Array);
+      vx = g(vx, Float64Array); vy = g(vy, Float64Array); vz = g(vz, Float64Array);
+      fx = g(fx, Float64Array); fy = g(fy, Float64Array); fz = g(fz, Float64Array);
+      xu = g(xu, Float64Array); yu = g(yu, Float64Array); x0 = g(x0, Float64Array); y0 = g(y0, Float64Array);
       sp = g(sp, Int8Array); dis = g(dis, Uint8Array);
     }
-    function vInit(s) { return Math.sqrt(cfg.T * ACC / SPECIES[NAMES[s]].m); }
-    function add(s, px, pz) {
+    function add(s, px, py, pz) {
+      invalidateList();
       if (n >= cap) grow();
-      x[n] = ((px % Lx) + Lx) % Lx; z[n] = pz; xu[n] = x[n]; x0[n] = x[n];
-      const v = vInit(s); vx[n] = v * gauss(); vz[n] = v * gauss();
-      fx[n] = fz[n] = 0; sp[n] = s; dis[n] = 0;
+      x[n] = wrap(px); y[n] = wrap(py); z[n] = pz;
+      xu[n] = x0[n] = x[n]; yu[n] = y0[n] = y[n];
+      const v = Math.sqrt(cfg.T * ACC / SPECIES[NAMES[s]].m);
+      vx[n] = v * gauss(); vy[n] = v * gauss(); vz[n] = v * gauss();
+      fx[n] = fy[n] = fz[n] = 0; sp[n] = s; dis[n] = 0;
       return n++;
     }
     function remove(i) {
+      invalidateList();
       n--;
       if (i !== n) {
-        x[i] = x[n]; z[i] = z[n]; vx[i] = vx[n]; vz[i] = vz[n]; fx[i] = fx[n]; fz[i] = fz[n];
-        xu[i] = xu[n]; x0[i] = x0[n]; sp[i] = sp[n]; dis[i] = dis[n];
+        x[i] = x[n]; y[i] = y[n]; z[i] = z[n]; vx[i] = vx[n]; vy[i] = vy[n]; vz[i] = vz[n];
+        fx[i] = fx[n]; fy[i] = fy[n]; fz[i] = fz[n]; xu[i] = xu[n]; yu[i] = yu[n]; x0[i] = x0[n]; y0[i] = y0[n];
+        sp[i] = sp[n]; dis[i] = dis[n];
       }
     }
 
-    // ---- cell list
-    const ncx = Math.max(3, Math.floor(Lx / RC)), ncz = Math.max(3, Math.floor(H / RC));
-    const csx = Lx / ncx, csz = H / ncz;
-    let head = new Int32Array(ncx * ncz), next = new Int32Array(cap);
+    // ---- cell list (periodic in x, y; open in z)
+    const nc = Math.max(3, Math.floor(L / RC)), ncz = Math.max(3, Math.floor(H / RC));
+    const cs = L / nc, csz = H / ncz;
+    const head = new Int32Array(nc * nc * ncz);
+    let next = new Int32Array(cap);
+    const cellOf = i => {
+      const cx = Math.min(nc - 1, Math.floor(x[i] / cs)), cy = Math.min(nc - 1, Math.floor(y[i] / cs));
+      const cz = Math.min(ncz - 1, Math.max(0, Math.floor(z[i] / csz)));
+      return [cx, cy, cz];
+    };
     function buildCells() {
       if (next.length < cap) next = new Int32Array(cap);
       head.fill(-1);
       for (let i = 0; i < n; i++) {
-        const cx = Math.min(ncx - 1, Math.floor(x[i] / csx));
-        const cz = Math.min(ncz - 1, Math.max(0, Math.floor(z[i] / csz)));
-        const c = cz * ncx + cx;
+        const [cx, cy, cz] = cellOf(i);
+        const c = (cz * nc + cy) * nc + cx;
         next[i] = head[c]; head[c] = i;
       }
     }
-    function forEachNeighbor(i, rmax, fn) {
-      const cx = Math.min(ncx - 1, Math.floor(x[i] / csx));
-      const cz = Math.min(ncz - 1, Math.max(0, Math.floor(z[i] / csz)));
-      const r2 = rmax * rmax;
-      for (let dzc = -1; dzc <= 1; dzc++) {
-        const kz = cz + dzc; if (kz < 0 || kz >= ncz) continue;
-        for (let dxc = -1; dxc <= 1; dxc++) {
-          const kx = (cx + dxc + ncx) % ncx;
-          for (let j = head[kz * ncx + kx]; j >= 0; j = next[j]) {
-            if (j === i) continue;
-            let dx = x[j] - x[i]; dx -= Lx * Math.round(dx / Lx);
-            const dz = z[j] - z[i];
-            const d2 = dx * dx + dz * dz;
-            if (d2 < r2) fn(j, dx, dz, d2);
-          }
-        }
-      }
+    // 13 forward neighbour offsets for the half-shell sweep
+    const HALF = [];
+    for (let dz = -1; dz <= 1; dz++) for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      if (dz > 0 || (dz === 0 && dy > 0) || (dz === 0 && dy === 0 && dx > 0)) HALF.push([dx, dy, dz]);
     }
-
-    // ---- forces
-    const st = { pe: 0, wallBottom: 0, wallTop: 0 };
-    const WCUT = 15.0;
-    function forces() {
-      buildCells();
-      fx.fill(0, 0, n); fz.fill(0, 0, n);
-      let pe = 0, wb = 0, wt = 0;
-      const rc2 = RC * RC;
-      for (let c = 0; c < ncx * ncz; c++) {
-        const cx = c % ncx, cz = (c / ncx) | 0;
-        for (let i = head[c]; i >= 0; i = next[i]) {
-          const si = sp[i] * nsp;
-          // half shell: same cell j < i via list order, plus 4 forward neighbours
-          for (let k = 0; k < 5; k++) {
-            let kx, kz;
-            if (k === 0) { kx = cx; kz = cz; }
-            else if (k === 1) { kx = cx + 1; kz = cz; }
-            else if (k === 2) { kx = cx - 1; kz = cz + 1; }
-            else if (k === 3) { kx = cx; kz = cz + 1; }
-            else { kx = cx + 1; kz = cz + 1; }
-            if (kz >= ncz) continue;
-            kx = (kx + ncx) % ncx;
-            let j = k === 0 ? next[i] : head[kz * ncx + kx];
-            for (; j >= 0; j = next[j]) {
-              let dx = x[j] - x[i]; dx -= Lx * Math.round(dx / Lx);
-              const dz = z[j] - z[i];
-              let r2 = dx * dx + dz * dz;
-              if (r2 >= rc2) continue;
-              const t = si + sp[j];
-              const s2 = S2[t];
-              if (r2 < 0.36 * s2) r2 = 0.36 * s2;  // soft floor for start-up overlaps
-              const sr2 = s2 / r2, sr6 = sr2 * sr2 * sr2;
-              const e4 = E4[t];
-              pe += e4 * (sr6 * sr6 - sr6) - ESH[t];
-              const ff = e4 * (12 * sr6 * sr6 - 6 * sr6) / r2;
-              fx[i] -= ff * dx; fz[i] -= ff * dz;
-              fx[j] += ff * dx; fz[j] += ff * dz;
+    function forEachNeighbor(i, rmax, fn) {
+      const [cx, cy, cz] = cellOf(i), r2 = rmax * rmax;
+      for (let dz = -1; dz <= 1; dz++) {
+        const kz = cz + dz; if (kz < 0 || kz >= ncz) continue;
+        for (let dy = -1; dy <= 1; dy++) {
+          const ky = (cy + dy + nc) % nc;
+          for (let dx = -1; dx <= 1; dx++) {
+            const kx = (cx + dx + nc) % nc;
+            for (let j = head[(kz * nc + ky) * nc + kx]; j >= 0; j = next[j]) {
+              if (j === i) continue;
+              const ddx = mi(x[j] - x[i]), ddy = mi(y[j] - y[i]), ddz = z[j] - z[i];
+              const d2 = ddx * ddx + ddy * ddy + ddz * ddz;
+              if (d2 < r2) fn(j, d2);
             }
           }
         }
       }
-      // 10-4 walls at z = 0 and z = H (calcite surfaces), min -eps at z = sig
+    }
+
+    // ---- forces with a Verlet pair list (rebuilt when any atom moved > SKIN/2)
+    const st = { pe: 0 };
+    const WCUT = 14.0;
+    const RL2 = (RC + SKIN) * (RC + SKIN), RC2 = RC * RC;
+    let plist = new Int32Array(1 << 16), npairs = 0;
+    let xl = new Float64Array(cap), yl = new Float64Array(cap), zl = new Float64Array(cap), listN = -1;
+    function buildList() {
+      buildCells();
+      if (xl.length < cap) { xl = new Float64Array(cap); yl = new Float64Array(cap); zl = new Float64Array(cap); }
+      npairs = 0;
+      for (let cz = 0; cz < ncz; cz++) for (let cy = 0; cy < nc; cy++) for (let cx = 0; cx < nc; cx++) {
+        const c = (cz * nc + cy) * nc + cx;
+        for (let i = head[c]; i >= 0; i = next[i]) {
+          for (let h = -1; h < HALF.length; h++) {
+            let j;
+            if (h < 0) j = next[i];
+            else {
+              const o = HALF[h], kz = cz + o[2]; if (kz < 0 || kz >= ncz) continue;
+              j = head[(kz * nc + (cy + o[1] + nc) % nc) * nc + (cx + o[0] + nc) % nc];
+            }
+            for (; j >= 0; j = next[j]) {
+              const dx = mi(x[j] - x[i]), dy = mi(y[j] - y[i]), dz = z[j] - z[i];
+              if (dx * dx + dy * dy + dz * dz < RL2) {
+                if (2 * npairs + 2 > plist.length) { const b = new Int32Array(plist.length * 2); b.set(plist); plist = b; }
+                plist[2 * npairs] = i; plist[2 * npairs + 1] = j; npairs++;
+              }
+            }
+          }
+        }
+      }
+      for (let i = 0; i < n; i++) { xl[i] = xu[i]; yl[i] = yu[i]; zl[i] = z[i]; }
+      listN = n;
+    }
+    function listStale() {
+      if (listN !== n) return true;
+      const lim = 0.25 * SKIN * SKIN;
       for (let i = 0; i < n; i++) {
-        const s = sp[i], e = WE[s], sg = WS[s];
+        const dx = xu[i] - xl[i], dy = yu[i] - yl[i], dz = z[i] - zl[i];
+        if (dx * dx + dy * dy + dz * dz > lim) return true;
+      }
+      return false;
+    }
+    function invalidateList() { listN = -1; }
+    function forces() {
+      if (listStale()) buildList();
+      fx.fill(0, 0, n); fy.fill(0, 0, n); fz.fill(0, 0, n);
+      let pe = 0;
+      for (let p = 0; p < npairs; p++) {
+        const i = plist[2 * p], j = plist[2 * p + 1];
+        let dx = x[j] - x[i]; dx -= L * Math.round(dx / L);
+        let dy = y[j] - y[i]; dy -= L * Math.round(dy / L);
+        const dz = z[j] - z[i];
+        let r2 = dx * dx + dy * dy + dz * dz;
+        if (r2 >= RC2) continue;
+        const t = sp[i] * nsp + sp[j], s2 = S2[t];
+        if (r2 < 0.36 * s2) r2 = 0.36 * s2;  // soft floor for start-up overlaps
+        const sr2 = s2 / r2, sr6 = sr2 * sr2 * sr2, e4 = E4[t];
+        const ff = e4 * (12 * sr6 * sr6 - 6 * sr6) / r2;
+        fx[i] -= ff * dx; fy[i] -= ff * dy; fz[i] -= ff * dz;
+        fx[j] += ff * dx; fy[j] += ff * dy; fz[j] += ff * dz;
+        pe += e4 * (sr6 * sr6 - sr6) - ESH[t];
+      }
+      // 9-3 walls (integrated LJ half-space), scaled so the well depth is eps
+      const k93 = 1 / 1.0541;
+      for (let i = 0; i < n; i++) {
+        const s = sp[i], e = WE[s] * k93, sg = WS[s];
         for (let w = 0; w < 2; w++) {
           let d = w === 0 ? z[i] : H - z[i];
           if (d > WCUT) continue;
-          if (d < 0.55 * sg) d = 0.55 * sg;
-          const q = sg / d, q4 = q * q * q * q, q10 = q4 * q4 * q * q;
-          pe += (5 / 3) * e * (0.4 * q10 - q4);
-          const f = (20 / 3) * e * (q10 - q4) / d;   // push away from the wall
-          if (w === 0) { fz[i] += f; wb += f; } else { fz[i] -= f; wt += f; }
+          if (d < 0.6 * sg) d = 0.6 * sg;
+          const q = sg / d, q3 = q * q * q, q9 = q3 * q3 * q3;
+          pe += e * ((2 / 15) * q9 - q3);
+          const f = e * (1.2 * q9 - 3 * q3) / d;   // -dU/dd, pushes away from the wall when > 0
+          if (w === 0) fz[i] += f; else fz[i] -= f;
         }
       }
-      st.pe = pe; st.wallBottom = wb; st.wallTop = wt;
+      st.pe = pe;
     }
 
-    // ---- microbes (fixed on both walls, inside the brine film)
+    // ---- microbes and bookkeeping
     const microbes = [];
     const ledger = {
       H2_consumed: 0, CO2_gas_consumed: 0, CO2_carbonate: 0, CH4_produced: 0, H2O_produced: 0,
       pendingCH4: 0, pendingH2O: 0, injected: {}, withdrawn: {},
     };
     GASES.forEach(g => { ledger.injected[g] = 0; ledger.withdrawn[g] = 0; });
+
+    function overlapFree(px, py, pz, sg, factor) {
+      for (let i = 0; i < n; i++) {
+        const dx = mi(x[i] - px), dy = mi(y[i] - py), dz = z[i] - pz;
+        const m = factor * 0.5 * (sg + SPECIES[NAMES[sp[i]]].sig);
+        if (dx * dx + dy * dy + dz * dz < m * m) return false;
+      }
+      return true;
+    }
 
     // ---- build
     function build() {
@@ -577,99 +643,96 @@ pip install numpy CoolProp matplotlib</pre>
       const comp = { H2: 1 - cfg.xCushion };
       if (cfg.xCushion > 0) comp[cfg.cushion] = cfg.xCushion;
       const eos = prDensity(cfg.T, cfg.P_MPa * 1e6, comp);
-      // 3D number density -> 2D areal density, rho2 = rho3^(2/3)
       const rho3 = eos.rho * NA * 1e-30;
-      const rho2 = Math.pow(rho3, 2 / 3);
-      const nGas = Math.round(rho2 * Lx * (gasHi - gasLo));
+      const nGas = Math.round(rho3 * L * L * (gasHi - gasLo));
       const counts = {};
       for (const k of Object.keys(comp)) counts[k] = Math.round(comp[k] * nGas);
-      const nW = film > 0 ? Math.round(W_RHO2 * Lx * film * 2) : 0;
+      const nW = film > 0 ? Math.round(W_RHO * L * L * film * 2) : 0;
       const nS = Math.round(cfg.molality * 0.018015 * nW);
 
-      const placed = [];
-      function tryPlace(s, zlo, zhi, tries) {
-        const sg = SPECIES[NAMES[s]].sig;
-        for (let t = 0; t < (tries || 400); t++) {
-          const px = rnd() * Lx, pz = zlo + rnd() * (zhi - zlo);
-          let ok = true;
-          for (const p of placed) {
-            let dx = p[0] - px; dx -= Lx * Math.round(dx / Lx);
-            const dz = p[1] - pz, m = 0.8 * 0.5 * (sg + p[2]);
-            if (dx * dx + dz * dz < m * m) { ok = false; break; }
+      // brine on a jittered lattice in each film, gas placed randomly without overlap
+      function lattice(zlo, zhi, count) {
+        if (count <= 0) return [];
+        const vol = L * L * (zhi - zlo), a = Math.cbrt(vol / count);
+        const nx = Math.max(1, Math.round(L / a)), nz = Math.max(1, Math.ceil(count / (nx * nx)));
+        const pts = [];
+        for (let k = 0; k < nz; k++) for (let j = 0; j < nx; j++) for (let i = 0; i < nx; i++)
+          pts.push([(i + 0.5) * L / nx, (j + 0.5) * L / nx, zlo + (k + 0.5) * (zhi - zlo) / nz]);
+        for (let i = pts.length - 1; i > 0; i--) { const r = Math.floor(rnd() * (i + 1)); [pts[i], pts[r]] = [pts[r], pts[i]]; }
+        return pts.slice(0, count);
+      }
+      const half = Math.ceil((nW + nS) / 2);
+      const sites = lattice(1.6, film + 0.8, half).concat(lattice(H - film - 0.8, H - 1.6, nW + nS - half));
+      const kinds = sites.map((_, i) => (i < nS ? IDX.S : IDX.W));
+      for (let i = kinds.length - 1; i > 0; i--) { const r = Math.floor(rnd() * (i + 1)); [kinds[i], kinds[r]] = [kinds[r], kinds[i]]; }
+      sites.forEach((p, i) => add(kinds[i], p[0], p[1], p[2]));
+      for (const k of Object.keys(counts)) {
+        const s = IDX[k], sg = SPECIES[k].sig;
+        for (let c = 0; c < counts[k]; c++) {
+          for (let t = 0; t < 400; t++) {
+            const px = rnd() * L, py = rnd() * L, pz = gasLo + 1.5 + rnd() * (gasHi - gasLo - 3);
+            if (overlapFree(px, py, pz, sg, 0.85)) { add(s, px, py, pz); break; }
           }
-          if (ok) { placed.push([px, pz, sg]); add(s, px, pz); return true; }
         }
-        return false;
       }
-      const filmSites = [];
-      for (let i = 0; i < nW + nS; i++) filmSites.push(i < nS ? IDX.S : IDX.W);
-      let half = 0;
-      for (const s of filmSites) {
-        const bottom = (half++ % 2) === 0;
-        if (bottom) tryPlace(s, 1.8, film + 1.0); else tryPlace(s, H - film - 1.0, H - 1.8);
-      }
-      for (const k of Object.keys(counts))
-        for (let i = 0; i < counts[k]; i++) tryPlace(IDX[k], gasLo + 1.5, gasHi - 1.5);
-
       if (cfg.bio && cfg.microbes > 0) {
+        const per = Math.ceil(cfg.microbes / 2), g = Math.ceil(Math.sqrt(per));
         for (let m = 0; m < cfg.microbes; m++) {
-          const top = m % 2 === 1;
-          microbes.push({ x: (m + 0.5) * Lx / cfg.microbes, z: top ? H - 3.5 : 3.5, top, h2: 0, co2: 0, made: 0 });
+          const top = m % 2 === 1, k = Math.floor(m / 2);
+          microbes.push({ x: ((k % g) + 0.5) * L / g, y: (Math.floor(k / g) + 0.5) * L / g + (top ? L / (2 * g) : 0),
+            z: top ? H - 3.5 : 3.5, top, h2: 0, co2: 0, made: 0 });
         }
       }
-      return { eos, rho2, counts, nW, nS, film, gasLo, gasHi };
+      return { eos, counts, nW, nS, film, gasLo, gasHi };
     }
 
     function relax(steps) {
       for (let k = 0; k < steps; k++) {
         forces();
         for (let i = 0; i < n; i++) {
-          let dx = 0.002 * fx[i], dz = 0.002 * fz[i];
-          const d = Math.hypot(dx, dz);
-          if (d > 0.08) { dx *= 0.08 / d; dz *= 0.08 / d; }
-          x[i] = ((x[i] + dx) % Lx + Lx) % Lx; z[i] = Math.min(H - 0.5, Math.max(0.5, z[i] + dz));
-          xu[i] = x[i]; x0[i] = x[i];
+          let dx = 0.002 * fx[i], dy = 0.002 * fy[i], dz = 0.002 * fz[i];
+          const d = Math.hypot(dx, dy, dz);
+          if (d > 0.08) { dx *= 0.08 / d; dy *= 0.08 / d; dz *= 0.08 / d; }
+          x[i] = wrap(x[i] + dx); y[i] = wrap(y[i] + dy); z[i] = Math.min(H - 0.5, Math.max(0.5, z[i] + dz));
+          xu[i] = x0[i] = x[i]; yu[i] = y0[i] = y[i];
         }
       }
     }
 
     const info = build();
-    relax(400);
+    relax(300);
     forces();
 
-    let time = 0, stepCount = 0;
-    let msdT0 = 0;
+    let time = 0, stepCount = 0, msdT0 = 0;
     const tauT = 0.2; // ps, Berendsen coupling
 
-    function kinetic() {
+    function temperature() {
+      if (!n) return 0;
       let k = 0;
-      for (let i = 0; i < n; i++) k += SPECIES[NAMES[sp[i]]].m * (vx[i] * vx[i] + vz[i] * vz[i]);
-      return 0.5 * k / ACC; // K
+      for (let i = 0; i < n; i++) k += SPECIES[NAMES[sp[i]]].m * (vx[i] * vx[i] + vy[i] * vy[i] + vz[i] * vz[i]);
+      return k / ACC / (3 * n); // 3D: KE = 3/2 N kB T
     }
-    function temperature() { return n ? kinetic() / n : 0; } // 2D: KE = N kB T
 
     function stepOnce() {
       const dt = cfg.dt;
       for (let i = 0; i < n; i++) {
-        const a = ACC / SPECIES[NAMES[sp[i]]].m;
-        vx[i] += 0.5 * dt * a * fx[i]; vz[i] += 0.5 * dt * a * fz[i];
-        const dx = vx[i] * dt;
-        xu[i] += dx;
-        x[i] = ((x[i] + dx) % Lx + Lx) % Lx;
-        z[i] += vz[i] * dt;
+        const a = 0.5 * dt * ACC / SPECIES[NAMES[sp[i]]].m;
+        vx[i] += a * fx[i]; vy[i] += a * fy[i]; vz[i] += a * fz[i];
+        const dx = vx[i] * dt, dy = vy[i] * dt;
+        xu[i] += dx; yu[i] += dy;
+        x[i] = wrap(x[i] + dx); y[i] = wrap(y[i] + dy); z[i] += vz[i] * dt;
         if (z[i] < 0.3) { z[i] = 0.3; vz[i] = Math.abs(vz[i]); }
         if (z[i] > H - 0.3) { z[i] = H - 0.3; vz[i] = -Math.abs(vz[i]); }
       }
       forces();
       for (let i = 0; i < n; i++) {
-        const a = ACC / SPECIES[NAMES[sp[i]]].m;
-        vx[i] += 0.5 * dt * a * fx[i]; vz[i] += 0.5 * dt * a * fz[i];
+        const a = 0.5 * dt * ACC / SPECIES[NAMES[sp[i]]].m;
+        vx[i] += a * fx[i]; vy[i] += a * fy[i]; vz[i] += a * fz[i];
       }
       const Tn = temperature();
       if (Tn > 0) {
-        let lam = Math.sqrt(1 + dt / tauT * (cfg.T / Tn - 1));
-        lam = Math.min(1.1, Math.max(0.9, lam));
-        for (let i = 0; i < n; i++) { vx[i] *= lam; vz[i] *= lam; }
+        const lam = Math.min(1.1, Math.max(0.9, Math.sqrt(1 + dt / tauT * (cfg.T / Tn - 1))));
+        for (let i = 0; i < n; i++) { vx[i] *= lam; vy[i] *= lam; vz[i] *= lam; }
       }
       time += dt; stepCount++;
       if (microbes.length) biology();
@@ -682,8 +745,7 @@ pip install numpy CoolProp matplotlib</pre>
       let best = -1, bd = r * r;
       for (let i = 0; i < n; i++) {
         if (sp[i] !== s) continue;
-        let dx = x[i] - m.x; dx -= Lx * Math.round(dx / Lx);
-        const dz = z[i] - m.z, d2 = dx * dx + dz * dz;
+        const dx = mi(x[i] - m.x), dy = mi(y[i] - m.y), dz = z[i] - m.z, d2 = dx * dx + dy * dy + dz * dz;
         if (d2 < bd) { bd = d2; best = i; }
       }
       return best;
@@ -691,16 +753,9 @@ pip install numpy CoolProp matplotlib</pre>
     function placeNear(m, s) {
       const sg = SPECIES[NAMES[s]].sig;
       for (let t = 0; t < 30; t++) {
-        const px = m.x + (rnd() - 0.5) * 10;
+        const px = m.x + (rnd() - 0.5) * 10, py = m.y + (rnd() - 0.5) * 10;
         const pz = m.top ? m.z - 2 - rnd() * 6 : m.z + 2 + rnd() * 6;
-        const pxw = ((px % Lx) + Lx) % Lx;
-        let ok = true;
-        for (let i = 0; i < n; i++) {
-          let dx = x[i] - pxw; dx -= Lx * Math.round(dx / Lx);
-          const dz = z[i] - pz, mm = 0.75 * 0.5 * (sg + SPECIES[NAMES[sp[i]]].sig);
-          if (dx * dx + dz * dz < mm * mm) { ok = false; break; }
-        }
-        if (ok) { add(s, pxw, pz); return true; }
+        if (overlapFree(wrap(px), wrap(py), pz, sg, 0.75)) { add(s, px, py, pz); return true; }
       }
       return false;
     }
@@ -726,20 +781,14 @@ pip install numpy CoolProp matplotlib</pre>
     }
 
     // ---- storage cycle: inject H2 / withdraw gas from the pore centre
-    const cycle = { mode: 'off', every: 400 };
+    const cycle = { mode: 'off', every: 300 };
     function centreBand() { return [H / 2 - H / 6, H / 2 + H / 6]; }
     function cycleStep() {
       const [lo, hi] = centreBand();
       if (cycle.mode === 'inject') {
         for (let t = 0; t < 20; t++) {
-          const px = rnd() * Lx, pz = lo + rnd() * (hi - lo);
-          let ok = true;
-          for (let i = 0; i < n; i++) {
-            let dx = x[i] - px; dx -= Lx * Math.round(dx / Lx);
-            const dz = z[i] - pz;
-            if (dx * dx + dz * dz < 9) { ok = false; break; }
-          }
-          if (ok) { add(IDX.H2, px, pz); ledger.injected.H2++; break; }
+          const px = rnd() * L, py = rnd() * L, pz = lo + rnd() * (hi - lo);
+          if (overlapFree(px, py, pz, SPECIES.H2.sig, 0.9)) { add(IDX.H2, px, py, pz); ledger.injected.H2++; break; }
         }
       } else if (cycle.mode === 'withdraw') {
         const cand = [];
@@ -759,7 +808,7 @@ pip install numpy CoolProp matplotlib</pre>
         if (!isGas(sp[i])) { dis[i] = 0; continue; }
         let c = 0;
         forEachNeighbor(i, 6.0, j => { if (sp[j] >= 4) c++; });
-        dis[i] = c >= 5 ? 1 : 0;
+        dis[i] = c >= DIS_N ? 1 : 0;
       }
     }
     classify();
@@ -770,56 +819,47 @@ pip install numpy CoolProp matplotlib</pre>
       for (let i = 0; i < n; i++) c[NAMES[sp[i]]]++;
       return c;
     }
+    function lateralD(s) {
+      let msd = 0, k = 0;
+      for (let i = 0; i < n; i++) if (sp[i] === s) { const dx = xu[i] - x0[i], dy = yu[i] - y0[i]; msd += dx * dx + dy * dy; k++; }
+      const tw = time - msdT0;
+      return k && tw > 1 ? (msd / k) / (4 * tw) * 1e-8 : null; // 2D lateral, m^2/s
+    }
+    /** Reservoir-equivalent pressure: free-gas density in the gas region through Peng-Robinson. */
+    function freeGasPressure() {
+      const comp = {}; let nf = 0;
+      for (let i = 0; i < n; i++) if (isGas(sp[i]) && !dis[i]) { comp[NAMES[sp[i]]] = (comp[NAMES[sp[i]]] || 0) + 1; nf++; }
+      if (!nf) return 0;
+      for (const k in comp) comp[k] /= nf;
+      const rho = nf / (L * L * (info.gasHi - info.gasLo)) / (NA * 1e-30);
+      return prPressure(cfg.T, rho, comp) / 1e6;
+    }
     function stats() {
       const c = counts();
       let h2Free = 0, h2Dis = 0, gasCentre = 0, h2Centre = 0;
       const [lo, hi] = centreBand();
       for (let i = 0; i < n; i++) {
         if (sp[i] === IDX.H2) { if (dis[i]) h2Dis++; else h2Free++; }
-        if (isGas(sp[i]) && !dis[i] && z[i] > lo && z[i] < hi) {
-          gasCentre++; if (sp[i] === IDX.H2) h2Centre++;
-        }
+        if (isGas(sp[i]) && !dis[i] && z[i] > lo && z[i] < hi) { gasCentre++; if (sp[i] === IDX.H2) h2Centre++; }
       }
-      const D = lateralD(IDX.H2);
       const wd = ledger.withdrawn, wtot = GASES.reduce((s, g) => s + wd[g], 0);
       return {
         time, steps: stepCount, n, T: temperature(), counts: c,
         H2_free: h2Free, H2_dissolved: h2Dis,
         H2_purity_centre: gasCentre ? h2Centre / gasCentre : null,
         P_MPa: freeGasPressure(),
-        D_H2_lateral: D,
+        D_H2_lateral: lateralD(IDX.H2),
         D_water_lateral: lateralD(IDX.W),
         produced_purity: wtot ? wd.H2 / wtot : null,
         ledger: JSON.parse(JSON.stringify(ledger)),
       };
     }
-    /** Reservoir-equivalent pressure: free-gas areal density in the gas region,
-     *  mapped back to 3D (rho3 = rho2^1.5) and passed through Peng-Robinson. */
-    function freeGasPressure() {
-      const comp = {}; let nf = 0;
-      for (let i = 0; i < n; i++) if (isGas(sp[i]) && !dis[i]) { comp[NAMES[sp[i]]] = (comp[NAMES[sp[i]]] || 0) + 1; nf++; }
-      if (!nf) return 0;
-      for (const k in comp) comp[k] /= nf;
-      const rho2 = nf / (Lx * (info.gasHi - info.gasLo));
-      const rho3 = Math.pow(rho2, 1.5) / (NA * 1e-30);
-      return prPressure(cfg.T, rho3, comp) / 1e6;
-    }
-    /** Lateral (x) self-diffusion since the last MSD reset, m^2/s (1 A^2/ps = 1e-8 m^2/s). */
-    function lateralD(s) {
-      let msd = 0, k = 0;
-      for (let i = 0; i < n; i++) if (sp[i] === s) { const d = xu[i] - x0[i]; msd += d * d; k++; }
-      const tw = time - msdT0;
-      return k && tw > 1 ? (msd / k) / (2 * tw) * 1e-8 : null;
-    }
-    function resetMSD() { for (let i = 0; i < n; i++) x0[i] = xu[i]; msdT0 = time; }
+    function resetMSD() { for (let i = 0; i < n; i++) { x0[i] = xu[i]; y0[i] = yu[i]; } msdT0 = time; }
     function profiles(nb) {
       nb = nb || 40;
       const out = {}; NAMES.forEach(k => { out[k] = new Float64Array(nb); });
-      const w = H / nb, area = w * Lx;
-      for (let i = 0; i < n; i++) {
-        const b = Math.min(nb - 1, Math.floor(z[i] / w));
-        out[NAMES[sp[i]]][b] += 1 / area;
-      }
+      const w = H / nb, vol = w * L * L;
+      for (let i = 0; i < n; i++) out[NAMES[sp[i]]][Math.min(nb - 1, Math.floor(z[i] / w))] += 1 / vol;
       return { dz: w, data: out };
     }
     /** Element inventory including microbe stores and external sources/sinks. */
@@ -827,9 +867,7 @@ pip install numpy CoolProp matplotlib</pre>
       const e = { H: 0, C: 0, O: 0, N: 0, Na: 0, Cl: 0 };
       for (let i = 0; i < n; i++) { const el = SPECIES[NAMES[sp[i]]].el; for (const k in el) e[k] += el[k]; }
       for (const m of microbes) { e.H += 2 * m.h2; e.C += m.co2; e.O += 2 * m.co2; }
-      // products not yet placed
       e.C += ledger.pendingCH4; e.H += 4 * ledger.pendingCH4 + 2 * ledger.pendingH2O; e.O += ledger.pendingH2O;
-      // carbonate CO2 entered from outside the fluid; withdrawn/injected gas crossed the boundary
       e.C -= ledger.CO2_carbonate; e.O -= 2 * ledger.CO2_carbonate;
       for (const g of GASES) {
         const el = SPECIES[g].el, net = ledger.withdrawn[g] - ledger.injected[g];
@@ -839,10 +877,10 @@ pip install numpy CoolProp matplotlib</pre>
     }
 
     return {
-      cfg, info, Lx, H, microbes, cycle,
+      cfg, info, L, H, microbes, cycle,
       step(k) { for (let i = 0; i < (k || 1); i++) stepOnce(); },
       stats, profiles, elements, resetMSD, temperature,
-      particles() { return { n, x, z, sp, dis }; },
+      particles() { return { n, x, y, z, sp, dis }; },
       setCycle(mode) { cycle.mode = mode; },
     };
   }
@@ -853,10 +891,185 @@ pip install numpy CoolProp matplotlib</pre>
 })(typeof window !== 'undefined' ? window : this);
 </script>
 <script>
-/* UHS Pore Lab - user interface: controls, live view, readouts, charts. */
+/* UHS Pore Lab - minimal WebGL2 sphere renderer (no dependencies).
+ * Draws atoms as shaded sphere impostors (point sprites with correct depth),
+ * plus box edges. Orbit camera: drag to rotate, wheel / pinch to zoom,
+ * double-click to reset. */
+(function (root) {
+  'use strict';
+
+  const VS = `#version 300 es
+  in vec3 aPos; in float aRad; in vec3 aCol;
+  uniform mat4 uView, uProj; uniform float uScale;
+  out vec3 vCol; out vec3 vC; out float vR;
+  void main() {
+    vec4 pv = uView * vec4(aPos, 1.0);
+    gl_Position = uProj * pv;
+    gl_PointSize = max(2.0, 2.0 * aRad * uScale / -pv.z);
+    vCol = aCol; vC = pv.xyz; vR = aRad;
+  }`;
+  const FS = `#version 300 es
+  precision highp float;
+  in vec3 vCol; in vec3 vC; in float vR;
+  uniform mat4 uProj;
+  out vec4 o;
+  void main() {
+    vec2 p = gl_PointCoord * 2.0 - 1.0;
+    float r2 = dot(p, p);
+    if (r2 > 1.0) discard;
+    vec3 nrm = vec3(p.x, -p.y, sqrt(1.0 - r2));
+    vec3 L = normalize(vec3(0.4, 0.6, 1.0));
+    float dif = max(dot(nrm, L), 0.0);
+    float spec = pow(max(dot(reflect(-L, nrm), vec3(0.0, 0.0, 1.0)), 0.0), 24.0);
+    vec3 c = vCol * (0.28 + 0.78 * dif) + vec3(0.35) * spec;
+    o = vec4(c, 1.0);
+    vec4 cp = uProj * vec4(vC + vec3(0.0, 0.0, nrm.z * vR), 1.0);
+    gl_FragDepth = 0.5 * cp.z / cp.w + 0.5;
+  }`;
+  const LVS = `#version 300 es
+  in vec3 aPos; uniform mat4 uView, uProj;
+  void main() { gl_Position = uProj * uView * vec4(aPos, 1.0); }`;
+  const LFS = `#version 300 es
+  precision mediump float; uniform vec4 uCol; out vec4 o;
+  void main() { o = uCol; }`;
+
+  function compile(gl, vs, fs) {
+    const p = gl.createProgram();
+    for (const [t, src] of [[gl.VERTEX_SHADER, vs], [gl.FRAGMENT_SHADER, fs]]) {
+      const s = gl.createShader(t); gl.shaderSource(s, src); gl.compileShader(s);
+      if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+      gl.attachShader(p, s);
+    }
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+    return p;
+  }
+
+  // column-major 4x4 helpers
+  function perspective(fovy, aspect, near, far) {
+    const f = 1 / Math.tan(fovy / 2), nf = 1 / (near - far);
+    return new Float32Array([f / aspect, 0, 0, 0, 0, f, 0, 0, 0, 0, (far + near) * nf, -1, 0, 0, 2 * far * near * nf, 0]);
+  }
+  function lookAt(e, c, up) {
+    let zx = e[0] - c[0], zy = e[1] - c[1], zz = e[2] - c[2];
+    let l = Math.hypot(zx, zy, zz); zx /= l; zy /= l; zz /= l;
+    let xx = up[1] * zz - up[2] * zy, xy = up[2] * zx - up[0] * zz, xz = up[0] * zy - up[1] * zx;
+    l = Math.hypot(xx, xy, xz); xx /= l; xy /= l; xz /= l;
+    const yx = zy * xz - zz * xy, yy = zz * xx - zx * xz, yz = zx * xy - zy * xx;
+    return new Float32Array([xx, yx, zx, 0, xy, yy, zy, 0, xz, yz, zz, 0,
+      -(xx * e[0] + xy * e[1] + xz * e[2]), -(yx * e[0] + yy * e[1] + yz * e[2]), -(zx * e[0] + zy * e[1] + zz * e[2]), 1]);
+  }
+
+  function hexRGB(h) {
+    const v = parseInt(h.slice(1), 16);
+    return [((v >> 16) & 255) / 255, ((v >> 8) & 255) / 255, (v & 255) / 255];
+  }
+
+  function createRenderer(canvas) {
+    const gl = canvas.getContext('webgl2', { antialias: true });
+    if (!gl) return null;
+    const prog = compile(gl, VS, FS), lprog = compile(gl, LVS, LFS);
+    const loc = {
+      aPos: gl.getAttribLocation(prog, 'aPos'), aRad: gl.getAttribLocation(prog, 'aRad'), aCol: gl.getAttribLocation(prog, 'aCol'),
+      uView: gl.getUniformLocation(prog, 'uView'), uProj: gl.getUniformLocation(prog, 'uProj'), uScale: gl.getUniformLocation(prog, 'uScale'),
+      lPos: gl.getAttribLocation(lprog, 'aPos'), lView: gl.getUniformLocation(lprog, 'uView'), lProj: gl.getUniformLocation(lprog, 'uProj'),
+      lCol: gl.getUniformLocation(lprog, 'uCol'),
+    };
+    const bPos = gl.createBuffer(), bRad = gl.createBuffer(), bCol = gl.createBuffer(), bLine = gl.createBuffer();
+    const vao = gl.createVertexArray(), lvao = gl.createVertexArray();
+    gl.bindVertexArray(vao);
+    for (const [b, l, k] of [[bPos, loc.aPos, 3], [bRad, loc.aRad, 1], [bCol, loc.aCol, 3]]) {
+      gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.enableVertexAttribArray(l); gl.vertexAttribPointer(l, k, gl.FLOAT, false, 0, 0);
+    }
+    gl.bindVertexArray(lvao);
+    gl.bindBuffer(gl.ARRAY_BUFFER, bLine); gl.enableVertexAttribArray(loc.lPos); gl.vertexAttribPointer(loc.lPos, 3, gl.FLOAT, false, 0, 0);
+    gl.bindVertexArray(null);
+
+    let count = 0, lineCount = 0;
+    const box = { cx: 0, cy: 0, cz: 0, size: 50 };
+    const cam = { theta: -0.75, phi: 1.2, dist: 1, tdist: 1 };
+
+    function setBox(Lx, Ly, Lz, z0) {
+      z0 = z0 || 0;
+      box.cx = Lx / 2; box.cy = Ly / 2; box.cz = z0 + Lz / 2; box.size = Math.hypot(Lx, Ly, Lz);
+      const p = [[0, 0, z0], [Lx, 0, z0], [Lx, Ly, z0], [0, Ly, z0], [0, 0, z0 + Lz], [Lx, 0, z0 + Lz], [Lx, Ly, z0 + Lz], [0, Ly, z0 + Lz]];
+      const e = [0, 1, 1, 2, 2, 3, 3, 0, 4, 5, 5, 6, 6, 7, 7, 4, 0, 4, 1, 5, 2, 6, 3, 7];
+      const a = new Float32Array(e.length * 3);
+      e.forEach((k, i) => a.set(p[k], 3 * i));
+      gl.bindBuffer(gl.ARRAY_BUFFER, bLine); gl.bufferData(gl.ARRAY_BUFFER, a, gl.STATIC_DRAW);
+      lineCount = e.length;
+      cam.dist = cam.tdist = 1.5 * box.size;
+    }
+    function setAtoms(pos, rad, col, n) {
+      count = n;
+      gl.bindBuffer(gl.ARRAY_BUFFER, bPos); gl.bufferData(gl.ARRAY_BUFFER, pos.subarray(0, 3 * n), gl.DYNAMIC_DRAW);
+      gl.bindBuffer(gl.ARRAY_BUFFER, bRad); gl.bufferData(gl.ARRAY_BUFFER, rad.subarray(0, n), gl.DYNAMIC_DRAW);
+      gl.bindBuffer(gl.ARRAY_BUFFER, bCol); gl.bufferData(gl.ARRAY_BUFFER, col.subarray(0, 3 * n), gl.DYNAMIC_DRAW);
+    }
+    function draw() {
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      const w = Math.round(canvas.clientWidth * dpr), h = Math.round(canvas.clientHeight * dpr);
+      if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+      gl.viewport(0, 0, w, h);
+      gl.clearColor(0.024, 0.07, 0.14, 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+      gl.enable(gl.DEPTH_TEST);
+      const fov = 0.75, proj = perspective(fov, w / h, 1, 20 * box.size);
+      const sp = Math.sin(cam.phi), e = [box.cx + cam.dist * sp * Math.cos(cam.theta), box.cy + cam.dist * sp * Math.sin(cam.theta), box.cz + cam.dist * Math.cos(cam.phi)];
+      const view = lookAt(e, [box.cx, box.cy, box.cz], [0, 0, 1]);
+      if (count) {
+        gl.useProgram(prog); gl.bindVertexArray(vao);
+        gl.uniformMatrix4fv(loc.uView, false, view); gl.uniformMatrix4fv(loc.uProj, false, proj);
+        gl.uniform1f(loc.uScale, h / (2 * Math.tan(fov / 2)));
+        gl.drawArrays(gl.POINTS, 0, count);
+      }
+      if (lineCount) {
+        gl.useProgram(lprog); gl.bindVertexArray(lvao);
+        gl.uniformMatrix4fv(loc.lView, false, view); gl.uniformMatrix4fv(loc.lProj, false, proj);
+        gl.uniform4f(loc.lCol, 0.35, 0.6, 0.85, 1);
+        gl.drawArrays(gl.LINES, 0, lineCount);
+      }
+      gl.bindVertexArray(null);
+    }
+
+    // orbit controls
+    const pts = new Map();
+    let pinch0 = 0;
+    canvas.addEventListener('pointerdown', e => { canvas.setPointerCapture(e.pointerId); pts.set(e.pointerId, [e.clientX, e.clientY]); if (pts.size === 2) { const [a, b] = [...pts.values()]; pinch0 = Math.hypot(a[0] - b[0], a[1] - b[1]); } });
+    canvas.addEventListener('pointermove', e => {
+      if (!pts.has(e.pointerId)) return;
+      const prev = pts.get(e.pointerId); pts.set(e.pointerId, [e.clientX, e.clientY]);
+      if (pts.size === 1) {
+        cam.theta -= (e.clientX - prev[0]) * 0.008;
+        cam.phi = Math.min(3.1, Math.max(0.05, cam.phi - (e.clientY - prev[1]) * 0.008));
+      } else if (pts.size === 2) {
+        const [a, b] = [...pts.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]);
+        if (pinch0) cam.dist = Math.min(4 * box.size, Math.max(0.3 * box.size, cam.dist * pinch0 / d));
+        pinch0 = d;
+      }
+    });
+    const up = e => { pts.delete(e.pointerId); pinch0 = 0; };
+    canvas.addEventListener('pointerup', up); canvas.addEventListener('pointercancel', up);
+    canvas.addEventListener('wheel', e => { e.preventDefault(); cam.dist = Math.min(4 * box.size, Math.max(0.3 * box.size, cam.dist * Math.exp(e.deltaY * 0.001))); }, { passive: false });
+    canvas.addEventListener('dblclick', () => { cam.theta = -0.75; cam.phi = 1.2; cam.dist = 1.5 * box.size; });
+
+    return { setBox, setAtoms, draw, hexRGB, cam,
+      reset() { cam.theta = -0.75; cam.phi = 1.2; cam.dist = 1.5 * box.size; },
+      view(name) {
+        if (name === 'side') { cam.theta = -Math.PI / 2; cam.phi = Math.PI / 2; }
+        else if (name === 'top') { cam.theta = -Math.PI / 2; cam.phi = 0.05; }
+        else { cam.theta = -0.75; cam.phi = 1.2; }
+      } };
+  }
+
+  root.UHSRender = { createRenderer, hexRGB };
+})(typeof window !== 'undefined' ? window : this);
+</script>
+<script>
+/* UHS Pore Lab - user interface: controls, 3D view, readouts, charts,
+ * and playback of the atomistic LAMMPS run. */
 (function () {
   'use strict';
-  const U = window.UHS;
+  const U = window.UHS, RU = window.UHSRender;
   const $ = s => document.querySelector(s);
   const $$ = s => Array.from(document.querySelectorAll(s));
   const css = getComputedStyle(document.documentElement);
@@ -877,10 +1090,10 @@ pip install numpy CoolProp matplotlib</pre>
     bioRate: v => `×${Math.round(v / 0.001)}`,
   };
   const PRESETS = {
-    base: { cushion: 'CO2', xCushion: 0.3, P_MPa: 10, T: 333, molality: 1, film: 12, pore: 80, wetting: 1100, bio: false, microbes: 8, bioRate: 0.004, carbonateCO2: true },
-    bio:  { cushion: 'CO2', xCushion: 0.3, P_MPa: 10, T: 333, molality: 1, film: 12, pore: 80, wetting: 1100, bio: true, microbes: 12, bioRate: 0.01, carbonateCO2: true },
-    dry:  { cushion: 'CH4', xCushion: 0.3, P_MPa: 10, T: 333, molality: 0, film: 0, pore: 60, wetting: 1100, bio: false, microbes: 8, bioRate: 0.004, carbonateCO2: true },
-    salt: { cushion: 'CO2', xCushion: 0.3, P_MPa: 10, T: 333, molality: 4, film: 14, pore: 80, wetting: 1100, bio: false, microbes: 8, bioRate: 0.004, carbonateCO2: true },
+    base: { cushion: 'CO2', xCushion: 0.3, P_MPa: 10, T: 333, molality: 1, film: 10, pore: 60, wetting: 1000, bio: false, microbes: 8, bioRate: 0.004, carbonateCO2: true },
+    bio:  { cushion: 'CO2', xCushion: 0.3, P_MPa: 10, T: 333, molality: 1, film: 10, pore: 60, wetting: 1000, bio: true, microbes: 12, bioRate: 0.01, carbonateCO2: true },
+    dry:  { cushion: 'CH4', xCushion: 0.3, P_MPa: 10, T: 333, molality: 0, film: 0, pore: 50, wetting: 1000, bio: false, microbes: 8, bioRate: 0.004, carbonateCO2: true },
+    salt: { cushion: 'CO2', xCushion: 0.3, P_MPa: 10, T: 333, molality: 4, film: 12, pore: 60, wetting: 1000, bio: false, microbes: 8, bioRate: 0.004, carbonateCO2: true },
   };
   function setControls(p) {
     for (const k of FIELDS) {
@@ -907,12 +1120,53 @@ pip install numpy CoolProp matplotlib</pre>
     updateCmd();
   }
   FIELDS.forEach(k => document.getElementById(k).addEventListener('input', refreshOutputs));
-  $$('#presets [data-preset]').forEach(b => b.addEventListener('click', () => { setControls(PRESETS[b.dataset.preset]); rebuild(); }));
-  $('#apply').addEventListener('click', rebuild);
+  $$('#presets [data-preset]').forEach(b => b.addEventListener('click', () => { setControls(PRESETS[b.dataset.preset]); setMode('live'); rebuild(); }));
+  $('#apply').addEventListener('click', () => { setMode('live'); rebuild(); });
 
-  // ------------------------------------------------------------- simulation
-  let sim = null, running = true, hist = null, prof = null, frame = 0;
-  const WALL = 9; // A of calcite drawn on each side
+  // ---------------------------------------------------------------- renderer
+  const cv = $('#view');
+  let R = null;
+  try { R = RU.createRenderer(cv); } catch (e) { R = null; }
+  if (!R) $('.nogl').hidden = false;
+  $$('[data-view]').forEach(b => b.addEventListener('click', () => R && R.view(b.dataset.view)));
+  let buf = { pos: new Float32Array(3 * 8192), rad: new Float32Array(8192), col: new Float32Array(3 * 8192) };
+  function ensure(n) {
+    if (buf.rad.length >= n) return;
+    const m = 2 * n;
+    buf = { pos: new Float32Array(3 * m), rad: new Float32Array(m), col: new Float32Array(3 * m) };
+  }
+  const RGB = {}; for (const k of U.NAMES) RGB[k] = RU.hexRGB(U.SPECIES[k].color);
+  const show = () => ({ water: $('#showWater').checked, rock: $('#showRock').checked, slice: $('#slice').checked });
+  ['showWater', 'showRock', 'slice'].forEach(id => document.getElementById(id).addEventListener('change', () => { if (mode === 'lammps') drawLammpsFrame(); }));
+
+  // ------------------------------------------------------------- live model
+  let sim = null, running = true, hist = null, prof = null, frame = 0, mode = 'live';
+  let rockLive = [];
+
+  /** Schematic calcite (10-14) lattice for the live view: two layers per wall. */
+  function buildRockLive(L, H) {
+    const a = 4.99, b = 8.10, out = [];
+    const cols = { Ca: RU.hexRGB('#b9ad8c'), C: RU.hexRGB('#6f6f6f'), O: RU.hexRGB('#c8553d') };
+    for (const [zs, sgn] of [[0, -1], [H, 1]]) {
+      for (let layer = 0; layer < 2; layer++) {
+        const zc = zs + sgn * (1.6 + layer * 3.03);
+        for (let i = 0; i * a < L - 0.5; i++) for (let j = 0; j * b < L - 0.5; j++) {
+          const ox = i * a + (layer % 2) * a / 2, oy = j * b;
+          out.push([ox % L, oy, zc, 1.0, cols.Ca]);
+          out.push([(ox + a / 2) % L, (oy + b / 2) % L, zc, 1.0, cols.Ca]);
+          for (const [cx, cy] of [[ox, oy + b / 2], [ox + a / 2, oy]]) {
+            const X = cx % L, Y = cy % L;
+            out.push([X, Y, zc, 0.65, cols.C]);
+            for (let k = 0; k < 3; k++) {
+              const th = 2 * Math.PI * k / 3 + 0.5;
+              out.push([(X + 1.1 * Math.cos(th) + L) % L, (Y + 1.1 * Math.sin(th) + L) % L, zc + 0.55 * Math.sin(th) * sgn, 0.72, cols.O]);
+            }
+          }
+        }
+      }
+    }
+    return out;
+  }
 
   function rebuild() {
     const p = readControls();
@@ -923,132 +1177,89 @@ pip install numpy CoolProp matplotlib</pre>
     });
     hist = { t: [], free: [], dis: [], cons: [], P: [], pur: [], prod: [] };
     prof = null;
+    rockLive = buildRockLive(sim.L, sim.H);
+    if (R) { R.setBox(sim.L, sim.L, sim.H, 0); }
     setCycle('off');
-    sizeCanvas();
     buildLegend();
     sample();
     drawCharts();
   }
-
   function setCycle(mode) {
     if (sim) sim.setCycle(mode);
     $$('[data-cycle]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.cycle === mode)));
   }
   $$('[data-cycle]').forEach(b => b.addEventListener('click', () => setCycle(b.dataset.cycle)));
-  $('#run').addEventListener('click', () => { running = !running; $('#run').textContent = running ? 'Pause' : 'Run'; });
   $('#resetMsd').addEventListener('click', () => sim && sim.resetMSD());
 
-  // ---------------------------------------------------------------- render
-  const cv = $('#view'), g = cv.getContext('2d');
-  let scale = 1;
-  function sizeCanvas() {
-    const W = 1400;
-    scale = W / sim.Lx;
-    cv.width = W;
-    cv.height = Math.round((sim.H + 2 * WALL) * scale);
+  function renderLive() {
+    if (!R) return;
+    const P = sim.particles(), f = show(), L = sim.L;
+    ensure(P.n + rockLive.length + 3 * sim.microbes.length);
+    let k = 0;
+    const put = (x, y, z, r, c) => { buf.pos[3 * k] = x; buf.pos[3 * k + 1] = y; buf.pos[3 * k + 2] = z; buf.rad[k] = r; buf.col[3 * k] = c[0]; buf.col[3 * k + 1] = c[1]; buf.col[3 * k + 2] = c[2]; k++; };
+    for (let i = 0; i < P.n; i++) {
+      const s = P.sp[i], name = U.NAMES[s];
+      if (!f.water && s >= 4) continue;
+      if (f.slice && P.y[i] < L / 2) continue;
+      const r = U.SPECIES[name].sig * 0.45 * (s <= 3 && P.dis[i] ? 1.3 : 1);
+      put(P.x[i], P.y[i], P.z[i], r, RGB[name]);
+    }
+    if (f.rock) for (const a of rockLive) { if (f.slice && a[1] < L / 2) continue; put(a[0], a[1], a[2], a[3], a[4]); }
+    for (const m of sim.microbes) {
+      if (f.slice && m.y < L / 2) continue;
+      const t = Math.min(1, m.h2 / 4), c = [0.15 + 0.35 * t, 0.55 + 0.45 * t, 0.25 + 0.35 * t];
+      for (let d = -1; d <= 1; d++) put((m.x + 2.6 * d + L) % L, m.y, m.z, 1.9, c);
+    }
+    R.setAtoms(buf.pos, buf.rad, buf.col, k);
+    R.draw();
   }
+
   function buildLegend() {
     const L = $('#legend');
     L.textContent = '';
-    const c = sim.cfg.cushion;
-    const items = [['H2'], [c], ['CH4'], ['W'], ['S']];
-    const seen = new Set();
-    for (const [k] of items) {
-      if (seen.has(k)) continue; seen.add(k);
+    const item = (color, text, cls) => {
       const s = document.createElement('span'), i = document.createElement('i');
-      i.style.background = U.SPECIES[k].color;
-      s.append(i, document.createTextNode(k === 'W' ? 'Water' : k === 'S' ? 'NaCl (dissolved)' : U.SPECIES[k].label + (k === c ? ' (cushion)' : k === 'CH4' ? ' (biogenic)' : '')));
-      L.append(s);
+      if (cls) i.className = cls; if (color) i.style.background = color;
+      s.append(i, document.createTextNode(text)); L.append(s);
+    };
+    if (mode === 'live') {
+      const c = sim.cfg.cushion;
+      item(U.SPECIES.H2.color, 'H₂');
+      item(U.SPECIES[c].color, U.SPECIES[c].label + ' (cushion)');
+      if (c !== 'CH4') item(U.SPECIES.CH4.color, 'CH₄ (biogenic)');
+      item(U.SPECIES.W.color, 'water'); item(U.SPECIES.S.color, 'NaCl (dissolved)');
+      item(null, 'dissolved gas (enlarged)', 'ring');
+      if (sim.microbes.length) item(null, 'methanogen (brighter = more H₂ taken up)', 'rod');
+      item('#b9ad8c', 'calcite Ca'); item('#c8553d', 'carbonate O');
+    } else {
+      for (const t of LMP_TYPES) if (t.legend) item(t.color, t.legend);
     }
-    const s1 = document.createElement('span'), r = document.createElement('i'); r.className = 'ring';
-    s1.append(r, document.createTextNode('dissolved gas')); L.append(s1);
-    if (sim.microbes.length) {
-      const s2 = document.createElement('span'), m = document.createElement('i'); m.className = 'rod';
-      s2.append(m, document.createTextNode('methanogen')); L.append(s2);
-    }
-    const s3 = document.createElement('span'), w = document.createElement('i');
-    w.style.cssText = 'border-radius:2px;background:#8a8270';
-    s3.append(w, document.createTextNode('calcite (10-14) wall')); L.append(s3);
-  }
-  function drawWall(y0, h, top) {
-    g.fillStyle = '#4a463c';
-    g.fillRect(0, y0, cv.width, h);
-    // surface lattice: alternating Ca / CO3 sites, 4.99 A apart
-    const step = 4.99 * scale / 2;
-    for (let row = 0; row < 3; row++) {
-      const yy = top ? y0 + h - (row + 0.5) * h / 3 : y0 + (row + 0.5) * h / 3;
-      for (let k = 0, xx = (row % 2) * step / 2; xx < cv.width; xx += step, k++) {
-        g.fillStyle = (k + row) % 2 ? '#8a8270' : '#b9ad8c';
-        g.beginPath(); g.arc(xx, yy, Math.max(2, scale * 0.9), 0, 2 * Math.PI); g.fill();
-      }
-    }
-    g.fillStyle = '#b9ad8c';
-    g.fillRect(0, top ? y0 + h - 2 : y0, cv.width, 2);
-  }
-  function render() {
-    const W = cv.width, Hc = cv.height, H = sim.H, wallPx = WALL * scale;
-    g.fillStyle = '#061224'; g.fillRect(0, 0, W, Hc);
-    drawWall(0, wallPx, true);
-    drawWall(Hc - wallPx, wallPx, false);
-    const yOf = z => Hc - wallPx - z * scale; // z = 0 at the bottom wall
-    const P = sim.particles();
-    // brine first, gas on top
-    for (let pass = 0; pass < 2; pass++) {
-      for (let i = 0; i < P.n; i++) {
-        const s = P.sp[i], isGas = s <= 3;
-        if ((pass === 0) === isGas) continue;
-        const name = U.NAMES[s], sp = U.SPECIES[name];
-        const r = Math.max(2.5, sp.sig * 0.5 * scale * 0.92);
-        const px = P.x[i] * scale, py = yOf(P.z[i]);
-        g.beginPath(); g.arc(px, py, r, 0, 2 * Math.PI);
-        g.fillStyle = sp.color; g.fill();
-        if (isGas && P.dis[i]) { g.lineWidth = 2.5; g.strokeStyle = '#ffffff'; g.stroke(); }
-        if (px < r) { g.beginPath(); g.arc(px + W, py, r, 0, 2 * Math.PI); g.fill(); }
-        if (px > W - r) { g.beginPath(); g.arc(px - W, py, r, 0, 2 * Math.PI); g.fill(); }
-      }
-    }
-    for (const m of sim.microbes) {
-      const px = m.x * scale, py = yOf(m.z), w = 10 * scale, h = 3.6 * scale;
-      g.fillStyle = '#3fbf5f';
-      roundRect(px - w / 2, py - h / 2, w, h, h / 2); g.fill();
-      g.strokeStyle = '#1d6b31'; g.lineWidth = 1.5; g.stroke();
-      for (let k = 0; k < 4; k++) {
-        g.beginPath(); g.arc(px - w / 2 + (k + 1) * w / 5, py, h * 0.18, 0, 2 * Math.PI);
-        g.fillStyle = k < m.h2 ? '#f4f7fb' : '#1d6b31'; g.fill();
-      }
-    }
-  }
-  function roundRect(x, y, w, h, r) {
-    g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r);
-    g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath();
   }
 
   // --------------------------------------------------------------- readouts
   function tile(k, v, unit, d) {
     return `<div class="tile"><div class="k">${k}</div><div class="v">${v}<small>${unit || ''}</small></div>${d ? `<div class="d">${d}</div>` : ''}</div>`;
   }
-  const fmt = (v, d) => (v === null || v === undefined || !isFinite(v) ? '–' : v.toFixed(d));
+  const fmt = (v, d) => (v === null || v === undefined || !isFinite(v) ? '–' : (+v).toFixed(d));
   function updateTiles(s) {
     const L = s.ledger, c = sim.cfg.cushion;
-    const cush = s.counts[c] || 0;
     const prodN = U.GASES.reduce((a, k) => a + L.withdrawn[k], 0);
     $('#tiles').innerHTML = [
       tile('Pressure (equiv.)', fmt(s.P_MPa, 2), 'MPa', `target ${sim.cfg.P_MPa} MPa`),
       tile('Free H₂', s.H2_free, '', `dissolved: ${s.H2_dissolved}`),
-      tile('H₂ purity, pore centre', s.H2_purity_centre === null ? '–' : fmt(100 * s.H2_purity_centre, 0), '%', `${c} in system: ${cush}`),
+      tile('H₂ purity, pore centre', s.H2_purity_centre === null ? '–' : fmt(100 * s.H2_purity_centre, 0), '%', `${U.SPECIES[c].label} in system: ${s.counts[c] || 0}`),
       tile('Consumed by microbes', L.H2_consumed, 'H₂', `CH₄ made: ${L.CH4_produced} · CO₂ used: ${L.CO2_gas_consumed + L.CO2_carbonate}`),
       tile('Produced gas purity', s.produced_purity === null ? '–' : fmt(100 * s.produced_purity, 0), '% H₂', `withdrawn: ${prodN} · injected H₂: ${L.injected.H2}`),
-      tile('D(H₂), lateral', s.D_H2_lateral === null ? '–' : fmt(s.D_H2_lateral * 1e7, 2), '×10⁻⁷ m²/s', `water: ${s.D_water_lateral === null ? '–' : fmt(s.D_water_lateral * 1e8, 1) + '×10⁻⁸'}`),
+      tile('D(H₂), lateral', s.D_H2_lateral === null ? '–' : fmt(s.D_H2_lateral * 1e6, 2), '×10⁻⁶ m²/s', `water: ${s.D_water_lateral === null ? '–' : fmt(s.D_water_lateral * 1e8, 1) + '×10⁻⁸'}`),
     ].join('');
     $('#status').textContent = `t = ${s.time.toFixed(1)} ps · T = ${s.T.toFixed(0)} K · ${s.n} molecules`;
   }
-
   function sample() {
     const s = sim.stats();
     hist.t.push(s.time); hist.free.push(s.H2_free); hist.dis.push(s.H2_dissolved); hist.cons.push(s.ledger.H2_consumed);
     hist.P.push(s.P_MPa); hist.pur.push(s.H2_purity_centre); hist.prod.push(s.produced_purity);
     if (hist.t.length > 600) for (const k in hist) hist[k] = hist[k].filter((_, i) => i % 2 === 0);
-    const p = sim.profiles(48);
+    const p = sim.profiles(40);
     if (!prof) prof = { dz: p.dz, data: {} };
     for (const k of U.NAMES) {
       const a = p.data[k], o = prof.data[k] || (prof.data[k] = Float64Array.from(a));
@@ -1069,7 +1280,7 @@ pip install numpy CoolProp matplotlib</pre>
   function makeChart(id) {
     const el = document.getElementById(id), canvas = el.querySelector('canvas'), ctx = canvas.getContext('2d');
     const tip = el.querySelector('.tip'), lg = el.querySelector('.lg');
-    const ch = { data: null, hover: null };
+    const ch = { data: null, hover: null, el };
     function draw() {
       const d = ch.data; if (!d) return;
       const dpr = window.devicePixelRatio || 1, w = canvas.clientWidth, h = canvas.clientHeight;
@@ -1085,7 +1296,6 @@ pip install numpy CoolProp matplotlib</pre>
       const yt = niceTicks(ylo, yhi, 4), xt = niceTicks(xs[0], xs[xs.length - 1], 5);
       const X = v => m.l + (v - xt.lo) / (xt.hi - xt.lo) * (w - m.l - m.r);
       const Y = v => h - m.b - (v - yt.lo) / (yt.hi - yt.lo) * (h - m.t - m.b);
-      // shaded bands (brine)
       if (d.bands) { ctx.fillStyle = '#12304f'; for (const [a, b] of d.bands) ctx.fillRect(X(a), m.t, X(b) - X(a), h - m.t - m.b); }
       ctx.strokeStyle = C('--grid'); ctx.lineWidth = 1; ctx.fillStyle = C('--muted'); ctx.font = '11px system-ui, sans-serif';
       ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
@@ -1119,11 +1329,9 @@ pip install numpy CoolProp matplotlib</pre>
           r.append(k, b, document.createTextNode(s.name)); tip.append(r);
         }
         tip.style.display = 'block';
-        const left = canvas.offsetLeft + xx + 12;
-        tip.style.left = Math.min(left, el.clientWidth - tip.offsetWidth - 4) + 'px';
+        tip.style.left = Math.min(canvas.offsetLeft + xx + 12, el.clientWidth - tip.offsetWidth - 4) + 'px';
         tip.style.top = (canvas.offsetTop + 6) + 'px';
       } else tip.style.display = 'none';
-      // legend (rebuilt only when names change)
       const key = d.series.map(s => s.name).join('|') + (d.bands ? '|b' : '');
       if (lg.dataset.k !== key) {
         lg.textContent = ''; lg.dataset.k = key;
@@ -1133,7 +1341,7 @@ pip install numpy CoolProp matplotlib</pre>
         }
         if (d.bands) { const sp = document.createElement('span'), b = document.createElement('b'); b.className = 'area'; sp.append(b, document.createTextNode('brine film')); lg.append(sp); }
       }
-      ch._X = X; ch._m = m; ch._w = w;
+      ch._X = X;
     }
     canvas.addEventListener('pointermove', e => {
       if (!ch.data || !ch._X) return;
@@ -1144,54 +1352,181 @@ pip install numpy CoolProp matplotlib</pre>
     });
     canvas.addEventListener('pointerleave', () => { ch.hover = null; draw(); });
     ch.set = data => { ch.data = data; draw(); };
+    ch.title = (t, sub) => { el.querySelector('h4').textContent = t; el.querySelector('.sub').textContent = sub; };
     return ch;
   }
   const chInv = makeChart('cInv'), chP = makeChart('cP'), chProf = makeChart('cProf');
 
+  function brineBands(w, dz) {
+    let wmax = 0; for (const v of w) wmax = Math.max(wmax, v);
+    const bands = []; let start = null;
+    for (let i = 0; i < w.length; i++) {
+      const inB = wmax > 0 && w[i] > 0.5 * wmax;
+      if (inB && start === null) start = i * dz;
+      if ((!inB || i === w.length - 1) && start !== null) { bands.push([start, inB ? (i + 1) * dz : i * dz]); start = null; }
+    }
+    return bands;
+  }
   function drawCharts() {
+    if (mode !== 'live') return;
+    chInv.title('H₂ inventory', 'molecules vs time (ps)');
+    chP.title('Reservoir-equivalent pressure', 'MPa vs time (ps)');
+    chProf.title('Gas density across the pore', 'molecules / nm³ vs distance from bottom wall (Å); shaded = brine');
     chInv.set({ x: hist.t, xName: 't (ps)', yZero: true, yFmt: v => (+v).toFixed(0), series: [
       { name: 'free H₂', color: SER[0], y: hist.free },
       { name: 'dissolved H₂', color: SER[1], y: hist.dis },
       { name: 'consumed by microbes', color: SER[2], y: hist.cons },
     ] });
-    chP.set({ x: hist.t, xName: 't (ps)', yZero: false, yFmt: v => (+v).toFixed(1), series: [
-      { name: 'pressure (MPa)', color: SER[0], y: hist.P },
-    ] });
+    chP.set({ x: hist.t, xName: 't (ps)', yZero: false, yFmt: v => (+v).toFixed(1), series: [{ name: 'pressure (MPa)', color: SER[0], y: hist.P }] });
     if (prof) {
-      const nb = prof.data.W.length, dz = prof.dz;
+      const nb = prof.data.W.length, dz = prof.dz, c = sim.cfg.cushion;
       const x = Array.from({ length: nb }, (_, i) => +((i + 0.5) * dz).toFixed(1));
-      const nm2 = a => Array.from(a, v => v * 100);
-      const c = sim.cfg.cushion;
-      const series = [{ name: 'H₂', color: SER[0], y: nm2(prof.data.H2) }];
-      if (sim.cfg.xCushion > 0) series.push({ name: U.SPECIES[c].label + ' (cushion)', color: SER[1], y: nm2(prof.data[c]) });
-      if (c !== 'CH4' && sim.microbes.length) series.push({ name: 'CH₄ (biogenic)', color: SER[2], y: nm2(prof.data.CH4) });
-      // brine bands: where water density exceeds half of its maximum
-      const w = prof.data.W; let wmax = 0; for (const v of w) wmax = Math.max(wmax, v);
-      const bands = []; let start = null;
-      for (let i = 0; i < nb; i++) {
-        const inB = wmax > 0 && w[i] > 0.5 * wmax;
-        if (inB && start === null) start = i * dz;
-        if ((!inB || i === nb - 1) && start !== null) { bands.push([start, inB ? (i + 1) * dz : i * dz]); start = null; }
-      }
-      chProf.set({ x, xName: 'z (Å)', yZero: true, yFmt: v => (+v).toFixed(2), series, bands });
+      const nm3 = a => Array.from(a, v => v * 1000);
+      const series = [{ name: 'H₂', color: SER[0], y: nm3(prof.data.H2) }];
+      if (sim.cfg.xCushion > 0) series.push({ name: U.SPECIES[c].label + ' (cushion)', color: SER[1], y: nm3(prof.data[c]) });
+      if (c !== 'CH4' && sim.microbes.length) series.push({ name: 'CH₄ (biogenic)', color: SER[2], y: nm3(prof.data.CH4) });
+      chProf.set({ x, xName: 'z (Å)', yZero: true, yFmt: v => (+v).toFixed(1), series, bands: brineBands(prof.data.W, dz) });
     }
   }
-  window.addEventListener('resize', drawCharts);
+  window.addEventListener('resize', () => { drawCharts(); if (mode === 'lammps') drawLammpsCharts(); });
+
+  // ------------------------------------------------------- LAMMPS playback
+  // atom types of the LAMMPS model (ff/params.py TYPE_ORDER)
+  const LMP_TYPES = [
+    { name: 'Ca', color: '#b9ad8c', r: 1.0, rock: true, legend: 'calcite Ca' },
+    { name: 'Cc', color: '#6f6f6f', r: 0.7, rock: true },
+    { name: 'Oc', color: '#c8553d', r: 0.8, rock: true, legend: 'carbonate O' },
+    { name: 'Ow', color: '#2f7fd8', r: 1.35, water: true, legend: 'water O (SPC/E)' },
+    { name: 'Hw', color: '#a8c4e0', r: 0.55, water: true },
+    { name: 'Na', color: '#ff8fd1', r: 1.05, legend: 'Na⁺' },
+    { name: 'Cl', color: '#4fd16a', r: 1.6, legend: 'Cl⁻' },
+    { name: 'H2', color: '#ffffff', r: 1.45, legend: 'H₂' },
+    { name: 'CH4', color: '#ffb627', r: 1.85, legend: 'CH₄' },
+    { name: 'Cco2', color: '#3a3a3a', r: 0.8 },
+    { name: 'Oco2', color: '#ff5d5d', r: 1.05, legend: 'CO₂' },
+    { name: 'Nn2', color: '#b48cff', r: 1.15, legend: 'N₂' },
+    { name: 'Mn2', color: '#000000', r: 0 },
+  ];
+  LMP_TYPES.forEach(t => { t.rgb = RU.hexRGB(t.color); });
+  let run = null, lframe = 0, lplay = true, lastFrameT = 0;
+
+  function b64(s, Type) {
+    const bin = atob(s), u8 = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+    return new Type(u8.buffer);
+  }
+  async function loadRun() {
+    if (run) return run;
+    $('#status').textContent = 'Loading LAMMPS run…';
+    const res = await fetch('demo/demo-run.json');
+    if (!res.ok) throw new Error('no demo run published yet');
+    const d = await res.json();
+    d.typeArr = b64(d.types, Uint8Array);
+    d.frameArr = d.frames.map(f => b64(f.xyz, Uint16Array));
+    run = d;
+    $('#frame').max = String(d.frames.length - 1);
+    return d;
+  }
+  function drawLammpsFrame() {
+    if (!run || !R) return;
+    const f = show(), n = run.typeArr.length, q = run.frameArr[lframe], s = run.scale, Ly = run.box[1];
+    ensure(n);
+    let k = 0;
+    for (let i = 0; i < n; i++) {
+      const t = LMP_TYPES[run.typeArr[i] - 1];
+      if (!t || t.r === 0) continue;
+      if (!f.water && t.water) continue;
+      if (!f.rock && t.rock) continue;
+      const y = q[3 * i + 1] * s;
+      if (f.slice && y < Ly / 2) continue;
+      buf.pos[3 * k] = q[3 * i] * s; buf.pos[3 * k + 1] = y; buf.pos[3 * k + 2] = q[3 * i + 2] * s;
+      buf.rad[k] = t.r; buf.col.set(t.rgb, 3 * k); k++;
+    }
+    R.setAtoms(buf.pos, buf.rad, buf.col, k);
+    $('#frame').value = String(lframe);
+    $('#status').textContent = `LAMMPS run · t = ${run.frames[lframe].t_ps.toFixed(0)} ps · frame ${lframe + 1}/${run.frames.length} · ${n} atoms`;
+  }
+  function lammpsTiles() {
+    const r = run.results || {}, c = run.conditions || {}, g = r.gas_centre_mole_fractions || {};
+    const pct = v => (v === undefined || v === null ? '–' : (100 * v).toFixed(0));
+    $('#tiles').innerHTML = [
+      tile('Conditions', `${(c.P_Pa / 1e6).toFixed(0)}`, 'MPa', `${(c.T_K - 273.15).toFixed(0)} °C · NaCl ${c.molality_NaCl} mol/kg`),
+      tile('Pore pressure (Pzz)', fmt(r.P_gas_Pzz_MPa, 1), 'MPa', `± ${fmt(r.P_gas_Pzz_MPa_std, 1)} (fluctuation) · target ${fmt(r.P_target_MPa, 0)}`),
+      tile('H₂ mole fraction in brine', r.x_H2_brine === undefined ? '–' : (r.x_H2_brine * 1e3).toFixed(2), '×10⁻³', `c = ${fmt(r.c_H2_brine_mol_L, 3)} mol/L`),
+      tile('H₂ in pore-centre gas', pct(g.h2), '%', `CO₂ ${pct(g.co2)} % · CH₄ ${pct(g.ch4)} % · N₂ ${pct(g.n2)} %`),
+      tile('H₂ liquid/gas ratio K', fmt(r.K_H2_liq_over_gas, 3), '', `interface enrichment ×${fmt(r.H2_interface_enrichment, 2)}`),
+      tile('D(H₂), lateral', r.D_H2_lateral_m2_s === undefined ? '–' : (r.D_H2_lateral_m2_s * 1e7).toFixed(2), '×10⁻⁷ m²/s', 'from the H₂ MSD'),
+    ].join('');
+  }
+  function drawLammpsCharts() {
+    if (!run) return;
+    const p = run.profiles, z = p.z, nm3 = a => a.map(v => v * 1000);
+    // H2 in brine vs gas per frame, using the brine bands from the water profile
+    const bands = brineBands(p.water, z[1] - z[0]);
+    const inBrine = zz => bands.some(([a, b]) => zz >= a && zz < b);
+    const tH = [], gasH = [], brH = [];
+    run.frameArr.forEach((q, fi) => {
+      let g = 0, b = 0;
+      for (let i = 0; i < run.typeArr.length; i++) if (run.typeArr[i] === 8) { if (inBrine(q[3 * i + 2] * run.scale)) b++; else g++; }
+      tH.push(run.frames[fi].t_ps); gasH.push(g); brH.push(b);
+    });
+    chInv.title('H₂ location (LAMMPS)', 'molecules vs time (ps), brine films vs gas');
+    chInv.set({ x: tH, xName: 't (ps)', yZero: true, yFmt: v => (+v).toFixed(0), series: [
+      { name: 'H₂ in gas', color: SER[0], y: gasH }, { name: 'H₂ in brine films', color: SER[1], y: brH }] });
+    chP.title('Pore pressure, Pzz (LAMMPS)', 'MPa vs time (ps), bulk-gas region');
+    chP.set({ x: run.pressure.t_ps, xName: 't (ps)', yZero: false, yFmt: v => (+v).toFixed(1), series: [{ name: 'Pzz (MPa)', color: SER[0], y: run.pressure.Pzz_MPa }] });
+    chProf.title('Density across the pore (LAMMPS)', 'molecules / nm³ vs z (Å), production average; shaded = brine');
+    const series = [{ name: 'H₂', color: SER[0], y: nm3(p.h2) }];
+    if (p.co2 && p.co2.some(v => v > 0)) series.push({ name: 'CO₂', color: SER[1], y: nm3(p.co2) });
+    else if (p.n2 && p.n2.some(v => v > 0)) series.push({ name: 'N₂', color: SER[1], y: nm3(p.n2) });
+    if (p.ch4 && p.ch4.some(v => v > 0)) series.push({ name: 'CH₄', color: SER[2], y: nm3(p.ch4) });
+    chProf.set({ x: z, xName: 'z (Å)', yZero: true, yFmt: v => (+v).toFixed(1), series, bands });
+  }
+
+  function setMode(m) {
+    if (m === mode) return;
+    mode = m;
+    $$('[data-mode]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === m)));
+    $$('.liveonly').forEach(e => { e.hidden = m !== 'live'; });
+    $$('.lammpsonly').forEach(e => { e.hidden = m !== 'lammps'; });
+    $('#csv').hidden = m !== 'live';
+    if (m === 'live') {
+      if (R && sim) R.setBox(sim.L, sim.L, sim.H, 0);
+      buildLegend(); updateTiles(sim.stats()); drawCharts();
+      $('#run').textContent = running ? 'Pause' : 'Run';
+    } else {
+      loadRun().then(d => {
+        if (mode !== 'lammps') return;
+        if (R) R.setBox(d.box[0], d.box[1], d.box[2], 0);
+        buildLegend(); lammpsTiles(); drawLammpsCharts(); drawLammpsFrame();
+        $('#run').textContent = lplay ? 'Pause' : 'Play';
+      }).catch(err => { $('#status').textContent = 'LAMMPS run not available: ' + err.message; });
+    }
+  }
+  $$('[data-mode]').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
+  $('#run').addEventListener('click', () => {
+    if (mode === 'lammps') { lplay = !lplay; $('#run').textContent = lplay ? 'Pause' : 'Play'; }
+    else { running = !running; $('#run').textContent = running ? 'Pause' : 'Run'; }
+  });
+  $('#frame').addEventListener('input', e => { lframe = +e.target.value; drawLammpsFrame(); });
 
   // ------------------------------------------------------------------ loop
-  function loop() {
-    if (sim) {
+  function loop(ts) {
+    if (mode === 'live' && sim) {
       if (running) sim.step(+$('#speed').value);
-      render();
-      if (running && ++frame % 8 === 0) sample();
-      if (frame % 24 === 0 && running) drawCharts();
+      renderLive();
+      if (running && ++frame % 10 === 0) sample();
+      if (running && frame % 30 === 0) drawCharts();
+    } else if (mode === 'lammps' && run) {
+      if (lplay && ts - lastFrameT > 220) { lframe = (lframe + 1) % run.frames.length; lastFrameT = ts; drawLammpsFrame(); }
+      if (R) R.draw();
     }
     requestAnimationFrame(loop);
   }
 
   // ------------------------------------------------------------------- tabs
-  $$('[role=tab]').forEach(t => t.addEventListener('click', () => {
-    $$('[role=tab]').forEach(o => o.setAttribute('aria-selected', String(o === t)));
+  $$('.tablist [role=tab]').forEach(t => t.addEventListener('click', () => {
+    $$('.tablist [role=tab]').forEach(o => o.setAttribute('aria-selected', String(o === t)));
     $$('[role=tabpanel]').forEach(p => { p.hidden = p.id !== t.getAttribute('aria-controls'); });
   }));
 
@@ -1229,6 +1564,8 @@ pip install numpy CoolProp matplotlib</pre>
   // ------------------------------------------------------------------ start
   setControls(PRESETS.base);
   rebuild();
+  $$('.lammpsonly').forEach(e => { e.hidden = true; });
+  if (new URLSearchParams(location.search).get('view') === 'lammps') setMode('lammps');
   requestAnimationFrame(loop);
   if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
 })();

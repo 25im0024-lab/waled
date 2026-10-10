@@ -2,7 +2,15 @@
 
 ### ▶ [Open UHS Pore Lab: the interactive version, runs in the browser](https://25im0024-lab.github.io/waled/uhs-md/)
 
-UHS Pore Lab is a 2D coarse-grained molecular dynamics simulator of the same system. Nothing to install: change the cushion gas, pressure, salinity, brine film, wettability and microbes, run injection/withdrawal cycles, and follow H2 dissolution, mixing and microbial loss live. It is a teaching model for trends; this folder's LAMMPS model is the quantitative tool. Source: [`web/src/`](web/src/) (`sim.js` physics, `ui.js` interface); build with `node uhs-md/web/build.js`, test with `node uhs-md/web/tests/sim-test.js`.
+UHS Pore Lab has two 3D views, both running in the browser with nothing to install:
+
+- **Live 3D simulator:** a coarse-grained 3D molecular dynamics model of the same system. Change the cushion gas, pressure, salinity, brine film, wettability and microbes, run injection/withdrawal cycles, and follow H2 dissolution, mixing and microbial loss live. Drag to rotate, scroll or pinch to zoom, and slice the pore open. It is a teaching model for trends.
+- **LAMMPS run (3D):** playback of a real run of this folder's atomistic LAMMPS model, every atom included, together with its analysed results (H2 solubility, gas composition, pore pressure, density profiles). Open it directly with [`?view=lammps`](https://25im0024-lab.github.io/waled/uhs-md/?view=lammps).
+
+**Source and tools:**
+- [`web/src/`](web/src/): `sim.js` is the 3D physics, `render3d.js` the WebGL renderer, `ui.js` the interface.
+- Build with `node uhs-md/web/build.js`; test with `node uhs-md/web/tests/sim-test.js`.
+- To pack your own LAMMPS run for the player: `python3 analyze.py RUN && python3 make_viewer_data.py RUN`, which writes `demo/demo-run.json`.
 
 ---
 
@@ -136,4 +144,5 @@ Smoke-test speed: about 4 ns/day on one core for a system of about 2,900 atoms.
 | `analyze.py` | Analysis; writes `results.json` and `profiles.png` |
 | `run_matrix.sh` | Scenario matrix |
 | `tests/test_build.py` | Build tests (charge neutrality, molecule integrity, overlaps, stoichiometry); run in CI |
-| `index.html`, `web/` | UHS Pore Lab, the in-browser simulator (built page and its source/tests) |
+| `index.html`, `web/` | UHS Pore Lab, the in-browser 3D simulator and LAMMPS player (built page and its source/tests) |
+| `make_viewer_data.py`, `demo/demo-run.json` | Packs a LAMMPS run for the 3D player; the published demonstration run |
