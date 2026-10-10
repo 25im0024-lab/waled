@@ -41,7 +41,7 @@ check.failed = False
 
 def run_case(argv):
     with tempfile.TemporaryDirectory() as d:
-        a = B.parse(argv + ["--out", d, "--accept-unverified-calcite", "--nx", "4", "--ny", "3", "--pore", "45"])
+        a = B.parse(argv + ["--out", d, "--nx", "4", "--ny", "3", "--pore", "45"])
         meta = B.build(a)
         box, at, bd = read_data(os.path.join(d, "system.data"))
         tag = " ".join(argv)
@@ -84,12 +84,25 @@ check("methanogenesis mass balance",
       and m1["counts"]["H2O"] - m0["counts"]["H2O"] == b["H2O_produced"])
 run_case(["--cushion", "CO2", "--water-film", "0"])
 
-# the builder must refuse unverified calcite parameters without the explicit flag
-try:
-    with tempfile.TemporaryDirectory() as d:
-        B.build(B.parse(["--out", d]))
-    check("refuses unverified calcite", False)
-except SystemExit:
-    check("refuses unverified calcite", True)
+# the default calcite set is the documented literature set
+import json  # noqa: E402
+cal = json.load(open(os.path.join(os.path.dirname(HERE), "ff", "calcite.json")))
+q = cal["atoms"]
+check("default calcite set is marked verified", cal["verified"] is True)
+check("CaCO3 charges neutral", abs(q["Ca"]["charge"] + q["Cc"]["charge"] + 3 * q["Oc"]["charge"]) < 1e-9)
+
+# the builder must refuse a parameter file marked unverified unless explicitly allowed
+with tempfile.TemporaryDirectory() as d:
+    bad = dict(cal, verified=False)
+    path = os.path.join(d, "cal.json")
+    json.dump(bad, open(path, "w"))
+    try:
+        B.build(B.parse(["--out", os.path.join(d, "o"), "--calcite-ff", path]))
+        check("refuses unverified calcite", False)
+    except SystemExit:
+        check("refuses unverified calcite", True)
+    B.build(B.parse(["--out", os.path.join(d, "o2"), "--calcite-ff", path, "--accept-unverified-calcite",
+                     "--nx", "2", "--ny", "2", "--pore", "40"]))
+    check("override flag allows a smoke test", os.path.exists(os.path.join(d, "o2", "system.data")))
 
 sys.exit(1 if check.failed else 0)

@@ -2,7 +2,7 @@
 # Scenario matrix: cushion gas x salinity x bacterial metabolism.
 # Usage:  NP=8 LMP=lmp ./run_matrix.sh        (run from uhs-md/)
 # Each case goes in runs/<name>/ and is analysed when it finishes.
-# Add --accept-unverified-calcite to EXTRA only for a test run.
+# EXTRA passes further build_system.py options (e.g. "--calcite-ff my.json").
 set -euo pipefail
 NP=${NP:-4}
 LMP=${LMP:-lmp}

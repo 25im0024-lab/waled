@@ -8,7 +8,7 @@ UHS Pore Lab is a 2D coarse-grained molecular dynamics simulator of the same sys
 
 A ready-to-run LAMMPS model of how **H2** interacts with a **cushion gas** (CO2, CH4 or N2) inside a **calcite (10-14) slit nanopore**. The pore contains **brine / formation water**, and the effect of **bacteria** is represented through their metabolic products.
 
-> **Before any publishable result:** the calcite Lennard-Jones parameters in [`ff/calcite.json`](ff/calcite.json) are placeholders, not a published set, and the file is marked `"verified": false`. `build_system.py` only runs if you either enter the published values and set the flag to `true`, or pass `--accept-unverified-calcite` (smoke tests only). Details are in the "Force field" section.
+> **Calcite parameters:** [`ff/calcite.json`](ff/calcite.json) holds Xiao et al. (2011) charges with the matching Lennard-Jones set tabulated by Li et al. (2021). Their provenance, and the two points not yet confirmed from the original papers, are in the "Force field" section. Read it before publishing results.
 
 ---
 
@@ -52,9 +52,15 @@ In the methanogenesis scenario, a fraction `f` of the H2 is removed. CO2 is take
 | H2 | single-site LJ, ε/k = 34.2 K, σ = 2.96 Å | Buch, *J. Chem. Phys.* 100 (1994) 7610 | high for the values; see model limits below |
 | CH4 | TraPPE-UA | Martin & Siepmann, *J. Phys. Chem. B* 102 (1998) 2569 | high |
 | CO2, N2 | TraPPE, 3-site, rigid | Potoff & Siepmann, *AIChE J.* 47 (2001) 1676 | high |
-| Calcite | **placeholder** | Charges (Ca +2, C +1.123282, O −1.041094) recalled from memory as those of Xiao, Edwards & Gräter, *J. Phys. Chem. C* 115 (2011) 20067. **Not checked against the source.** The LJ values are generic CHARMM-like numbers, not Xiao's. | **low: must be verified** |
+| Calcite (rigid slab) | Xiao CaCO3 model: charges Ca +1.668, C +0.999, O −0.889; LJ Ca σ = 2.371 Å, ε = 0.478 kcal/mol; C 3.823 Å, 0.0882; O 3.091 Å, 0.1391 | Charges: Xiao, Edwards & Gräter, *J. Phys. Chem. C* 115 (2011) 20067. The Ca +1.668 value is confirmed in their *Biophys. J.* 102 (2012) abstract; C and O come from a secondary source and sum to neutral. LJ: Li et al., *Adv. Theory Simul.* 4 (2021) 2100226, Table 1 ("atomwise" C12/C6, converted to σ/ε) | medium–high (see notes below) |
 
-**Before production:** copy ε and σ (and the charges, if they differ) from the table in the original paper into `ff/calcite.json`, then set `"verified": true`. A common alternative is Raiteri et al., *J. Phys. Chem. C* 114 (2010) 5997, but it uses Buckingham terms and needs `pair_style hybrid/overlay`, which this template does not support as is.
+**Calcite parameter notes.**
+- **LJ values:** the C12/C6 values of Li et al. were converted with σ = (C12/C6)^1/6 and ε = C6²/4C12. The same table's AMBER CT and HC rows reproduce the known AMBER values (σ 3.400 / 2.650 Å, ε 0.458 / 0.0657 kJ/mol), which confirms how the numbers were read.
+- **Not yet confirmed:** (1) that Li et al.'s calcite reference is Xiao et al. 2011; the parameters are consistent with it, but I have not seen the reference list. (2) The C and O charges in the original paper.
+- **Cross terms:** calcite–water and calcite–gas interactions use Lorentz-Berthelot mixing, not Xiao's fitted CaCO3–water cross terms.
+- **Slab treatment:** the slab is rigid, so the intra-calcite terms of these papers are not needed.
+- **Changing the set:** to use another one, edit `ff/calcite.json`; set `"verified": false` for any untested set and the builder will refuse it unless `--accept-unverified-calcite` is passed.
+- **Alternative:** Raiteri et al., *J. Phys. Chem. C* 114 (2010) 5997 uses Buckingham terms and needs `pair_style hybrid/overlay`, which this template does not support as is.
 
 ## 4. Running
 

@@ -250,7 +250,7 @@ footer { margin-top: 24px; border-top: 1px solid var(--line); padding-top: 10px;
     <div class="row"><button class="btn" id="copyCmd">Copy commands</button>
       <a class="btn" href="https://github.com/25im0024-lab/waled/archive/refs/heads/main.zip">Download repository (ZIP)</a>
       <a class="btn" href="https://github.com/25im0024-lab/waled/blob/main/uhs-md/README.md" rel="noopener">README</a></div>
-    <p class="warn" style="margin-top:12px">The calcite Lennard-Jones parameters in <code>uhs-md/ff/calcite.json</code> are placeholders marked <code>verified: false</code>. Enter the published values (e.g. Xiao, Edwards &amp; Gräter, J. Phys. Chem. C 115 (2011) 20067) before production runs; until then the builder only runs with <code>--accept-unverified-calcite</code> as a smoke test.</p>
+    <p class="warn" style="margin-top:12px">Calcite parameters (<code>uhs-md/ff/calcite.json</code>): Xiao, Edwards &amp; Gräter (J. Phys. Chem. C 115 (2011) 20067) charges, Ca +1.668 / C +0.999 / O −0.889, with the Lennard-Jones set tabulated by Li et al. (Adv. Theory Simul. 4 (2021) 2100226). The slab is rigid, and calcite–fluid cross terms use Lorentz-Berthelot mixing. Provenance and open points are in the README.</p>
     <h3>Requirements</h3>
     <pre>conda install -c conda-forge lammps      # MOLECULE, KSPACE and RIGID packages
 pip install numpy CoolProp matplotlib</pre>

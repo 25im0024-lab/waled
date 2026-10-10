@@ -231,8 +231,8 @@ def build(args):
     rng = np.random.default_rng(args.seed)
     calcite = P.load_calcite(args.calcite_ff)
     if not calcite["verified"] and not args.accept_unverified_calcite:
-        sys.exit("ff/calcite.json is marked verified=false (placeholder LJ values).\n"
-                 "Put in the published parameters and set verified=true, or pass\n"
+        sys.exit("The calcite parameter file is marked verified=false.\n"
+                 "Use a documented set (default ff/calcite.json) or pass\n"
                  "--accept-unverified-calcite for a smoke test only.")
 
     slab, Lx, Ly, thick = build_calcite_slab(args.nx, args.ny, args.layers)
@@ -430,4 +430,4 @@ if __name__ == "__main__":
     m = build(parse())
     print(json.dumps({k: m[k] for k in ("counts", "box_A", "natoms", "bio", "eos_backend")}, indent=2))
     if not m["calcite_verified"]:
-        print("WARNING: calcite parameters are UNVERIFIED placeholders - smoke test only.")
+        print("WARNING: calcite parameters are marked unverified - smoke test only.")
