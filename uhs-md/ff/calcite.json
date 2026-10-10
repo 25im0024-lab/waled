@@ -1,0 +1,18 @@
+{
+  "name": "calcite PLACEHOLDER (not a published set)",
+  "verified": false,
+  "note": [
+    "The calcite slab is held rigid (frozen), so only its nonbonded parameters (charge, epsilon, sigma) affect the fluid.",
+    "Charges: Ca +2, C +1.123282, O -1.041094. These are recalled from memory as those of Xiao, Edwards & Grater, J. Phys. Chem. C 115 (2011) 20067; check them against the paper.",
+    "LJ values: generic CHARMM-like placeholders (CHARMM Ca2+, carbonyl C, carboxylate O). They are NOT the Xiao 2011 values. Use them only for smoke tests.",
+    "Before production runs, replace epsilon/sigma (and the charges if needed) with the values in the original paper, then set verified=true.",
+    "Option: Raiteri et al., J. Phys. Chem. C 114 (2010) 5997, uses Buckingham terms instead; it needs a hybrid pair_style and is not supported by this template as is."
+  ],
+  "atoms": {
+    "Ca": {"mass": 40.078,  "charge":  2.000000, "epsilon_kcal": 0.120, "sigma_A": 2.4357},
+    "Cc": {"mass": 12.011,  "charge":  1.123282, "epsilon_kcal": 0.110, "sigma_A": 3.5636},
+    "Oc": {"mass": 15.9994, "charge": -1.041094, "epsilon_kcal": 0.120, "sigma_A": 3.0291}
+  },
+  "bond_CO":   {"k": 500.0, "r0": 1.286},
+  "angle_OCO": {"k": 100.0, "theta0": 120.0}
+}

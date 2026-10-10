@@ -23,6 +23,13 @@ jobs:
         run: node fpso/tests/field-test.js
       - name: FPSO PVT correlations and Arps decline
         run: node fpso/tests/pvt-dca-test.js
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: UHS-MD system builder (LAMMPS inputs)
+        run: |
+          pip install numpy CoolProp
+          python uhs-md/tests/test_build.py
       - name: Built pages match their sources
         run: |
           node drillers-console/build.js

@@ -1,0 +1,125 @@
+# =============================================================================
+# H2 + cushion gas + brine in a calcite (10-14) slit pore - LAMMPS input
+# Run inside a directory made by build_system.py (system.data, forcefield.lmp,
+# system.lmp):
+#   lmp -in ../in.uhs.lmp -var nprod 2000000
+# Variables you can override with -var:
+#   neq    NVT equilibration steps (default 500000  = 0.5 ns)
+#   nprod  production steps        (default 2000000 = 2 ns)
+#   nrelax steps at 0.5 fs before equilibration (default 10000)
+#   seed   velocity seed
+# =============================================================================
+units           real
+atom_style      full
+boundary        p p p
+
+variable        neq   index 500000
+variable        nprod index 2000000
+variable        nrelax index 10000
+variable        seed  index 4928459
+
+read_data       system.data
+include         forcefield.lmp
+include         system.lmp
+
+# ---- groups (type numbering fixed in ff/params.py) --------------------------
+group           calcite  type 1 2 3
+group           water    type 4 5
+group           ions     type 6 7
+group           h2       type 8
+group           ch4      type 9
+group           co2      type 10 11
+group           n2       type 12 13
+group           rigidgas union co2 n2
+group           flex     union water ions h2 ch4
+group           fluid    union flex rigidgas
+
+neighbor        2.0 bin
+neigh_modify    delay 0 every 1 check yes exclude group calcite calcite
+
+# The calcite slab is rigid and fixed in space (common in UHS/CCS mineral-fluid MD).
+fix             freeze calcite setforce 0.0 0.0 0.0
+
+thermo_style    custom step temp pe ke etotal
+thermo          500
+
+# ---- 1. energy minimisation --------------------------------------------------
+# CO2/N2 are held still: rigid linear bodies must stay exactly linear, otherwise
+# fix rigid/small stops with "Bad principal moments". They sit on a 4 A grid in
+# the gas region, so they don't overlap anything.
+fix             holdgas rigidgas setforce 0.0 0.0 0.0
+min_style       cg
+minimize        1.0e-4 1.0e-6 5000 50000
+unfix           holdgas
+reset_timestep  0
+
+# ---- 2. constraints and thermostats ------------------------------------------
+fix             shk water shake 1.0e-4 20 0 b 1 a 1
+velocity        flex create ${T} ${seed} mom yes rot no dist gaussian
+fix             nvtflex flex nvt temp ${T} ${T} 100.0
+if "${n_rigid} > 0" then &
+  "velocity rigidgas create ${T} ${seed} mom yes rot no dist gaussian" &
+  "fix nvtrigid rigidgas rigid/nvt/small molecule temp ${T} ${T} 100.0"
+
+compute         Tflex flex temp
+thermo_style    custom step c_Tflex pe ke etotal
+thermo_modify   flush yes
+
+# short run at 0.5 fs to relax remaining contacts, then 1 fs
+timestep        0.5
+run             ${nrelax}
+timestep        1.0
+run             ${neq}
+reset_timestep  0
+
+# ---- 3. production: observables ----------------------------------------------
+# 3a. number-density profiles along z (0.25 A bins), one file per species
+compute         cz all chunk/atom bin/1d z lower 0.25 units box
+fix             pOw   water ave/chunk 10 100 1000 cz density/number file prof_water.dat
+fix             pH2   h2    ave/chunk 10 100 1000 cz density/number file prof_h2.dat
+fix             pCH4  ch4   ave/chunk 10 100 1000 cz density/number file prof_ch4.dat
+fix             pCO2  co2   ave/chunk 10 100 1000 cz density/number file prof_co2.dat
+fix             pN2   n2    ave/chunk 10 100 1000 cz density/number file prof_n2.dat
+fix             pIon  ions  ave/chunk 10 100 1000 cz density/number file prof_ions.dat
+# (each output row is "per atom": divide by 3 for water/CO2/N2 molecules;
+#  analyze.py does this using the O / C / N site)
+
+# 3b. H2 mean-square displacement (x, y, z, total), for diffusion coefficients
+if "${n_h2} > 0" then &
+  "compute msdH2 h2 msd com yes" &
+  "fix fmsd all ave/time 100 1 100 c_msdH2[1] c_msdH2[2] c_msdH2[3] c_msdH2[4] file msd_h2.dat"
+
+# 3c. radial distribution functions: H2 with water O, carbonate O, Ca, CH4, CO2 C
+compute         rdf all rdf 200 8 4  8 3  8 1  8 9  8 10  4 3  cutoff 12.0
+fix             frdf all ave/time 100 100 10000 c_rdf[*] file rdf.dat mode vector
+
+# 3d. pressure in the bulk-gas slab region (normal component Pzz should equal
+#     the pore pressure; compare it with the target P in system.json)
+compute         sa all stress/atom NULL
+region          gasbulk block INF INF INF INF ${gas_lo} ${gas_hi} units box
+variable        ingas atom rmask(gasbulk)
+variable        szz atom c_sa[3]*v_ingas
+variable        sxx atom c_sa[1]*v_ingas
+variable        syy atom c_sa[2]*v_ingas
+compute         Szz all reduce sum v_szz
+compute         Sxx all reduce sum v_sxx
+compute         Syy all reduce sum v_syy
+variable        Vgas equal lx*ly*(v_gas_hi-v_gas_lo)
+variable        PzzMPa equal -c_Szz/v_Vgas*0.101325
+variable        PtMPa  equal -0.5*(c_Sxx+c_Syy)/v_Vgas*0.101325
+fix             fpres all ave/time 10 100 1000 v_PzzMPa v_PtMPa file pressure_gas.dat
+
+# 3e. energies of H2 with surface and brine (adsorption / solvation signature)
+compute         eH2cal h2 group/group calcite kspace yes
+compute         eH2wat h2 group/group water   kspace yes
+fix             fen all ave/time 10 100 1000 c_eH2cal c_eH2wat file energy_h2.dat
+
+thermo_style    custom step c_Tflex pe v_PzzMPa c_eH2cal c_eH2wat
+thermo_modify   flush yes
+thermo          1000
+
+dump            trj all custom 10000 traj.lammpstrj id mol type q xu yu zu
+dump_modify     trj sort id
+
+run             ${nprod}
+write_data      final.data
