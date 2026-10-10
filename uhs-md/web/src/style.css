@@ -7,6 +7,7 @@
   --warn-bg: #3a2900; --warn-line: #7a5a00; --warn-text: #ffe3a6;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html, body { margin: 0; background: var(--bg) radial-gradient(1200px 600px at 50% -10%, #0b2340 0, var(--bg) 60%) fixed; color: var(--text);
   font: 14.5px/1.55 "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; }
 a { color: var(--cyan); }
@@ -93,3 +94,13 @@ pre { background: #061224; border: 1px solid var(--line2); border-radius: 4px; p
 code { background: #081830; border: 1px solid var(--line2); border-radius: 3px; padding: 0 4px; font-size: 12.5px; }
 .warn { background: var(--warn-bg); border: 1px solid var(--warn-line); color: var(--warn-text); border-radius: 5px; padding: 9px 12px; font-size: 13.5px; margin: 0 0 12px; }
 footer { margin-top: 24px; border-top: 1px solid var(--line); padding-top: 10px; color: var(--muted); font-size: 12.5px; }
+
+.modes { margin: 0 0 8px; }
+.viewwrap { position: relative; }
+#view { aspect-ratio: 16 / 10; cursor: grab; }
+#view:active { cursor: grabbing; }
+.viewtools { position: absolute; top: 8px; right: 8px; display: flex; gap: 4px; }
+.viewtools .btn { min-height: 28px; padding: 3px 9px; font-size: 12.5px; background: #0b1d34cc; }
+.nogl { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 20px; color: var(--text2); margin: 0; }
+.nogl[hidden] { display: none; }
+@media (max-width: 600px) { #view { aspect-ratio: 4 / 5; } }

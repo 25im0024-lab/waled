@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>UHS Pore Lab</title>
-<meta name="description" content="Interactive molecular dynamics of underground hydrogen storage: H2 with CO2, CH4 or N2 cushion gas, brine and methanogenic bacteria in a calcite (carbonate) nanopore. Runs in the browser.">
+<meta name="description" content="Interactive 3D molecular dynamics of underground hydrogen storage: H2 with CO2, CH4 or N2 cushion gas, brine and methanogenic bacteria in a calcite (carbonate) nanopore. Runs in the browser.">
 <meta name="theme-color" content="#0b2340">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
@@ -13,14 +13,14 @@
 <body>
 <div class="wrap">
 <header>
-  <h1>UHS Pore Lab<small>Hydrogen storage in a carbonate nanopore: live molecular dynamics with cushion gas, brine and bacteria</small></h1>
+  <h1>UHS Pore Lab<small>Hydrogen storage in a carbonate nanopore: live 3D molecular dynamics with cushion gas, brine and bacteria</small></h1>
   <nav class="links">
     <a class="btn" href="../">Home</a>
     <a class="btn" href="https://github.com/25im0024-lab/waled/tree/main/uhs-md" rel="noopener">LAMMPS model</a>
   </nav>
 </header>
 
-<p class="warn"><b>Teaching model.</b> This is a 2D coarse-grained simulation: each molecule is one Lennard-Jones site, water is a liquid-forming bead, and bacterial activity is sped up by many orders of magnitude. Use it for trends and intuition. For quantitative work, use the full 3D LAMMPS model (tab "Full LAMMPS model" below).</p>
+<p class="warn"><b>Two 3D views.</b> <b>Live simulator:</b> a coarse-grained 3D model you can change and run. Each molecule is one Lennard-Jones site, water is a liquid-forming bead, and bacterial activity is sped up by many orders of magnitude, so use it for trends and intuition. <b>LAMMPS run:</b> playback of the full atomistic 3D LAMMPS model (SPC/E water, NaCl, TraPPE gases, calcite (10-14) slab) with its analysed results.</p>
 
 <div class="layout">
   <aside class="panel" aria-label="Simulation settings">
@@ -46,9 +46,9 @@
     <div class="ctl"><label for="molality">Salinity (NaCl)</label><output for="molality"></output>
       <input type="range" id="molality" min="0" max="5" step="0.25"></div>
     <div class="ctl"><label for="film">Brine film on each wall</label><output for="film"></output>
-      <input type="range" id="film" min="0" max="20" step="1"></div>
+      <input type="range" id="film" min="0" max="16" step="1"></div>
     <div class="ctl"><label for="pore">Pore width</label><output for="pore"></output>
-      <input type="range" id="pore" min="40" max="120" step="5"></div>
+      <input type="range" id="pore" min="40" max="90" step="5"></div>
     <div class="ctl"><label for="wetting">Calcite wettability</label><output for="wetting"></output>
       <input type="range" id="wetting" min="300" max="1600" step="50"></div>
 
@@ -74,15 +74,34 @@
 
   <section class="stage" aria-label="Simulation">
     <div class="panel">
+      <div class="modes seg" role="tablist" aria-label="View">
+        <button role="tab" data-mode="live" aria-pressed="true">Live 3D simulator</button>
+        <button role="tab" data-mode="lammps" aria-pressed="false">LAMMPS run (3D)</button>
+      </div>
       <div class="viewbar">
         <div class="row" style="margin:0">
           <button class="btn pri" id="run">Pause</button>
-          <button class="btn" id="resetMsd" title="Restart the diffusion measurement">Reset MSD</button>
-          <label class="check" style="margin:0 6px">Speed <input type="range" id="speed" min="2" max="80" step="2" value="24" style="width:110px;accent-color:var(--cyan)"></label>
+          <span class="liveonly"><button class="btn" id="resetMsd" title="Restart the diffusion measurement">Reset MSD</button></span>
+          <label class="check liveonly" style="margin:0 6px">Speed <input type="range" id="speed" min="1" max="20" step="1" value="6" style="width:100px;accent-color:var(--cyan)"></label>
+          <label class="check lammpsonly" style="margin:0 6px" hidden>Frame <input type="range" id="frame" min="0" max="0" step="1" value="0" style="width:160px;accent-color:var(--cyan)"></label>
         </div>
         <span class="status" id="status"></span>
       </div>
-      <canvas id="view" width="1200" height="600" role="img" aria-label="Live view of the pore: calcite walls at top and bottom, brine films, gas molecules and microbes"></canvas>
+      <div class="viewwrap">
+        <canvas id="view" role="img" aria-label="3D view of the pore: calcite walls at top and bottom, brine films, gas molecules and microbes. Drag to rotate, scroll or pinch to zoom."></canvas>
+        <div class="viewtools">
+          <button class="btn" data-view="iso" title="Perspective view">3D</button>
+          <button class="btn" data-view="side" title="Side view">Side</button>
+          <button class="btn" data-view="top" title="Top view">Top</button>
+        </div>
+        <p class="nogl" hidden>This browser has no WebGL 2, so the 3D view cannot be drawn. The readouts and charts below still update.</p>
+      </div>
+      <div class="row" style="margin:6px 0 0">
+        <label class="check"><input type="checkbox" id="showWater" checked> Water</label>
+        <label class="check"><input type="checkbox" id="showRock" checked> Calcite</label>
+        <label class="check"><input type="checkbox" id="slice"> Slice (front half removed)</label>
+        <span class="hint" style="margin:0 0 0 auto">Drag to rotate · scroll/pinch to zoom · double-click to reset</span>
+      </div>
       <div class="legend" id="legend"></div>
     </div>
 
@@ -91,7 +110,7 @@
     <div class="charts">
       <div class="chart" id="cInv"><h4>H₂ inventory</h4><p class="sub">molecules vs time (ps)</p><canvas></canvas><div class="lg"></div><div class="tip"></div></div>
       <div class="chart" id="cP"><h4>Reservoir-equivalent pressure</h4><p class="sub">MPa vs time (ps)</p><canvas></canvas><div class="lg"></div><div class="tip"></div></div>
-      <div class="chart" id="cProf"><h4>Gas density across the pore</h4><p class="sub">molecules / nm² vs distance from bottom wall (Å); shaded = brine</p><canvas></canvas><div class="lg"></div><div class="tip"></div></div>
+      <div class="chart" id="cProf"><h4>Gas density across the pore</h4><p class="sub">molecules / nm³ vs distance from bottom wall (Å); shaded = brine</p><canvas></canvas><div class="lg"></div><div class="tip"></div></div>
     </div>
     <div class="row" style="margin:0"><button class="btn" id="csv">Download time series (CSV)</button></div>
   </section>
@@ -106,7 +125,7 @@
 
   <div class="tabpanel" role="tabpanel" id="tab-read" aria-labelledby="t-read">
     <h3>What you are looking at</h3>
-    <p>A slit pore in calcite (top and bottom walls). On a water-wet carbonate the walls carry a film of formation water (blue beads, grey beads = dissolved NaCl). Free gas fills the centre: H₂ (white) mixed with the cushion gas. Gas molecules drawn with a ring are dissolved in the brine. Green rods are methanogenic microbes attached to the walls; the dots on each rod show how much H₂ it has taken up.</p>
+    <p>A 3D slit pore in calcite (walls at the bottom and top, periodic sideways; the blue frame is one periodic cell). On a water-wet carbonate the walls carry a film of formation water (blue beads, grey beads = dissolved NaCl). Free gas fills the centre: H₂ (white) mixed with the cushion gas. Dissolved gas molecules are drawn enlarged. Green rods are methanogenic microbes on the walls; a microbe turns bright once it holds 4 H₂. Untick "Water" or use "Slice" to see inside. In the live simulator the calcite lattice is drawn schematically; in "LAMMPS run" every atom is real.</p>
     <h3>Experiments to try</h3>
     <ul>
       <li><b>Cushion-gas mixing.</b> Run "Withdraw" and watch the produced-gas purity. A CO₂ cushion stays mixed with H₂ in the pore. Raising the cushion fraction lowers the purity of recovered H₂.</li>
@@ -118,32 +137,32 @@
     <h3>Readouts</h3>
     <table>
       <tr><th>Readout</th><th>How it is computed</th></tr>
-      <tr><td>Reservoir-equivalent pressure</td><td>Free-gas areal density in the gas region, converted to 3D density (ρ₃ = ρ₂<sup>3/2</sup>) and passed through the Peng-Robinson equation of state with the current gas composition.</td></tr>
-      <tr><td>Dissolved H₂</td><td>H₂ molecules with 5 or more water/salt beads within 6 Å.</td></tr>
+      <tr><td>Reservoir-equivalent pressure</td><td>Free-gas density in the gas region, passed through the Peng-Robinson equation of state with the current gas composition.</td></tr>
+      <tr><td>Dissolved H₂</td><td>H₂ molecules with 14 or more water/salt beads within 6 Å.</td></tr>
       <tr><td>H₂ purity, pore centre</td><td>H₂ mole fraction among free gas in the middle third of the pore.</td></tr>
       <tr><td>Produced-gas purity</td><td>H₂ fraction of all molecules removed during "Withdraw".</td></tr>
-      <tr><td>D(H₂), lateral</td><td>Mean-square displacement along the pore, D = ⟨Δx²⟩ / 2t, since the last "Reset MSD".</td></tr>
+      <tr><td>D(H₂), lateral</td><td>Mean-square displacement parallel to the walls, D = ⟨Δx² + Δy²⟩ / 4t, since the last "Reset MSD".</td></tr>
     </table>
   </div>
 
   <div class="tabpanel" role="tabpanel" id="tab-model" aria-labelledby="t-model" hidden>
     <h3>Physics</h3>
     <ul>
-      <li><b>Dynamics:</b> velocity-Verlet, 2 fs time step, Berendsen thermostat (0.2 ps), cell lists, 10 Å cutoff. 2D, periodic along the pore.</li>
+      <li><b>Dynamics:</b> 3D, velocity-Verlet, 2 fs time step, Berendsen thermostat (0.2 ps), Verlet neighbour list, 8.5 Å cutoff. Periodic in x and y (40 Å), calcite walls at z = 0 and z = H.</li>
       <li><b>Gas molecules (one LJ site each):</b> H₂ σ = 2.96 Å, ε/k = 34.2 K (Buch 1994); CH₄ 3.73 Å, 148 K (TraPPE-UA); CO₂ 3.941 Å, 195.2 K and N₂ 3.798 Å, 71.4 K (one-site viscosity values, Svehla 1962).</li>
-      <li><b>Brine:</b> coarse-grained liquid beads (σ = 3.1 Å, ε/k = 740 K). Each bead stands for one water molecule; one salt bead stands for one dissolved Na⁺Cl⁻ pair. The salt binds water more strongly and excludes gas, which produces salting-out.</li>
-      <li><b>Gas–water coupling:</b> Lorentz-Berthelot with k<sub>ij</sub> = 0.50 (H₂), 0.52 (N₂), 0.47 (CH₄) and 0.18 (CO₂). The smaller CO₂ value stands in for the quadrupole a one-site model lacks, and gives the observed solubility order CO₂ ≫ CH₄ &gt; N₂ ≈ H₂.</li>
-      <li><b>Calcite walls:</b> 10-4 Lennard-Jones wall potentials. "Wettability" sets the water–wall well depth.</li>
-      <li><b>Gas loading:</b> Peng-Robinson density at (T, P) for the feed composition, mapped to 2D as ρ₂ = ρ₃<sup>2/3</sup>.</li>
+      <li><b>Brine:</b> coarse-grained liquid beads (σ = 3.1 Å, ε/k = 420 K). Each bead stands for one water molecule; one salt bead stands for one dissolved Na⁺Cl⁻ pair. The salt binds water more strongly and excludes gas, which produces salting-out.</li>
+      <li><b>Gas–water coupling:</b> Lorentz-Berthelot with k<sub>ij</sub> = 0.45 (H₂), 0.47 (N₂), 0.42 (CH₄) and 0.12 (CO₂). The smaller CO₂ value stands in for the quadrupole a one-site model lacks, and gives the observed solubility order CO₂ ≫ CH₄ &gt; N₂ ≈ H₂.</li>
+      <li><b>Calcite walls:</b> 9-3 Lennard-Jones wall potentials (an integrated LJ half-space). "Wettability" sets the water–wall well depth.</li>
+      <li><b>Gas loading:</b> Peng-Robinson density at (T, P) for the feed composition.</li>
       <li><b>Bacteria:</b> fixed microbes. Each takes up an H₂ molecule within 7 Å with the set probability per step. After 4 H₂ it takes one CO₂ (from the gas or, if allowed, from carbonate) and releases CH₄ + 2 H₂O. Hydrogen, carbon and oxygen atoms are conserved exactly (checked by the test suite).</li>
     </ul>
     <h3>Limits: read before drawing conclusions</h3>
     <ul>
-      <li>The model is 2D and coarse-grained, so solubilities, diffusion coefficients and interfacial properties are qualitative. Trends and rankings are the output, not numbers.</li>
+      <li>The live model is coarse-grained, so solubilities, diffusion coefficients and interfacial properties are qualitative. Trends and rankings are the output, not numbers. The "LAMMPS run" view is the atomistic model.</li>
       <li>Microbial kinetics are accelerated by roughly 10¹⁰ or more: real methanogenesis takes hours to days, the simulation shows picoseconds.</li>
       <li>There is no carbonate dissolution, pH or aqueous carbonate chemistry, and no electrostatics.</li>
       <li>Sulfate reducers (H₂S), homoacetogens and biofilm/EPS are not included.</li>
-      <li>Small system (a few hundred molecules): expect large fluctuations; average over time and repeat runs.</li>
+      <li>Small system (about a thousand molecules): expect fluctuations; average over time and repeat runs.</li>
     </ul>
   </div>
 
@@ -164,6 +183,7 @@ pip install numpy CoolProp matplotlib</pre>
 <footer>Open source (MIT). Runs entirely in your browser; nothing is sent anywhere. · <a href="https://github.com/25im0024-lab/waled" rel="noopener">GitHub</a></footer>
 </div>
 <script src="sim.js"></script>
+<script src="render3d.js"></script>
 <script src="ui.js"></script>
 </body>
 </html>
