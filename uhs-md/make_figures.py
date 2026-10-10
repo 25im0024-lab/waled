@@ -189,7 +189,7 @@ def fit_D(t, msd, dim, lo=0.2, hi=0.8):
     parts = np.array_split(np.where(sel)[0], 3)
     ss = [np.polyfit(t[p], msd[p], 1)[0] for p in parts if len(p) > 3]
     conv = 1e-20 / 1e-12 / (2 * dim)  # A^2/ps -> m^2/s
-    return s * conv, (np.std(ss, ddof=1) if len(ss) > 1 else 0.0) * conv
+    return s * conv, (np.std(ss, ddof=1) * conv if len(ss) > 1 else np.nan)
 
 
 def fig_msd(plt, runs, out):
@@ -245,6 +245,9 @@ def fig_rdf(plt, runs, skip, out):
         if cur:
             blocks.append(np.array(cur))
         k0 = int(len(blocks) * skip)
+        if len(blocks) - k0 < 1:
+            print(f"fig_rdf skipped: {r} has no RDF block yet (run longer than 10000 steps)")
+            return
         gs.append(np.mean(blocks[k0:], axis=0))
     g = np.mean(gs, axis=0)
     r = g[:, 0]
