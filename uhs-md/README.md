@@ -1,6 +1,12 @@
 # UHS-MD: Molecular Dynamics of Hydrogen Storage in Carbonate Reservoirs (LAMMPS)
 
-A ready-to-run model of how **H2** interacts with a **cushion gas** (CO2, CH4 or N2) inside a **calcite (10-14) slit nanopore**. The pore contains **brine / formation water**, and the effect of **bacteria** is represented through their metabolic products.
+### ▶ [Open UHS Pore Lab: the interactive version, runs in the browser](https://25im0024-lab.github.io/waled/uhs-md/)
+
+UHS Pore Lab is a 2D coarse-grained molecular dynamics simulator of the same system. Nothing to install: change the cushion gas, pressure, salinity, brine film, wettability and microbes, run injection/withdrawal cycles, and follow H2 dissolution, mixing and microbial loss live. It is a teaching model for trends; this folder's LAMMPS model is the quantitative tool. Source: [`web/src/`](web/src/) (`sim.js` physics, `ui.js` interface); build with `node uhs-md/web/build.js`, test with `node uhs-md/web/tests/sim-test.js`.
+
+---
+
+A ready-to-run LAMMPS model of how **H2** interacts with a **cushion gas** (CO2, CH4 or N2) inside a **calcite (10-14) slit nanopore**. The pore contains **brine / formation water**, and the effect of **bacteria** is represented through their metabolic products.
 
 > **Before any publishable result:** the calcite Lennard-Jones parameters in [`ff/calcite.json`](ff/calcite.json) are placeholders, not a published set, and the file is marked `"verified": false`. `build_system.py` only runs if you either enter the published values and set the flag to `true`, or pass `--accept-unverified-calcite` (smoke tests only). Details are in the "Force field" section.
 
@@ -124,3 +130,4 @@ Smoke-test speed: about 4 ns/day on one core for a system of about 2,900 atoms.
 | `analyze.py` | Analysis; writes `results.json` and `profiles.png` |
 | `run_matrix.sh` | Scenario matrix |
 | `tests/test_build.py` | Build tests (charge neutrality, molecule integrity, overlaps, stoichiometry); run in CI |
+| `index.html`, `web/` | UHS Pore Lab, the in-browser simulator (built page and its source/tests) |
