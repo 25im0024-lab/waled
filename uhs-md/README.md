@@ -55,12 +55,27 @@ In the methanogenesis scenario, a fraction `f` of the H2 is removed. CO2 is take
 
 | Component | Model | Reference | Confidence |
 |---|---|---|---|
-| Water | SPC/E, rigid (SHAKE) | Berendsen, Grigera & Straatsma, *J. Phys. Chem.* 91 (1987) 6269 | high |
-| Na⁺, Cl⁻ | Joung-Cheatham (SPC/E) | Joung & Cheatham, *J. Phys. Chem. B* 112 (2008) 9020 | high |
+| Water | SPC/E (default) or TIP4P/2005 (`--water-model tip4p2005`), rigid (SHAKE) | Berendsen et al., *J. Phys. Chem.* 91 (1987) 6269; Abascal & Vega, *J. Chem. Phys.* 123 (2005) 234505 | high |
+| Na⁺, Cl⁻ | Joung–Cheatham (default) or Smith–Dang (default with TIP4P/2005) | Joung & Cheatham, *J. Phys. Chem. B* 112 (2008) 9020; Smith & Dang, *J. Chem. Phys.* 100 (1994) 3757 | high |
 | H2 | single-site LJ, ε/k = 34.2 K, σ = 2.96 Å | Buch, *J. Chem. Phys.* 100 (1994) 7610 | high for the values; see model limits below |
 | CH4 | TraPPE-UA | Martin & Siepmann, *J. Phys. Chem. B* 102 (1998) 2569 | high |
 | CO2, N2 | TraPPE, 3-site, rigid | Potoff & Siepmann, *AIChE J.* 47 (2001) 1676 | high |
 | Calcite (rigid slab) | Xiao CaCO3 model: charges Ca +1.668, C +0.999, O −0.889; LJ Ca σ = 2.371 Å, ε = 0.478 kcal/mol; C 3.823 Å, 0.0882; O 3.091 Å, 0.1391 | Charges: Xiao, Edwards & Gräter, *J. Phys. Chem. C* 115 (2011) 20067. The Ca +1.668 value is confirmed in their *Biophys. J.* 102 (2012) abstract; C and O come from a secondary source and sum to neutral. LJ: Li et al., *Adv. Theory Simul.* 4 (2021) 2100226, Table 1 ("atomwise" C12/C6, converted to σ/ε) | medium–high (see notes below) |
+
+**Water and ion models (`--water-model`, `--ion-model`).**
+
+| Option | Water | Ions | Note |
+|---|---|---|---|
+| default | SPC/E | Joung–Cheatham (`jc`) | Used for the published demonstration run |
+| `--water-model tip4p2005` | TIP4P/2005 (Abascal & Vega, *J. Chem. Phys.* 123 (2005) 234505) | Smith–Dang (`sd`, *J. Chem. Phys.* 100 (1994) 3757), chosen automatically | Recommended for runs meant for publication |
+
+- **Why TIP4P/2005:** Omrani et al., *Langmuir* 39 (2023) 12680 ([doi:10.1021/acs.langmuir.3c01424](https://doi.org/10.1021/acs.langmuir.3c01424)) compared six water models for H2–brine interfacial tension. Only TIP4P/2005 matched experiment; SPC/E did not. Smith–Dang ions gave the smallest deviation.
+- **H2 model:** their best H2 model was Marx–Nielaba, a three-site model. Its parameters could not be verified from the sources available here, so H2 still uses the single-site Buch model. Check this before relying on IFT values.
+- **Limitation with TIP4P/2005:** LAMMPS cannot compute group-pair energies with the TIP4P pair style, so `energy_h2.dat` (and `fig_energy`) is not produced. All other outputs are unchanged.
+
+```bash
+python3 build_system.py --water-model tip4p2005 --nx 12 --ny 7 --pore 100 --water-film 25 --cushion CO2 --out runs/co2_tip4p
+```
 
 **Calcite parameter notes.**
 - **LJ values:** the C12/C6 values of Li et al. were converted with σ = (C12/C6)^1/6 and ε = C6²/4C12. The same table's AMBER CT and HC rows reproduce the known AMBER values (σ 3.400 / 2.650 Å, ε 0.458 / 0.0657 kJ/mol), which confirms how the numbers were read.

@@ -481,7 +481,7 @@
       'git clone https://github.com/25im0024-lab/waled.git && cd waled/uhs-md',
       `python3 build_system.py --cushion ${p.cushion} --x-cushion ${p.xCushion} \\`,
       `    --T ${(+p.T).toFixed(2)} --P ${(p.P_MPa * 1e6).toExponential(2).replace('+', '')} --molality ${p.molality} \\`,
-      `    --water-film ${p.film} --pore ${Math.max(p.pore, 2 * p.film + 10)} \\`,
+      `    --water-film ${p.film} --pore ${Math.max(p.pore, 2 * p.film + 10)} --water-model tip4p2005 \\`,
       p.bio ? `    --bio methanogenesis --bio-conversion 0.10 --out runs/${out}` : `    --out runs/${out}`,
       `cd runs/${out} && mpirun -np 8 lmp -in ../../in.uhs.lmp && cd ../..`,
       `python3 analyze.py runs/${out}`,
