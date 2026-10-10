@@ -364,6 +364,8 @@ def build(args):
         f.write(f"variable gas_hi  equal {gas_hi - 3.0:.3f}\n")
         f.write(f"variable n_rigid equal {n_species['CO2'] + n_species['N2']}\n")
         f.write(f"variable n_h2    equal {n_species['H2']}\n")
+        for k, v in (("n_water", "H2O"), ("n_ch4", "CH4"), ("n_co2", "CO2"), ("n_n2", "N2")):
+            f.write(f"variable {k:<7s} equal {n_species[v]}\n")
     return meta
 
 

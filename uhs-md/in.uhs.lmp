@@ -84,10 +84,26 @@ fix             pIon  ions  ave/chunk 10 100 1000 cz density/number file prof_io
 # (each output row is "per atom": divide by 3 for water/CO2/N2 molecules;
 #  analyze.py does this using the O / C / N site)
 
-# 3b. H2 mean-square displacement (x, y, z, total), for diffusion coefficients
+# 3b. mean-square displacements (x, y, z, total) for diffusion coefficients:
+#     H2, water oxygen, and each gas present (CO2 via its carbon, N2 via N)
+group           ow   type 4
+group           cco2 type 10
+group           nn2  type 12
 if "${n_h2} > 0" then &
   "compute msdH2 h2 msd com yes" &
   "fix fmsd all ave/time 100 1 100 c_msdH2[1] c_msdH2[2] c_msdH2[3] c_msdH2[4] file msd_h2.dat"
+if "${n_water} > 0" then &
+  "compute msdW ow msd com yes" &
+  "fix fmsdW all ave/time 100 1 100 c_msdW[1] c_msdW[2] c_msdW[3] c_msdW[4] file msd_water.dat"
+if "${n_ch4} > 0" then &
+  "compute msdCH4 ch4 msd com yes" &
+  "fix fmsdCH4 all ave/time 100 1 100 c_msdCH4[1] c_msdCH4[2] c_msdCH4[3] c_msdCH4[4] file msd_ch4.dat"
+if "${n_co2} > 0" then &
+  "compute msdCO2 cco2 msd com yes" &
+  "fix fmsdCO2 all ave/time 100 1 100 c_msdCO2[1] c_msdCO2[2] c_msdCO2[3] c_msdCO2[4] file msd_co2.dat"
+if "${n_n2} > 0" then &
+  "compute msdN2 nn2 msd com yes" &
+  "fix fmsdN2 all ave/time 100 1 100 c_msdN2[1] c_msdN2[2] c_msdN2[3] c_msdN2[4] file msd_n2.dat"
 
 # 3c. radial distribution functions: H2 with water O, carbonate O, Ca, CH4, CO2 C
 compute         rdf all rdf 200 8 4  8 3  8 1  8 9  8 10  4 3  cutoff 12.0
