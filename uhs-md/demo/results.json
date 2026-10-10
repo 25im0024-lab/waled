@@ -1,0 +1,36 @@
+{
+  "run": "/tmp/claude-0/-home-user-waled/f046d357-066d-5f76-94d0-84467b1e0338/scratchpad/demo",
+  "conditions": {
+    "T_K": 333.15,
+    "P_Pa": 10000000.0,
+    "molality_NaCl": 1.0
+  },
+  "bio": {
+    "mode": "methanogenesis",
+    "H2_consumed": 4,
+    "CH4_produced": 1,
+    "H2O_produced": 2,
+    "CO2_consumed": 1,
+    "CO2_source": "cushion gas"
+  },
+  "calcite_verified": true,
+  "n_blocks_used": 320,
+  "x_H2_brine": 0.001071839013518654,
+  "c_H2_brine_mol_L": 0.06161137873908252,
+  "gas_centre_mole_fractions": {
+    "h2": 0.804383767012605,
+    "ch4": 0.015437422599914558,
+    "co2": 0.1801788103874804,
+    "n2": 0.0
+  },
+  "c_H2_gas_mol_L": 1.9337000414083914,
+  "K_H2_liq_over_gas": 0.03186191106155662,
+  "H2_interface_enrichment": 1.1016152378250677,
+  "H2_within_5A_of_surface_per_nm2": 0.0036683666406250003,
+  "D_H2_total_m2_s": 6.228140018230098e-07,
+  "D_H2_lateral_m2_s": 9.341432768979654e-07,
+  "note_D": "MSD averages over all H2 (mostly gas phase). D_total is reduced by confinement in z; the lateral value is the more meaningful one.",
+  "P_gas_Pzz_MPa": 9.3716620925,
+  "P_gas_Pzz_MPa_std": 9.582432632110105,
+  "P_target_MPa": 10.0
+}
