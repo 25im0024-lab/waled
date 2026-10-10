@@ -17,6 +17,10 @@
 
 https://github.com/25im0024-lab/waled/commit/be429ce5f3b571389ec05952bc00c307bfe19e9d
 
+## UHS-MD: Hydrogen Storage in Carbonates (LAMMPS)
+
+Molecular Dynamics of H2 with a cushion gas (CO2, CH4 or N2) in a calcite nanopore, with brine and the effect of bacteria (methanogenesis): [`uhs-md/`](uhs-md/README.md).
+
 ## IELTS Coach
 
 تدريب على اختبار IELTS Academic (Reading / Listening / Writing / Speaking) بنمط الاختبار الحقيقي: [`ielts/`](ielts/README.md).
