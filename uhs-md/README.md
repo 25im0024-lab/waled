@@ -1,126 +1,126 @@
-# UHS-MD: محاكاة Molecular Dynamics لتخزين الهيدروجين في مكامن الكربونات (LAMMPS)
+# UHS-MD: Molecular Dynamics of Hydrogen Storage in Carbonate Reservoirs (LAMMPS)
 
-نموذج جاهز للتشغيل يدرس تفاعل **H2** مع **cushion gas** (CO2 أو CH4 أو N2) داخل **slit nanopore** في **calcite (10-14)**، بحضور **brine / formation water** وتأثير **bacteria** ممثَّلاً بنواتج الأيض.
+A ready-to-run model of how **H2** interacts with a **cushion gas** (CO2, CH4 or N2) inside a **calcite (10-14) slit nanopore**. The pore contains **brine / formation water**, and the effect of **bacteria** is represented through their metabolic products.
 
-> **تنبيه قبل أي نتائج للنشر:** بارامترات Lennard-Jones الخاصة بالـ calcite في [`ff/calcite.json`](ff/calcite.json) قيم مؤقتة (placeholder) وليست مجموعة منشورة، والملف معلَّم `"verified": false`. لن يعمل `build_system.py` إلا إذا أدخلت القيم الأصلية وغيّرت العلامة إلى `true`، أو مرّرت `--accept-unverified-calcite` لاختبار التشغيل فقط. التفاصيل في قسم "Force field".
+> **Before any publishable result:** the calcite Lennard-Jones parameters in [`ff/calcite.json`](ff/calcite.json) are placeholders, not a published set, and the file is marked `"verified": false`. `build_system.py` only runs if you either enter the published values and set the flag to `true`, or pass `--accept-unverified-calcite` (smoke tests only). Details are in the "Force field" section.
 
 ---
 
-## 1. النظام المُحاكى
+## 1. Simulated system
 
 ```
  z ↑
-   |  calcite slab (periodic image)   ← السطح المقابل للمسام
-   |  brine film (NaCl + H2O)          ← طبقة ماء على جدار water-wet
-   |  H2 + cushion gas (+ CH4 حيوي)    ← الطور الغازي في وسط المسام
+   |  calcite slab (periodic image)   ← facing pore wall
+   |  brine film (NaCl + H2O)          ← water film on a water-wet wall
+   |  H2 + cushion gas (+ biogenic CH4) ← gas phase in the pore centre
    |  brine film
    |  calcite (10-14) slab, rigid     ← z = 0
 ```
 
-- **Calcite (10-14):** وهو المستوى الأكثر استقراراً وانتشاراً في بلورات calcite. البناء من البنية البلورية R-3c (Effenberger et al., 1981). خلية السطح 4.99 × 8.10 Å، والمسافة بين الطبقات 3.035 Å. تحقّقتُ من الهندسة: Ca–O = 2.36 Å، و Ca السطحي خماسي التناسق مقابل سداسي في الداخل.
-- **Periodic في الاتجاهات الثلاثة:** صورة الشريحة الدورية تغلق المسام، فلا يحتاج النموذج إلى wall potential ولا إلى slab correction للـ Ewald.
-- **كمية الغاز** تُحسب من كثافة الخليط عند (T, P) باستخدام CoolProp (معادلة HEOS، وعند فشلها Peng-Robinson).
-- **Brine:** ماء SPC/E مع NaCl بالـ molality المطلوبة. الكثافة من الماء النقي، والأيونات تأخذ مواقع جزيئات ماء.
+- **Calcite (10-14):** the most stable and most commonly exposed calcite cleavage plane. It is built from the R-3c crystal structure (Effenberger et al., 1981). The surface cell is 4.99 × 8.10 Å and the interlayer spacing is 3.035 Å. Geometry checks: Ca–O = 2.36 Å, and surface Ca is 5-coordinated against 6 in the bulk.
+- **Periodic in all three directions:** the slab's periodic image closes the pore, so no wall potential or Ewald slab correction is needed.
+- **Gas loading** comes from the mixture density at (T, P), computed with CoolProp (HEOS, falling back to Peng-Robinson).
+- **Brine:** SPC/E water with NaCl at the requested molality. The water count uses pure-water density, and the ions take the sites of water molecules.
 
-## 2. تمثيل البكتيريا: ما يمكن وما لا يمكن
+## 2. How bacteria are represented: what is and is not possible
 
-**حقيقة أساسية:** لا يمكن محاكاة خلية بكتيرية بـ all-atom MD. حجم الخلية نحو 1 µm، ونشاطها الأيضي يمتد ساعات إلى أيام. أما MD فيغطي صندوقاً بأبعاد نانومترات ولمدة nanoseconds، أي فرقاً بنحو 10 إلى 15 رتبة عشرية في الزمن.
+**Basic fact:** a bacterial cell cannot be simulated with all-atom MD. A cell is about 1 µm across and its metabolism runs over hours to days. MD covers a box a few nanometres wide for nanoseconds, a gap of roughly 10–15 orders of magnitude in time.
 
-لذلك يمثَّل تأثير البكتيريا بنواتج أيضها الكيميائية، وهذه الطريقة يمكن الدفاع عنها علمياً:
+The bacterial effect is therefore represented chemically, through its metabolic products, which is a defensible approach:
 
-| المسار | التفاعل | التطبيق هنا |
+| Pathway | Reaction | Status here |
 |---|---|---|
 | Hydrogenotrophic methanogenesis | 4 H2 + CO2 → CH4 + 2 H2O | ✅ `--bio methanogenesis --bio-conversion f` |
-| Sulfate reduction (SRB) | 4 H2 + SO4²⁻ + 2H⁺ → H2S + 4 H2O | ❌ غير مطبَّق: يحتاج نموذج H2S و SO4²⁻ موثَّقاً متوافقاً مع SPC/E |
-| Homoacetogenesis | 4 H2 + 2 CO2 → CH3COOH + 2 H2O | ❌ غير مطبَّق: يحتاج بارامترات acetate |
-| Biofilm / EPS على السطح | تغيير wettability | ❌ يحتاج topology لسكريات متعددة (CHARMM36 / GLYCAM عبر CHARMM-GUI) |
+| Sulfate reduction (SRB) | 4 H2 + SO4²⁻ + 2H⁺ → H2S + 4 H2O | ❌ not implemented: needs a validated H2S and SO4²⁻ model compatible with SPC/E |
+| Homoacetogenesis | 4 H2 + 2 CO2 → CH3COOH + 2 H2O | ❌ not implemented: needs acetate parameters |
+| Biofilm / EPS on the surface | changes wettability | ❌ needs a polysaccharide topology (CHARMM36 / GLYCAM via CHARMM-GUI) |
 
-في مسار methanogenesis يُحذف من H2 الكسرُ `f`، ويُستهلك CO2 من الـ cushion gas إن وُجد، ويضاف CH4 والماء الناتج. انخفاض عدد مولات الغاز (5 → 1) يعني هبوط الضغط، وهذا هو فقد الهيدروجين الحيوي المعروف حقلياً. إن لم يكن الـ cushion هو CO2، يُفترض أن مصدر الكربون هو HCO3⁻ من الكربونات، ولا يُحذف صراحةً (يُسجَّل في `system.json`).
+In the methanogenesis scenario, a fraction `f` of the H2 is removed. CO2 is taken from the cushion gas if present, and the produced CH4 and water are added. The drop in gas moles (5 → 1) lowers the pressure, which is the biogenic hydrogen loss seen in the field. If the cushion gas is not CO2, the carbon source is assumed to be HCO3⁻ from the carbonate and is not removed explicitly; this is recorded in `system.json`.
 
-## 3. Force field (وحدات `real`، و Lorentz-Berthelot للتفاعلات المتقاطعة)
+## 3. Force field (`real` units, Lorentz-Berthelot cross terms)
 
-| المكوّن | النموذج | المرجع | الثقة |
+| Component | Model | Reference | Confidence |
 |---|---|---|---|
-| Water | SPC/E، صلب (SHAKE) | Berendsen, Grigera & Straatsma, *J. Phys. Chem.* 91 (1987) 6269 | عالية |
-| Na⁺, Cl⁻ | Joung-Cheatham (SPC/E) | Joung & Cheatham, *J. Phys. Chem. B* 112 (2008) 9020 | عالية |
-| H2 | LJ أحادي الموقع، ε/k = 34.2 K، σ = 2.96 Å | Buch, *J. Chem. Phys.* 100 (1994) 7610 | عالية للقيم، مع حدود النموذج أدناه |
-| CH4 | TraPPE-UA | Martin & Siepmann, *J. Phys. Chem. B* 102 (1998) 2569 | عالية |
-| CO2, N2 | TraPPE، ثلاثي المواقع، صلب | Potoff & Siepmann, *AIChE J.* 47 (2001) 1676 | عالية |
-| Calcite | **placeholder** | الشحنات (Ca +2، C +1.123282، O −1.041094) من ذاكرتي لنموذج Xiao, Edwards & Gräter, *J. Phys. Chem. C* 115 (2011) 20067. **لم أتحقق منها من المصدر.** قيم LJ عامة بأسلوب CHARMM وليست من Xiao. | **منخفضة: يجب التحقق** |
+| Water | SPC/E, rigid (SHAKE) | Berendsen, Grigera & Straatsma, *J. Phys. Chem.* 91 (1987) 6269 | high |
+| Na⁺, Cl⁻ | Joung-Cheatham (SPC/E) | Joung & Cheatham, *J. Phys. Chem. B* 112 (2008) 9020 | high |
+| H2 | single-site LJ, ε/k = 34.2 K, σ = 2.96 Å | Buch, *J. Chem. Phys.* 100 (1994) 7610 | high for the values; see model limits below |
+| CH4 | TraPPE-UA | Martin & Siepmann, *J. Phys. Chem. B* 102 (1998) 2569 | high |
+| CO2, N2 | TraPPE, 3-site, rigid | Potoff & Siepmann, *AIChE J.* 47 (2001) 1676 | high |
+| Calcite | **placeholder** | Charges (Ca +2, C +1.123282, O −1.041094) recalled from memory as those of Xiao, Edwards & Gräter, *J. Phys. Chem. C* 115 (2011) 20067. **Not checked against the source.** The LJ values are generic CHARMM-like numbers, not Xiao's. | **low: must be verified** |
 
-**قبل الإنتاج:** أدخل قيم ε و σ (والشحنات إن اختلفت) من الجدول الأصلي في الورقة إلى `ff/calcite.json`، ثم اجعل `"verified": true`. البديل الشائع هو نموذج Raiteri et al., *J. Phys. Chem. C* 114 (2010) 5997، لكنه Buckingham ويحتاج `pair_style hybrid/overlay`، والقالب الحالي لا يدعمه كما هو.
+**Before production:** copy ε and σ (and the charges, if they differ) from the table in the original paper into `ff/calcite.json`, then set `"verified": true`. A common alternative is Raiteri et al., *J. Phys. Chem. C* 114 (2010) 5997, but it uses Buckingham terms and needs `pair_style hybrid/overlay`, which this template does not support as is.
 
-## 4. التشغيل
+## 4. Running
 
 ```bash
-# المتطلبات
-conda install -c conda-forge lammps   # يحتاج حزم MOLECULE و KSPACE و RIGID
+# Requirements
+conda install -c conda-forge lammps   # needs the MOLECULE, KSPACE and RIGID packages
 pip install numpy CoolProp matplotlib
 
 cd uhs-md
-# 1) بناء النظام: CO2 كـ cushion بنسبة 30%، 60 °C، 10 MPa، 1 mol/kg NaCl، تحويل حيوي 10%
+# 1) Build: 30% CO2 cushion, 60 °C, 10 MPa, 1 mol/kg NaCl, 10% biogenic conversion
 python3 build_system.py --cushion CO2 --x-cushion 0.3 --T 333.15 --P 10e6 \
         --molality 1.0 --bio methanogenesis --bio-conversion 0.10 --out runs/co2_bio
 
-# 2) التشغيل (0.5 ns موازنة ثم 2 ns إنتاج افتراضياً)
+# 2) Run (default: 0.5 ns equilibration, then 2 ns production)
 cd runs/co2_bio && mpirun -np 8 lmp -in ../../in.uhs.lmp && cd ../..
 
-# 3) التحليل
+# 3) Analyse
 python3 analyze.py runs/co2_bio
 
-# مصفوفة السيناريوهات كاملة: 3 غازات × 3 ملوحات × (مع/بدون بكتيريا)
+# Full scenario matrix: 3 gases × 3 salinities × (with/without bacteria)
 NP=8 LMP=lmp ./run_matrix.sh
 ```
 
-خيارات البناء الأساسية: `--pore` (عرض المسام بـ Å)، و `--water-film` (سماكة الـ brine على كل جدار، و 0 تعني مسام جافة)، و `--nx --ny --layers` (حجم الشريحة)، و `--seed`.
+Main build options: `--pore` (pore width, Å), `--water-film` (brine thickness on each wall; 0 gives a dry pore), `--nx --ny --layers` (slab size) and `--seed`.
 
-**بروتوكول `in.uhs.lmp`:** minimization، ثم 5 ps عند 0.5 fs، ثم NVT (Nosé-Hoover) عند 1 fs، ثم الإنتاج. التفاصيل:
-- الماء مقيَّد بـ SHAKE.
-- CO2 و N2 أجسام صلبة عبر `rigid/nvt/small`.
-- شريحة calcite مجمَّدة.
-- الـ Coulomb طويل المدى بـ PPPM بدقة 10⁻⁵.
+**Protocol in `in.uhs.lmp`:** energy minimisation, then 5 ps at 0.5 fs, then NVT (Nosé-Hoover) at 1 fs, then production. Details:
+- Water is constrained with SHAKE.
+- CO2 and N2 are rigid bodies (`rigid/nvt/small`).
+- The calcite slab is frozen.
+- Long-range Coulomb uses PPPM with 10⁻⁵ accuracy.
 
-اختبار التشغيل: على نواة واحدة ونظام من نحو 2900 ذرة، تبلغ السرعة نحو 4 ns/day.
+Smoke-test speed: about 4 ns/day on one core for a system of about 2,900 atoms.
 
-## 5. المخرجات وما تعنيه
+## 5. Outputs and what they mean
 
-| الملف / المفتاح في `results.json` | المعنى الفيزيائي |
+| File / key in `results.json` | Physical meaning |
 |---|---|
-| `prof_*.dat`، `profiles.png` | توزيع كثافة كل نوع على z، ومنه طبقات الماء على calcite وتراكم الغاز عند السطح البيني |
-| `x_H2_brine`، `K_H2_liq_over_gas` | ذوبانية H2 في الـ brine، ومعامل التوزيع بين السائل والغاز. هذا مصدر فقد الهيدروجين بالذوبان، وتأثير الملوحة هنا هو salting-out |
-| `gas_centre_mole_fractions` | تركيب الغاز في وسط المسام، ومنه مدى اختلاط H2 بالـ cushion gas. هذا يحدد نقاوة الهيدروجين المسترجَع |
-| `H2_interface_enrichment` | تراكم H2 عند سطح غاز-brine مقارنة بالغاز الحر |
-| `H2_within_5A_of_surface_per_nm2` | امتزاز H2 مباشرة على calcite. له معنى في المسام الجافة فقط (`--water-film 0`) |
-| `D_H2_lateral_m2_s` | معامل الانتشار الجانبي لـ H2 تحت الحصر |
-| `energy_h2.dat` | طاقة تفاعل H2 مع calcite ومع الماء |
-| `rdf.dat` | RDF لأزواج H2 مع Ow و Oc و Ca و CH4 و C(CO2)، ثم Ow مع Oc |
-| `P_gas_Pzz_MPa` | الضغط العمودي في منطقة الغاز. **قارنه بالضغط المستهدف** |
+| `prof_*.dat`, `profiles.png` | Density profile of each species along z: water layering on calcite and gas accumulation at the interface |
+| `x_H2_brine`, `K_H2_liq_over_gas` | H2 solubility in the brine and the liquid/gas partition coefficient. This is the dissolution loss of hydrogen; salinity acts through salting-out |
+| `gas_centre_mole_fractions` | Gas composition in the pore centre, i.e. how far H2 mixes with the cushion gas. This sets the purity of recovered hydrogen |
+| `H2_interface_enrichment` | H2 accumulation at the gas–brine interface relative to the free gas |
+| `H2_within_5A_of_surface_per_nm2` | Direct H2 adsorption on calcite. Meaningful only for dry pores (`--water-film 0`) |
+| `D_H2_lateral_m2_s` | Lateral H2 self-diffusion coefficient under confinement |
+| `energy_h2.dat` | H2 interaction energy with calcite and with water |
+| `rdf.dat` | RDFs of H2 with Ow, Oc, Ca, CH4 and C(CO2), and of Ow with Oc |
+| `P_gas_Pzz_MPa` | Normal pressure in the gas region. **Compare it with the target pressure** |
 
-## 6. الحدود (اقرأها قبل تفسير النتائج)
+## 6. Limitations (read before interpreting results)
 
-1. **الضغط غير متحكَّم به مباشرة.** يُحدَّد عدد جزيئات الغاز من كثافة الغاز الحر، لكن جزءاً منه يذوب أو يمتز فينخفض الضغط الفعلي. افحص `P_gas_Pzz_MPa` بعد ns واحد على الأقل، ثم عدّل `--P` وأعد البناء حتى يتطابق. منطقة الغاز صغيرة، لذا تقلبات Pzz كبيرة وتحتاج متوسطاً طويلاً.
-2. **calcite صلب** ولا ذوبان فيه، وبلا كيمياء تفاعلية: لا pH، ولا توازن CO2/HCO3⁻/CO3²⁻، ولا ترسيب. ذوبان CO2 الفعلي يحمّض الـ brine ويذيب الكربونات، وهذا يحتاج ReaxFF أو نماذج geochemical (مثل PHREEQC) خارج نطاق هذا النموذج.
-3. **H2 أحادي الموقع وكلاسيكي:** التأثيرات الكمية لـ H2 صغيرة عند 333 K لكنها غير صفرية، ولا quadrupole في هذا النموذج.
-4. **التفاعلات المتقاطعة** (مثل H2–calcite و CO2–calcite) تأتي من Lorentz-Berthelot وغير معايرة على بيانات تجريبية.
-5. **الحجم والزمن:** الأنظمة الافتراضية صغيرة (≈ 3000 ذرة) وزمن الإنتاج 2 ns. للنشر: كبّر `--nx --ny`، وأطل الإنتاج، وكرّر بثلاث seeds مختلفة على الأقل، وأبلغ عن الانحراف المعياري.
-6. **الملح NaCl فقط.** formation water في الكربونات غني بـ Ca²⁺ و Mg²⁺ و SO4²⁻، وإضافتها تحتاج بارامترات متوافقة مع SPC/E.
-7. **تحذيرات LAMMPS المتوقعة:** التحذير `Neighbor exclusions used with KSpace` ناتج عن استبعاد أزواج calcite–calcite المجمّدة، ويضيف إزاحة ثابتة في الطاقة لا تؤثر على القوى بين الموائع.
+1. **Pressure is not controlled directly.** The number of gas molecules is set from the free-gas density, but part of the gas dissolves or adsorbs, so the actual pressure falls. Check `P_gas_Pzz_MPa` after at least 1 ns, then adjust `--P` and rebuild until it matches. The gas region is small, so Pzz fluctuates strongly and needs long averaging.
+2. **Calcite is rigid**, with no dissolution and no reactive chemistry: no pH, no CO2/HCO3⁻/CO3²⁻ equilibrium, no precipitation. Real CO2 dissolution acidifies the brine and dissolves carbonate; capturing that needs ReaxFF or geochemical models (e.g. PHREEQC), outside the scope of this model.
+3. **H2 is single-site and classical:** quantum effects for H2 are small at 333 K but not zero, and this model has no quadrupole.
+4. **Cross interactions** (e.g. H2–calcite, CO2–calcite) come from Lorentz-Berthelot and are not fitted to experimental data.
+5. **Size and time:** the default systems are small (≈ 3,000 atoms) and production is 2 ns. For publication, enlarge `--nx --ny`, run longer, repeat with at least three different seeds and report the standard deviation.
+6. **NaCl only.** Carbonate formation water is rich in Ca²⁺, Mg²⁺ and SO4²⁻; adding them needs SPC/E-compatible parameters.
+7. **Expected LAMMPS warning:** `Neighbor exclusions used with KSpace` comes from excluding the frozen calcite–calcite pairs. It adds a constant energy offset and does not affect the fluid forces.
 
-## 7. التحقق المقترح (validation) قبل استخدام النتائج
+## 7. Suggested validation before using results
 
-- **ذوبانية H2 في الماء أو الـ brine:** قارن `x_H2_brine` في نظام بلا calcite وبلا cushion مع بيانات Chabab et al., *Int. J. Hydrogen Energy* 45 (2020) 32206. ثقتي في هذا المرجع متوسطة إلى عالية، فتحقق من رقم المجلد والصفحة.
-- **IFT بين H2 والماء:** Chow et al., *Fluid Phase Equilib.* 475 (2018) 37. الثقة متوسطة.
-- **كثافة الغاز في وسط المسام** مقابل CoolProp عند الضغط المقاس.
-- **calcite–water:** كثافة الطبقات الأولى للماء مقابل بيانات X-ray reflectivity (Fenter et al.)، كتحقق نوعي لبارامترات calcite بعد إدخالها.
+- **H2 solubility in water or brine:** compare `x_H2_brine` from a system without calcite and without cushion gas against Chabab et al., *Int. J. Hydrogen Energy* 45 (2020) 32206. Confidence in this reference is medium-to-high; check the volume and page numbers.
+- **H2–water IFT:** Chow et al., *Fluid Phase Equilib.* 475 (2018) 37. Confidence: medium.
+- **Gas density in the pore centre** against CoolProp at the measured pressure.
+- **Calcite–water:** density of the first water layers against X-ray reflectivity data (Fenter et al.), as a qualitative check of the calcite parameters once entered.
 
-## 8. الملفات
+## 8. Files
 
-| الملف | الوظيفة |
+| File | Purpose |
 |---|---|
-| `build_system.py` | يبني `system.data` و `forcefield.lmp` و `system.lmp` و `system.json` |
-| `ff/params.py` | بارامترات الماء والأيونات والغازات (موثَّقة) |
-| `ff/calcite.json` | بارامترات calcite (**تحتاج تحققاً**) |
-| `in.uhs.lmp` | مدخل LAMMPS: minimization، ثم equilibration، ثم production وجمع المخرجات |
-| `analyze.py` | التحليل وإنتاج `results.json` و `profiles.png` |
-| `run_matrix.sh` | مصفوفة السيناريوهات |
-| `tests/test_build.py` | اختبارات البناء (حيادية الشحنة، سلامة الجزيئات، التداخل، stoichiometry) وتعمل في CI |
+| `build_system.py` | Builds `system.data`, `forcefield.lmp`, `system.lmp` and `system.json` |
+| `ff/params.py` | Water, ion and gas parameters (documented) |
+| `ff/calcite.json` | Calcite parameters (**need verification**) |
+| `in.uhs.lmp` | LAMMPS input: minimisation, equilibration, production and output collection |
+| `analyze.py` | Analysis; writes `results.json` and `profiles.png` |
+| `run_matrix.sh` | Scenario matrix |
+| `tests/test_build.py` | Build tests (charge neutrality, molecule integrity, overlaps, stoichiometry); run in CI |

@@ -17,9 +17,9 @@
 
 https://github.com/25im0024-lab/waled/commit/be429ce5f3b571389ec05952bc00c307bfe19e9d
 
-## UHS-MD: محاكاة تخزين الهيدروجين في الكربونات (LAMMPS)
+## UHS-MD: Hydrogen Storage in Carbonates (LAMMPS)
 
-محاكاة Molecular Dynamics لـ H2 مع cushion gas (CO2 أو CH4 أو N2) داخل nanopore من calcite، بحضور brine وتأثير البكتيريا (methanogenesis): [`uhs-md/`](uhs-md/README.md).
+Molecular Dynamics of H2 with a cushion gas (CO2, CH4 or N2) in a calcite nanopore, with brine and the effect of bacteria (methanogenesis): [`uhs-md/`](uhs-md/README.md).
 
 ## IELTS Coach
 
