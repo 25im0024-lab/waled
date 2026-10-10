@@ -1,0 +1,47 @@
+{
+  "conditions": {
+    "T_K": 333.15,
+    "P_Pa": 10000000.0,
+    "molality_NaCl": 1.0
+  },
+  "gas_feed_mole_fractions": {
+    "H2": 0.7,
+    "CO2": 0.3
+  },
+  "eos_backend": "HEOS",
+  "gas_molar_density_mol_m3": 3580.5455101373536,
+  "bio": {
+    "mode": "methanogenesis",
+    "H2_consumed": 4,
+    "CH4_produced": 1,
+    "H2O_produced": 2,
+    "CO2_consumed": 1,
+    "CO2_source": "cushion gas"
+  },
+  "counts": {
+    "H2O": 618,
+    "Na": 12,
+    "Cl": 12,
+    "H2": 46,
+    "CH4": 1,
+    "CO2": 20,
+    "N2": 0
+  },
+  "box_A": [
+    29.937599999999996,
+    32.38191591119957,
+    70.66691412550014
+  ],
+  "slab_thickness_A": 10.666914125500135,
+  "regions_A": {
+    "surface_top": 10.666914125500135,
+    "surface_bottom_image": 70.66691412550014,
+    "water_film": 10.0,
+    "gas_lo": 22.166914125500135,
+    "gas_hi": 59.16691412550014
+  },
+  "calcite_ff": "calcite: Xiao 2011 charges + Li 2021 LJ (Xiao-based)",
+  "calcite_verified": true,
+  "natoms": 2945,
+  "seed": 2026
+}

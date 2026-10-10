@@ -95,7 +95,7 @@ def main():
     if os.path.exists(msd_path):
         m = read_table(msd_path)
         t = m[:, 0] - m[0, 0]  # fs (timestep 1 fs)
-        half = t > 0.5 * t[-1]
+        half = (t >= 0.2 * t[-1]) & (t <= 0.8 * t[-1])  # same window as make_figures.py
         if half.sum() > 3:
             s_tot = np.polyfit(t[half], m[half, 4], 1)[0]
             s_xy = np.polyfit(t[half], m[half, 1] + m[half, 2], 1)[0]
