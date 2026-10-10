@@ -275,7 +275,7 @@ footer { margin-top: 24px; border-top: 1px solid var(--line); padding-top: 10px;
 
   <div class="tabpanel" role="tabpanel" id="tab-lammps" aria-labelledby="t-lammps" hidden>
     <h3>Run the same scenario in 3D with LAMMPS</h3>
-    <p>The full model (SPC/E water, Joung–Cheatham NaCl, TraPPE gases, calcite (10-14) slab, PPPM electrostatics) lives in this repository. The command below rebuilds your current settings as a LAMMPS system:</p>
+    <p>The full model (TIP4P/2005 or SPC/E water, Smith–Dang or Joung–Cheatham NaCl, TraPPE gases, calcite (10-14) slab, PPPM electrostatics) lives in this repository. The command below rebuilds your current settings as a LAMMPS system:</p>
     <pre id="cmd"></pre>
     <div class="row"><button class="btn" id="copyCmd">Copy commands</button>
       <a class="btn" href="https://github.com/25im0024-lab/waled/archive/refs/heads/main.zip">Download repository (ZIP)</a>
@@ -1548,7 +1548,7 @@ pip install numpy CoolProp matplotlib</pre>
       'git clone https://github.com/25im0024-lab/waled.git && cd waled/uhs-md',
       `python3 build_system.py --cushion ${p.cushion} --x-cushion ${p.xCushion} \\`,
       `    --T ${(+p.T).toFixed(2)} --P ${(p.P_MPa * 1e6).toExponential(2).replace('+', '')} --molality ${p.molality} \\`,
-      `    --water-film ${p.film} --pore ${Math.max(p.pore, 2 * p.film + 10)} \\`,
+      `    --water-film ${p.film} --pore ${Math.max(p.pore, 2 * p.film + 10)} --water-model tip4p2005 \\`,
       p.bio ? `    --bio methanogenesis --bio-conversion 0.10 --out runs/${out}` : `    --out runs/${out}`,
       `cd runs/${out} && mpirun -np 8 lmp -in ../../in.uhs.lmp && cd ../..`,
       `python3 analyze.py runs/${out}`,

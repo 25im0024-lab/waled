@@ -204,9 +204,10 @@ def pick_sites(Lx, Ly, zlo, zhi, n, spacing, rng):
     return g[rng.choice(len(g), n, replace=False)]
 
 
-def water_template():
-    th = math.radians(P.GEOM["water_HOH"] / 2)
-    r = P.GEOM["water_OH"]
+def water_template(model="spce"):
+    w = P.WATER_MODELS[model]
+    th = math.radians(w["HOH"] / 2)
+    r = w["OH"]
     return [("Ow", np.zeros(3)), ("Hw", np.array([r*math.sin(th), 0, r*math.cos(th)])),
             ("Hw", np.array([-r*math.sin(th), 0, r*math.cos(th)]))]
 
@@ -297,7 +298,8 @@ def build(args):
     tid = {n: i + 1 for i, n in enumerate(P.TYPE_ORDER)}
     bid = {n: i + 1 for i, n in enumerate(P.BOND_ORDER)}
     aid = {n: i + 1 for i, n in enumerate(P.ANGLE_ORDER)}
-    types = P.all_types(calcite)
+    types = P.all_types(calcite, args.water_model, args.ion_model)
+    templates = dict(TEMPLATES, H2O=water_template(args.water_model))
     atoms, bonds, angles = [], [], []
 
     def add_atom(name, xyz, mol):
@@ -323,7 +325,7 @@ def build(args):
     for sp, centre in molecules:
         mol += 1
         Rm = random_rotation(rng)
-        idx = [add_atom(n, centre + Rm @ r, mol) for n, r in TEMPLATES[sp]]
+        idx = [add_atom(n, centre + Rm @ r, mol) for n, r in templates[sp]]
         if sp == "H2O":
             bonds += [(bid["Ow-Hw"], idx[0], idx[1]), (bid["Ow-Hw"], idx[0], idx[2])]
             angles.append((aid["Hw-Ow-Hw"], idx[1], idx[0], idx[2]))
@@ -340,7 +342,8 @@ def build(args):
     os.makedirs(args.out, exist_ok=True)
     write_data(os.path.join(args.out, "system.data"), atoms, bonds, angles,
                (Lx, Ly, Lz), types)
-    P.write_forcefield(os.path.join(args.out, "forcefield.lmp"), calcite)
+    P.write_forcefield(os.path.join(args.out, "forcefield.lmp"), calcite,
+                       water=args.water_model, ions=args.ion_model)
 
     n_species = {sp: sum(1 for s, _ in molecules if s == sp) for sp in
                  ("H2O", "Na", "Cl", "H2", "CH4", "CO2", "N2")}
@@ -353,6 +356,7 @@ def build(args):
         "regions_A": {"surface_top": thick, "surface_bottom_image": Lz,
                       "water_film": tw, "gas_lo": gas_lo, "gas_hi": gas_hi},
         "calcite_ff": calcite["name"], "calcite_verified": calcite["verified"],
+        "water_model": args.water_model, "ion_model": args.ion_model,
         "natoms": len(atoms), "seed": args.seed,
     }
     with open(os.path.join(args.out, "system.json"), "w") as f:
@@ -364,6 +368,7 @@ def build(args):
         f.write(f"variable gas_hi  equal {gas_hi - 3.0:.3f}\n")
         f.write(f"variable n_rigid equal {n_species['CO2'] + n_species['N2']}\n")
         f.write(f"variable n_h2    equal {n_species['H2']}\n")
+        f.write(f"variable tip4p   equal {1 if P.WATER_MODELS[args.water_model]['qdist'] else 0}\n")
         for k, v in (("n_water", "H2O"), ("n_ch4", "CH4"), ("n_co2", "CO2"), ("n_n2", "N2")):
             f.write(f"variable {k:<7s} equal {n_species[v]}\n")
     return meta
@@ -416,6 +421,10 @@ def parse(argv=None):
     p.add_argument("--bio", choices=["none", "methanogenesis"], default="none")
     p.add_argument("--bio-conversion", type=float, default=0.10,
                    help="fraction of H2 consumed by methanogens (0-1)")
+    p.add_argument("--water-model", choices=sorted(P.WATER_MODELS), default="spce",
+                   help="spce (default) or tip4p2005 (closest to measured H2-brine IFT, Omrani et al. 2023)")
+    p.add_argument("--ion-model", choices=sorted(P.ION_MODELS), default=None,
+                   help="jc (Joung-Cheatham) or sd (Smith-Dang); default jc with spce, sd with tip4p2005")
     p.add_argument("--calcite-ff", default=None, help="calcite parameter JSON (default ff/calcite.json)")
     p.add_argument("--accept-unverified-calcite", action="store_true")
     p.add_argument("--seed", type=int, default=2026)
@@ -423,6 +432,8 @@ def parse(argv=None):
     a = p.parse_args(argv)
     if not 0 <= a.x_cushion < 1:
         p.error("--x-cushion must be in [0, 1)")
+    if a.ion_model is None:
+        a.ion_model = "sd" if a.water_model == "tip4p2005" else "jc"
     if not 0 <= a.bio_conversion <= 1:
         p.error("--bio-conversion must be in [0, 1]")
     return a

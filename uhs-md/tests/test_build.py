@@ -84,6 +84,21 @@ check("methanogenesis mass balance",
       and m1["counts"]["H2O"] - m0["counts"]["H2O"] == b["H2O_produced"])
 run_case(["--cushion", "CO2", "--water-film", "0"])
 
+# TIP4P/2005 water with Smith-Dang ions
+with tempfile.TemporaryDirectory() as d:
+    m4 = B.build(B.parse(["--water-model", "tip4p2005", "--nx", "4", "--ny", "3", "--pore", "45", "--out", d]))
+    ff = open(os.path.join(d, "forcefield.lmp")).read()
+    check("tip4p2005 selects Smith-Dang ions by default", m4["ion_model"] == "sd")
+    check("tip4p2005 forcefield uses lj/cut/tip4p/long and pppm/tip4p",
+          "lj/cut/tip4p/long 4 5 1 1 0.1546" in ff and "pppm/tip4p" in ff)
+    box, at, bd = read_data(os.path.join(d, "system.data"))
+    check("tip4p2005 system neutral", abs(at[:, 3].sum()) < 1e-4)
+    unw = at[:, 4:7] + at[:, 7:10] * box
+    idx = {int(i): k for k, i in enumerate(at[:, 0])}
+    oh = [np.linalg.norm(unw[idx[b[2]]] - unw[idx[b[3]]]) for b in bd if b[1] == 1]
+    check("tip4p2005 O-H bond 0.9572 A", abs(np.mean(oh) - 0.9572) < 1e-3, f"{np.mean(oh):.4f}")
+    check("system.lmp flags tip4p", "variable tip4p   equal 1" in open(os.path.join(d, "system.lmp")).read())
+
 # the default calcite set is the documented literature set
 import json  # noqa: E402
 cal = json.load(open(os.path.join(os.path.dirname(HERE), "ff", "calcite.json")))
