@@ -116,6 +116,33 @@ Smoke-test speed: about 4 ns/day on one core for a system of about 2,900 atoms.
 | `rdf.dat` | RDFs of H2 with Ow, Oc, Ca, CH4 and C(CO2), and of Ow with Oc |
 | `P_gas_Pzz_MPa` | Normal pressure in the gas region. **Compare it with the target pressure** |
 
+## 5b. Publication figures
+
+```bash
+python3 analyze.py runs/co2_bio            # results.json
+python3 make_figures.py runs/co2_bio       # -> runs/co2_bio/figures/
+# several seeds of the same case: mean +/- std across runs
+python3 make_figures.py runs/co2_bio_s1 runs/co2_bio_s2 runs/co2_bio_s3 --out figures/co2_bio
+```
+
+Each figure is written as PNG (300 dpi), as vector PDF, and as a CSV of the plotted data, so it can be replotted in Origin or Excel.
+
+| Figure | Content |
+|---|---|
+| `fig_density` | Number-density profiles across the pore: water and ions (top panel), H2 and gases (bottom panel). Shaded bands are errors; calcite and brine regions are marked. |
+| `fig_mass_density` | Total fluid mass density (g/cm³) across the pore |
+| `fig_msd` | MSD of H2, water and each gas, parallel (xy) and normal (z) to the walls, log–log |
+| `fig_rdf` | g(r) of H2 with water O, carbonate O, Ca, CH4 and CO2, and water O with carbonate O (box-normalised, see note below) |
+| `fig_pressure` | Pore pressure Pzz in the bulk-gas region vs time, with the target |
+| `fig_energy` | H2–calcite and H2–water interaction energies vs time |
+| `table_summary.csv/.md` | D (parallel to walls), x(H2) in brine, liquid/gas ratio K, pore-centre gas composition, interface enrichment, pore pressure |
+
+**Notes for a paper:**
+- **Error bars:** with one run they are block-averaging errors (5 blocks of production); with several seeds they are the standard deviation across runs. Use at least 3 seeds.
+- **Diffusion:** D is reported only parallel to the walls (D = slope/4 over 20–80 % of the MSD). Normal to the walls the MSD plateaus because the pore is confined, so no D exists there.
+- **RDFs:** in a slit pore, g(r) is normalised by the whole-box density and does not tend to 1. Report peak positions (and coordination numbers), not absolute heights.
+- **Run length:** the production run must be long enough for MSD to be linear over the fit window. Several ns are needed for water and dissolved H2.
+
 ## 6. Limitations (read before interpreting results)
 
 1. **Pressure is not controlled directly.** The number of gas molecules is set from the free-gas density, but part of the gas dissolves or adsorbs, so the actual pressure falls. Check `P_gas_Pzz_MPa` after at least 1 ns, then adjust `--P` and rebuild until it matches. The gas region is small, so Pzz fluctuates strongly and needs long averaging.
@@ -142,6 +169,7 @@ Smoke-test speed: about 4 ns/day on one core for a system of about 2,900 atoms.
 | `ff/calcite.json` | Calcite parameters (**need verification**) |
 | `in.uhs.lmp` | LAMMPS input: minimisation, equilibration, production and output collection |
 | `analyze.py` | Analysis; writes `results.json` and `profiles.png` |
+| `make_figures.py` | Publication figures (PNG/PDF/CSV) and summary table, with error bars and multi-seed averaging |
 | `run_matrix.sh` | Scenario matrix |
 | `tests/test_build.py` | Build tests (charge neutrality, molecule integrity, overlaps, stoichiometry); run in CI |
 | `index.html`, `web/` | UHS Pore Lab, the in-browser 3D simulator and LAMMPS player (built page and its source/tests) |
