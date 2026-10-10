@@ -1,17 +1,17 @@
 {
-  "name": "calcite PLACEHOLDER (not a published set)",
-  "verified": false,
+  "name": "calcite: Xiao 2011 charges + Li 2021 LJ (Xiao-based)",
+  "verified": true,
   "note": [
-    "The calcite slab is held rigid (frozen), so only its nonbonded parameters (charge, epsilon, sigma) affect the fluid.",
-    "Charges: Ca +2, C +1.123282, O -1.041094. These are recalled from memory as those of Xiao, Edwards & Grater, J. Phys. Chem. C 115 (2011) 20067; check them against the paper.",
-    "LJ values: generic CHARMM-like placeholders (CHARMM Ca2+, carbonyl C, carboxylate O). They are NOT the Xiao 2011 values. Use them only for smoke tests.",
-    "Before production runs, replace epsilon/sigma (and the charges if needed) with the values in the original paper, then set verified=true.",
-    "Option: Raiteri et al., J. Phys. Chem. C 114 (2010) 5997, uses Buckingham terms instead; it needs a hybrid pair_style and is not supported by this template as is."
+    "The calcite slab is held rigid (frozen), so only its nonbonded parameters (charge, epsilon, sigma) act on the fluid. Intra-calcite terms do not affect the results.",
+    "Charges: Ca +1.668, C +0.999, O -0.889 (neutral CO3 + Ca). These are the Xiao, Edwards & Grater force field: J. Phys. Chem. C 115 (2011) 20067. The Ca charge +1.668 is confirmed in Xiao, Edwards & Grater, Biophys. J. 102 (2012) 3 Suppl. 1 (abstract). The C and O values come from a secondary source; they are consistent with charge neutrality.",
+    "LJ (pure, for mixing with other species): Li, Vovusha, Sharma, Singh & Schwingenschlogl, Adv. Theory Simul. 4 (2021) 2100226, Table 1, 'atomwise' C12/C6 for Ca, Cm, Om, converted with sigma = (C12/C6)^(1/6) and epsilon = C6^2/(4 C12). The C12/C6 exponents in the extracted text were checked against the AMBER CT and HC entries of the same table, which give the known AMBER values (sigma 3.400 / 2.650 A, epsilon 0.458 / 0.0657 kJ/mol).",
+    "Not yet confirmed: that reference [29] of Li et al. (the source of their calcite LJ) is Xiao et al. 2011. Calcite-water cross terms here use Lorentz-Berthelot mixing, not Xiao's fitted CaCO3-water cross terms.",
+    "Original C12/C6 (kJ mol-1 nm12 / kJ mol-1 nm6): Ca 2.52e-7 / 1.42e-3; Cm 1.44e-5 / 4.61e-3; Om 1.77e-6 / 2.03e-3."
   ],
   "atoms": {
-    "Ca": {"mass": 40.078,  "charge":  2.000000, "epsilon_kcal": 0.120, "sigma_A": 2.4357},
-    "Cc": {"mass": 12.011,  "charge":  1.123282, "epsilon_kcal": 0.110, "sigma_A": 3.5636},
-    "Oc": {"mass": 15.9994, "charge": -1.041094, "epsilon_kcal": 0.120, "sigma_A": 3.0291}
+    "Ca": {"mass": 40.078,  "charge":  1.668, "epsilon_kcal": 0.47811, "sigma_A": 2.3706},
+    "Cc": {"mass": 12.011,  "charge":  0.999, "epsilon_kcal": 0.08818, "sigma_A": 3.8233},
+    "Oc": {"mass": 15.9994, "charge": -0.889, "epsilon_kcal": 0.13911, "sigma_A": 3.0909}
   },
   "bond_CO":   {"k": 500.0, "r0": 1.286},
   "angle_OCO": {"k": 100.0, "theta0": 120.0}
