@@ -23,6 +23,8 @@ jobs:
         run: node fpso/tests/field-test.js
       - name: FPSO PVT correlations and Arps decline
         run: node fpso/tests/pvt-dca-test.js
+      - name: UHS Pore Lab engine (browser MD)
+        run: node uhs-md/web/tests/sim-test.js
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -35,4 +37,5 @@ jobs:
           node drillers-console/build.js
           node drillers-console/hydraulics/build.js
           node fpso/build.js
-          git diff --exit-code -- drillers-console/index.html drillers-console/hydraulics/index.html fpso/index.html
+          node uhs-md/web/build.js
+          git diff --exit-code -- drillers-console/index.html drillers-console/hydraulics/index.html fpso/index.html uhs-md/index.html

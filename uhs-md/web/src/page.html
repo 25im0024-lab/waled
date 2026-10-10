@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>UHS Pore Lab</title>
+<meta name="description" content="Interactive molecular dynamics of underground hydrogen storage: H2 with CO2, CH4 or N2 cushion gas, brine and methanogenic bacteria in a calcite (carbonate) nanopore. Runs in the browser.">
+<meta name="theme-color" content="#0b2340">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>UHS Pore Lab<small>Hydrogen storage in a carbonate nanopore: live molecular dynamics with cushion gas, brine and bacteria</small></h1>
+  <nav class="links">
+    <a class="btn" href="../">Home</a>
+    <a class="btn" href="https://github.com/25im0024-lab/waled/tree/main/uhs-md" rel="noopener">LAMMPS model</a>
+  </nav>
+</header>
+
+<p class="warn"><b>Teaching model.</b> This is a 2D coarse-grained simulation: each molecule is one Lennard-Jones site, water is a liquid-forming bead, and bacterial activity is sped up by many orders of magnitude. Use it for trends and intuition. For quantitative work, use the full 3D LAMMPS model (tab "Full LAMMPS model" below).</p>
+
+<div class="layout">
+  <aside class="panel" aria-label="Simulation settings">
+    <h2>Scenario</h2>
+    <div class="row" id="presets" style="margin:0 0 6px">
+      <button class="btn" data-preset="base">Base case</button>
+      <button class="btn" data-preset="bio">CO₂ + bacteria</button>
+      <button class="btn" data-preset="dry">Dry pore</button>
+      <button class="btn" data-preset="salt">High salinity</button>
+    </div>
+
+    <h3>Gas</h3>
+    <div class="ctl"><label for="cushion">Cushion gas</label><span></span>
+      <select id="cushion"><option value="CO2">CO₂</option><option value="CH4">CH₄</option><option value="N2">N₂</option></select></div>
+    <div class="ctl"><label for="xCushion">Cushion-gas fraction</label><output for="xCushion"></output>
+      <input type="range" id="xCushion" min="0" max="0.6" step="0.05"></div>
+    <div class="ctl"><label for="P_MPa">Pressure</label><output for="P_MPa"></output>
+      <input type="range" id="P_MPa" min="2" max="25" step="0.5"></div>
+    <div class="ctl"><label for="T">Temperature</label><output for="T"></output>
+      <input type="range" id="T" min="300" max="380" step="1"></div>
+
+    <h3>Rock &amp; formation water</h3>
+    <div class="ctl"><label for="molality">Salinity (NaCl)</label><output for="molality"></output>
+      <input type="range" id="molality" min="0" max="5" step="0.25"></div>
+    <div class="ctl"><label for="film">Brine film on each wall</label><output for="film"></output>
+      <input type="range" id="film" min="0" max="20" step="1"></div>
+    <div class="ctl"><label for="pore">Pore width</label><output for="pore"></output>
+      <input type="range" id="pore" min="40" max="120" step="5"></div>
+    <div class="ctl"><label for="wetting">Calcite wettability</label><output for="wetting"></output>
+      <input type="range" id="wetting" min="300" max="1600" step="50"></div>
+
+    <h3>Bacteria (methanogens)</h3>
+    <label class="check"><input type="checkbox" id="bio"> Microbes on the pore walls</label>
+    <div class="ctl"><label for="microbes">Number of microbes</label><output for="microbes"></output>
+      <input type="range" id="microbes" min="1" max="16" step="1"></div>
+    <div class="ctl"><label for="bioRate">Activity (time-accelerated)</label><output for="bioRate"></output>
+      <input type="range" id="bioRate" min="0.001" max="0.02" step="0.001"></div>
+    <label class="check"><input type="checkbox" id="carbonateCO2"> CO₂ supply from carbonate (HCO₃⁻)</label>
+    <p class="hint">4 H₂ + CO₂ → CH₄ + 2 H₂O. Each microbe takes up H₂ inside a 7 Å radius.</p>
+
+    <div class="row"><button class="btn pri" id="apply">Apply &amp; rebuild</button></div>
+
+    <h3>Storage cycle</h3>
+    <div class="seg" role="group" aria-label="Storage cycle">
+      <button data-cycle="off" aria-pressed="true">Hold</button>
+      <button data-cycle="inject" aria-pressed="false">Inject H₂</button>
+      <button data-cycle="withdraw" aria-pressed="false">Withdraw</button>
+    </div>
+    <p class="hint">Injection adds H₂ in the pore centre; withdrawal removes free gas there and records the purity of the produced stream.</p>
+  </aside>
+
+  <section class="stage" aria-label="Simulation">
+    <div class="panel">
+      <div class="viewbar">
+        <div class="row" style="margin:0">
+          <button class="btn pri" id="run">Pause</button>
+          <button class="btn" id="resetMsd" title="Restart the diffusion measurement">Reset MSD</button>
+          <label class="check" style="margin:0 6px">Speed <input type="range" id="speed" min="2" max="80" step="2" value="24" style="width:110px;accent-color:var(--cyan)"></label>
+        </div>
+        <span class="status" id="status"></span>
+      </div>
+      <canvas id="view" width="1200" height="600" role="img" aria-label="Live view of the pore: calcite walls at top and bottom, brine films, gas molecules and microbes"></canvas>
+      <div class="legend" id="legend"></div>
+    </div>
+
+    <div class="tiles" id="tiles"></div>
+
+    <div class="charts">
+      <div class="chart" id="cInv"><h4>H₂ inventory</h4><p class="sub">molecules vs time (ps)</p><canvas></canvas><div class="lg"></div><div class="tip"></div></div>
+      <div class="chart" id="cP"><h4>Reservoir-equivalent pressure</h4><p class="sub">MPa vs time (ps)</p><canvas></canvas><div class="lg"></div><div class="tip"></div></div>
+      <div class="chart" id="cProf"><h4>Gas density across the pore</h4><p class="sub">molecules / nm² vs distance from bottom wall (Å); shaded = brine</p><canvas></canvas><div class="lg"></div><div class="tip"></div></div>
+    </div>
+    <div class="row" style="margin:0"><button class="btn" id="csv">Download time series (CSV)</button></div>
+  </section>
+</div>
+
+<section class="tabs">
+  <div class="tablist" role="tablist">
+    <button role="tab" aria-selected="true" aria-controls="tab-read" id="t-read">How to read it</button>
+    <button role="tab" aria-selected="false" aria-controls="tab-model" id="t-model">Model &amp; limits</button>
+    <button role="tab" aria-selected="false" aria-controls="tab-lammps" id="t-lammps">Full LAMMPS model</button>
+  </div>
+
+  <div class="tabpanel" role="tabpanel" id="tab-read" aria-labelledby="t-read">
+    <h3>What you are looking at</h3>
+    <p>A slit pore in calcite (top and bottom walls). On a water-wet carbonate the walls carry a film of formation water (blue beads, grey beads = dissolved NaCl). Free gas fills the centre: H₂ (white) mixed with the cushion gas. Gas molecules drawn with a ring are dissolved in the brine. Green rods are methanogenic microbes attached to the walls; the dots on each rod show how much H₂ it has taken up.</p>
+    <h3>Experiments to try</h3>
+    <ul>
+      <li><b>Cushion-gas mixing.</b> Run "Withdraw" and watch the produced-gas purity. A CO₂ cushion stays mixed with H₂ in the pore. Raising the cushion fraction lowers the purity of recovered H₂.</li>
+      <li><b>Dissolution loss.</b> Compare the dissolved H₂ count with a CO₂ cushion. CO₂ dissolves far more readily than H₂, CH₄ or N₂, so it is lost to the brine first.</li>
+      <li><b>Salting-out.</b> Raise salinity from 0 to 4 mol/kg and rebuild: fewer gas molecules dissolve.</li>
+      <li><b>Microbial loss.</b> Switch on the microbes. Every 4 H₂ + 1 CO₂ become one CH₄. Five gas molecules turn into one, so the pressure drops and H₂ purity falls. With a CH₄ or N₂ cushion, untick "CO₂ supply from carbonate" and methanogenesis stalls once the H₂ store is full: carbon is the limiting reactant.</li>
+      <li><b>Wettability.</b> Lower the calcite wettability (less water-wet): the brine film thins and gas reaches the calcite surface.</li>
+    </ul>
+    <h3>Readouts</h3>
+    <table>
+      <tr><th>Readout</th><th>How it is computed</th></tr>
+      <tr><td>Reservoir-equivalent pressure</td><td>Free-gas areal density in the gas region, converted to 3D density (ρ₃ = ρ₂<sup>3/2</sup>) and passed through the Peng-Robinson equation of state with the current gas composition.</td></tr>
+      <tr><td>Dissolved H₂</td><td>H₂ molecules with 5 or more water/salt beads within 6 Å.</td></tr>
+      <tr><td>H₂ purity, pore centre</td><td>H₂ mole fraction among free gas in the middle third of the pore.</td></tr>
+      <tr><td>Produced-gas purity</td><td>H₂ fraction of all molecules removed during "Withdraw".</td></tr>
+      <tr><td>D(H₂), lateral</td><td>Mean-square displacement along the pore, D = ⟨Δx²⟩ / 2t, since the last "Reset MSD".</td></tr>
+    </table>
+  </div>
+
+  <div class="tabpanel" role="tabpanel" id="tab-model" aria-labelledby="t-model" hidden>
+    <h3>Physics</h3>
+    <ul>
+      <li><b>Dynamics:</b> velocity-Verlet, 2 fs time step, Berendsen thermostat (0.2 ps), cell lists, 10 Å cutoff. 2D, periodic along the pore.</li>
+      <li><b>Gas molecules (one LJ site each):</b> H₂ σ = 2.96 Å, ε/k = 34.2 K (Buch 1994); CH₄ 3.73 Å, 148 K (TraPPE-UA); CO₂ 3.941 Å, 195.2 K and N₂ 3.798 Å, 71.4 K (one-site viscosity values, Svehla 1962).</li>
+      <li><b>Brine:</b> coarse-grained liquid beads (σ = 3.1 Å, ε/k = 740 K). Each bead stands for one water molecule; one salt bead stands for one dissolved Na⁺Cl⁻ pair. The salt binds water more strongly and excludes gas, which produces salting-out.</li>
+      <li><b>Gas–water coupling:</b> Lorentz-Berthelot with k<sub>ij</sub> = 0.50 (H₂), 0.52 (N₂), 0.47 (CH₄) and 0.18 (CO₂). The smaller CO₂ value stands in for the quadrupole a one-site model lacks, and gives the observed solubility order CO₂ ≫ CH₄ &gt; N₂ ≈ H₂.</li>
+      <li><b>Calcite walls:</b> 10-4 Lennard-Jones wall potentials. "Wettability" sets the water–wall well depth.</li>
+      <li><b>Gas loading:</b> Peng-Robinson density at (T, P) for the feed composition, mapped to 2D as ρ₂ = ρ₃<sup>2/3</sup>.</li>
+      <li><b>Bacteria:</b> fixed microbes. Each takes up an H₂ molecule within 7 Å with the set probability per step. After 4 H₂ it takes one CO₂ (from the gas or, if allowed, from carbonate) and releases CH₄ + 2 H₂O. Hydrogen, carbon and oxygen atoms are conserved exactly (checked by the test suite).</li>
+    </ul>
+    <h3>Limits: read before drawing conclusions</h3>
+    <ul>
+      <li>The model is 2D and coarse-grained, so solubilities, diffusion coefficients and interfacial properties are qualitative. Trends and rankings are the output, not numbers.</li>
+      <li>Microbial kinetics are accelerated by roughly 10¹⁰ or more: real methanogenesis takes hours to days, the simulation shows picoseconds.</li>
+      <li>There is no carbonate dissolution, pH or aqueous carbonate chemistry, and no electrostatics.</li>
+      <li>Sulfate reducers (H₂S), homoacetogens and biofilm/EPS are not included.</li>
+      <li>Small system (a few hundred molecules): expect large fluctuations; average over time and repeat runs.</li>
+    </ul>
+  </div>
+
+  <div class="tabpanel" role="tabpanel" id="tab-lammps" aria-labelledby="t-lammps" hidden>
+    <h3>Run the same scenario in 3D with LAMMPS</h3>
+    <p>The full model (SPC/E water, Joung–Cheatham NaCl, TraPPE gases, calcite (10-14) slab, PPPM electrostatics) lives in this repository. The command below rebuilds your current settings as a LAMMPS system:</p>
+    <pre id="cmd"></pre>
+    <div class="row"><button class="btn" id="copyCmd">Copy commands</button>
+      <a class="btn" href="https://github.com/25im0024-lab/waled/archive/refs/heads/main.zip">Download repository (ZIP)</a>
+      <a class="btn" href="https://github.com/25im0024-lab/waled/blob/main/uhs-md/README.md" rel="noopener">README</a></div>
+    <p class="warn" style="margin-top:12px">The calcite Lennard-Jones parameters in <code>uhs-md/ff/calcite.json</code> are placeholders marked <code>verified: false</code>. Enter the published values (e.g. Xiao, Edwards &amp; Gräter, J. Phys. Chem. C 115 (2011) 20067) before production runs; until then the builder only runs with <code>--accept-unverified-calcite</code> as a smoke test.</p>
+    <h3>Requirements</h3>
+    <pre>conda install -c conda-forge lammps      # MOLECULE, KSPACE and RIGID packages
+pip install numpy CoolProp matplotlib</pre>
+  </div>
+</section>
+
+<footer>Open source (MIT). Runs entirely in your browser; nothing is sent anywhere. · <a href="https://github.com/25im0024-lab/waled" rel="noopener">GitHub</a></footer>
+</div>
+<script src="sim.js"></script>
+<script src="ui.js"></script>
+</body>
+</html>

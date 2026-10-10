@@ -19,7 +19,9 @@ https://github.com/25im0024-lab/waled/commit/be429ce5f3b571389ec05952bc00c307bfe
 
 ## UHS-MD: Hydrogen Storage in Carbonates (LAMMPS)
 
-Molecular Dynamics of H2 with a cushion gas (CO2, CH4 or N2) in a calcite nanopore, with brine and the effect of bacteria (methanogenesis): [`uhs-md/`](uhs-md/README.md).
+### ▶ [Open UHS Pore Lab (runs in the browser)](https://25im0024-lab.github.io/waled/uhs-md/)
+
+Live molecular dynamics of H2 with a cushion gas (CO2, CH4 or N2) in a calcite nanopore, with brine and methanogenic bacteria, plus the full 3D LAMMPS model: [`uhs-md/`](uhs-md/README.md).
 
 ## IELTS Coach
 
