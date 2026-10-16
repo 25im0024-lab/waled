@@ -1,0 +1,833 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>FPSO — Complete Guide</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;700&family=Noto+Sans:wght@400;600;700&display=swap">
+<style>
+@page{size:A4 landscape;margin:11mm 11mm 13mm}
+*{box-sizing:border-box}
+body{margin:0;font:8.7pt/1.36 "Noto Sans",system-ui,sans-serif;color:#14202e}
+.ar,[lang=ar]{font-family:"Noto Naskh Arabic","Noto Sans",serif;font-size:9.8pt;line-height:1.5;direction:rtl;text-align:right}
+h1{font-size:21pt;margin:0 0 2mm;color:#0b2340}
+h1 .ar{display:block;font-size:19pt;text-align:left;direction:rtl;unicode-bidi:plaintext;font-weight:700}
+h2{font-size:12.5pt;margin:5mm 0 2mm;padding:1.6mm 3mm;background:#0b2340;color:#fff;border-radius:2px;display:flex;justify-content:space-between;align-items:baseline;break-after:avoid}
+h2 .ar{font-size:12.5pt;font-weight:700}
+h3{font-size:10.5pt;margin:3mm 0 1mm;color:#0b2340;display:flex;justify-content:space-between;break-after:avoid}
+h3 .ar{font-size:11pt;font-weight:700}
+table{width:100%;border-collapse:collapse;table-layout:fixed;margin-bottom:2mm}
+th{background:#dfe9f4;color:#0b2340;font-size:8.6pt;text-align:left;padding:1.2mm 2mm;border:1px solid #b9c9da}
+th.ar{text-align:right;font-size:9.6pt}
+td{vertical-align:top;padding:1.3mm 2mm;border:1px solid #c9d6e3}
+tr{break-inside:avoid}
+tbody tr:nth-child(even) td{background:#f6f9fc}
+td.k{font-weight:700;color:#0b2340}
+td.k small{display:block;font-weight:400;color:#4f6c8a;font-size:7.8pt}
+code,.f{font-family:"Noto Sans Mono",ui-monospace,Consolas,monospace;font-size:8.3pt;background:#eef3f8;padding:0 1mm;border-radius:1px;direction:ltr;unicode-bidi:isolate}
+.ar code,.ar .f{font-size:8.3pt}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:6mm}
+.box{border:1px solid #b9c9da;border-radius:2px;padding:2.5mm 3.5mm;background:#f8fbfe;break-inside:avoid}
+.flow .box{break-inside:auto}
+p{orphans:2;widows:2}
+.note{font-size:8.2pt;color:#4f6c8a}
+.cover{display:grid;grid-template-columns:1.2fr 1fr;gap:8mm;align-items:start}
+ul,ol{margin:1mm 0;padding-inline-start:5mm}
+li{margin:.6mm 0}
+.ref li{margin:1.2mm 0;font-size:8.6pt}
+.tag{display:inline-block;font-size:7.6pt;padding:0 1.5mm;border-radius:2px;background:#e5eef7;color:#0b2340;border:1px solid #b9c9da}
+.p1{background:#ffe1e1;border-color:#e5a0a0}.p2{background:#fff0d0;border-color:#e0c080}.p3{background:#dff3ff;border-color:#9fc9e0}
+.pb{break-before:page}
+bdi.l{direction:ltr;unicode-bidi:isolate}
+</style>
+<script>
+// In Arabic text, isolate each run of Latin letters / numbers / units as left-to-right so mixed
+// Arabic + technical-term sentences keep the right order (e.g. 5½" liner, 3800 L/min, (MD = TVD)).
+document.addEventListener('DOMContentLoaded', () => {
+  const RUN = /[A-Za-z0-9≈±(α-ωΔ][A-Za-z0-9 .,:;·×\/²³½¼¾⅜"'≈≥≤<>=+\-−–()%°α-ωΔ_^&]*[A-Za-z0-9"%)²³°α-ωΔ]|[A-Za-z0-9α-ωΔ]/g;
+  const cnt = (x, c) => x.split(c).length - 1;
+  for (const root of document.querySelectorAll('.ar')) {
+    const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, { acceptNode: n => n.parentElement.closest('code,.f,bdi') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT });
+    const nodes = []; while (w.nextNode()) nodes.push(w.currentNode);
+    for (const n of nodes) {
+      const t = n.data; if (!/[A-Za-z0-9]/.test(t)) continue;
+      const frag = document.createDocumentFragment(); let last = 0;
+      t.replace(RUN, (m, i) => {
+        // leave unbalanced brackets outside the run so the RTL paragraph mirrors them
+        while (m.startsWith('(') && cnt(m, '(') > cnt(m, ')')) { m = m.slice(1); i++; }
+        while (m.endsWith(')') && cnt(m, ')') > cnt(m, '(')) m = m.slice(0, -1);
+        if (!m) return '';
+        if (i > last) frag.append(t.slice(last, i)); const b = document.createElement('bdi'); b.className = 'l'; b.textContent = m; frag.append(b); last = i + m.length; return m; });
+      if (last < t.length) frag.append(t.slice(last)); n.replaceWith(frag);
+    }
+  }
+});
+</script>
+<style>
+.sec{display:grid;grid-template-columns:1fr 1fr;gap:6mm;margin-bottom:2.5mm}
+.sec>div{min-width:0}
+.sec>.ar{border-inline-start:2px solid #d6e2ee;padding-inline-start:4mm}
+.sec>div:first-child{border-inline-end:none}
+figure{margin:2mm 0 3mm;break-inside:avoid;text-align:center}
+figure img{max-width:100%;border:1px solid #b9c9da;border-radius:2px}
+figcaption{font-size:7.8pt;color:#4f6c8a;margin-top:1mm;display:flex;justify-content:space-between;gap:6mm;text-align:left}
+figcaption .ar{font-size:8.6pt}
+.figs{display:grid;grid-template-columns:repeat(3,1fr);gap:4mm}
+.figs2{display:grid;grid-template-columns:1fr 1fr;gap:5mm}
+.eq{display:block;font-family:"Noto Sans Mono",monospace;font-size:8.2pt;background:#eef3f8;border-left:3px solid #0b2340;padding:1mm 2.5mm;margin:1mm 0;direction:ltr;text-align:left;white-space:pre-wrap}
+.toc{columns:2;column-gap:10mm;font-size:9pt}
+.toc li{break-inside:avoid}
+.warn{border-color:#e0c080;background:#fff8e6}
+h2 small{font-weight:400;font-size:8.5pt;opacity:.85}
+svg text{font-family:"Noto Sans",sans-serif}
+</style>
+</head>
+<body>
+<!-- ======================= COVER ======================= -->
+<h1>FPSO — Complete Guide<span class="ar">الدليل الشامل لوحدة الإنتاج والتخزين والتفريغ العائمة (FPSO)</span></h1>
+<p class="note" style="margin:0 0 3mm">Companion to the <b>FPSO Console</b> simulator · https://25im0024-lab.github.io/waled/fpso/ · English on the left, Arabic on the right; technical terms are kept in English in both.</p>
+<figure><img src="img/scene.jpg" style="width:72%"><figcaption><span>The FPSO Console field layout: reservoir, subsea wells, manifold, lazy-wave risers, turret mooring, topsides, helideck, and a shuttle tanker with its support tug during offloading.</span><span class="ar">مخطط الحقل في محاكي FPSO: المكمن، والآبار تحت البحر، والـ manifold، والـ risers بشكل lazy wave، والتثبيت بالـ turret، والمنشآت العلوية، ومهبط المروحيات، والناقلة المكوكية مع قاطرتها المساندة أثناء التفريغ.</span></figcaption></figure>
+<div class="sec">
+  <div class="box">
+    <p><b>What this guide covers.</b> Everything an engineer needs to understand an FPSO end to end: why the concept exists, the subsea system, flow assurance, risers, station keeping, the hull, every topsides process, utilities, storage and offloading, safety, people and logistics, and reservoir management. It also lists <b>every equation used by the simulator</b>, with the training scenarios and exercises.</p>
+    <p><b>Facts, typical values and model values.</b> Physical principles and published standards are stated as facts, with references in section 19. <i>Typical</i> ranges describe common practice; real units vary. <i>Model</i> values are the simulator's training coefficients and <b>are not data from a specific FPSO</b>.</p>
+  </div>
+  <div class="box ar">
+    <p><b>ماذا يغطي هذا الدليل.</b> كل ما يحتاجه المهندس لفهم الـ FPSO من البداية إلى النهاية: لماذا وُجد هذا المفهوم، والنظام تحت البحر، وضمان الجريان (flow assurance)، والـ risers، والتثبيت في الموقع، والبدن، وكل عمليات المعالجة على السطح، والمرافق، والتخزين والتفريغ، والسلامة، والأفراد والإمداد، وإدارة المكمن. ويذكر أيضاً <b>كل معادلة يستخدمها المحاكي</b>، مع سيناريوهات التدريب والتمارين.</p>
+    <p><b>الحقائق والقيم النموذجية وقيم النموذج.</b> المبادئ الفيزيائية والمعايير المنشورة تُذكر كحقائق، ومراجعها في القسم 19. القيم <i>النموذجية</i> تصف الممارسة الشائعة، والوحدات الحقيقية تختلف. أما قيم <i>النموذج</i> فهي معاملات تدريبية في المحاكي و<b>ليست بيانات وحدة FPSO محددة</b>.</p>
+  </div>
+</div>
+<h3><span>Contents</span><span class="ar">المحتويات</span></h3>
+<div class="sec"><ol class="toc">
+<li>What an FPSO is, and when it is chosen</li><li>Field architecture</li><li>Wells and production engineering</li><li>Flow assurance</li><li>Risers and umbilicals</li><li>Station keeping: turret, mooring, weathervaning</li><li>Hull and marine systems</li><li>Topsides process overview</li><li>Separation and oil treatment</li><li>Gas: compression, dehydration, use and flare</li><li>Water: produced water and water injection</li><li>Power and utilities</li><li>Storage, metering and offloading</li><li>Safety and emergency systems</li><li>People, logistics and inspection</li><li>Reservoir management, PVT and field data</li><li>Using the simulator: scenarios and exercises</li><li>Glossary</li><li>References</li></ol>
+<ol class="toc ar"><li>ما هي الـ FPSO ومتى تُختار</li><li>معمارية الحقل</li><li>الآبار وهندسة الإنتاج</li><li>ضمان الجريان</li><li>الـ risers والـ umbilicals</li><li>التثبيت في الموقع: الـ turret والتثبيت والدوران مع الطقس</li><li>البدن والأنظمة البحرية</li><li>نظرة عامة على المعالجة على السطح</li><li>الفصل ومعالجة النفط</li><li>الغاز: الضغط والتجفيف والاستخدام والشعلة</li><li>الماء: الماء المنتج وحقن الماء</li><li>الطاقة والمرافق</li><li>التخزين والقياس والتفريغ</li><li>أنظمة السلامة والطوارئ</li><li>الأفراد والإمداد والفحص</li><li>إدارة المكمن والـ PVT والبيانات الحقلية</li><li>استخدام المحاكي: السيناريوهات والتمارين</li><li>مسرد المصطلحات</li><li>المراجع</li></ol></div>
+
+<!-- ======================= 1 ======================= -->
+<h2 class="pb"><span>1. What an FPSO is, and when it is chosen</span><span class="ar">1. ما هي الـ FPSO ومتى تُختار</span></h2>
+<div class="sec">
+  <div>
+    <p>An <b>FPSO</b> (Floating Production, Storage and Offloading unit) is a ship-shaped floating installation moored above an offshore field. It does four things:</p>
+    <ul>
+      <li>receives well fluids from subsea wells through risers;</li>
+      <li>processes them into stabilised crude, gas and treated water;</li>
+      <li><b>stores the crude in its hull</b>;</li>
+      <li>offloads the crude periodically to shuttle tankers.</li>
+    </ul>
+    <p>Gas is used as fuel or for gas lift. It is then exported by pipeline or reinjected into the reservoir.</p>
+    <p>The concept is generally traced to Shell's <b>Castellón</b> field offshore Spain (1977), which used a converted tanker. FPSOs are now the most widely used floating production concept, in fields such as the North Sea, Brazil, West Africa, Southeast Asia and Australia.</p>
+    <p><b>Why choose an FPSO?</b></p>
+    <ul>
+      <li><b>No export pipeline is needed:</b> the storage in the hull bridges the gap between continuous production and batch export. This is decisive for remote or deep fields.</li>
+      <li><b>Large deck area and payload</b> for a full process plant.</li>
+      <li><b>Wide water-depth range:</b> from shallow water to beyond 2,500 m.</li>
+      <li><b>Reusable:</b> a unit can be redeployed to another field, and many are converted tankers, which shortens schedules.</li>
+    </ul>
+    <p><b>Limitations.</b></p>
+    <ul>
+      <li>Ship motions limit the use of <b>dry trees</b> (wellheads on deck), so the wells are subsea (<b>wet trees</b>) and well intervention needs a rig or vessel.</li>
+      <li>The motions also affect the process (sloshing in separators) and the risers (fatigue).</li>
+      <li>Offloading is limited by the weather.</li>
+    </ul>
+  </div>
+  <div class="ar">
+    <p><b>الـ FPSO</b> (وحدة إنتاج وتخزين وتفريغ عائمة) منشأة عائمة على شكل سفينة، مثبّتة فوق حقل بحري. تقوم بأربع مهام:</p>
+    <ul>
+      <li>تستقبل موائع الآبار من الآبار تحت البحر عبر الـ risers؛</li>
+      <li>تعالجها إلى نفط خام مستقر وغاز وماء معالَج؛</li>
+      <li><b>تخزّن النفط في بدنها</b>؛</li>
+      <li>تفرّغه دورياً إلى ناقلات مكوكية.</li>
+    </ul>
+    <p>يُستخدم الغاز وقوداً أو للرفع بالغاز (gas lift)، ثم يُصدَّر بخط أنابيب أو يُعاد حقنه في المكمن.</p>
+    <p>يُنسب المفهوم عادةً إلى حقل <b>Castellon</b> التابع لـ Shell قبالة إسبانيا (1977)، الذي استخدم ناقلة محوّلة. والـ FPSO اليوم أكثر مفاهيم الإنتاج العائم انتشاراً، في مناطق مثل بحر الشمال والبرازيل وغرب أفريقيا وجنوب شرق آسيا وأستراليا.</p>
+    <p><b>لماذا تُختار الـ FPSO؟</b></p>
+    <ul>
+      <li><b>لا تحتاج خط تصدير:</b> التخزين في البدن يسدّ الفجوة بين الإنتاج المستمر والتصدير على دفعات. وهذا حاسم للحقول البعيدة أو العميقة.</li>
+      <li><b>مساحة سطح وحمولة كبيرتان</b> تتسعان لمحطة معالجة كاملة.</li>
+      <li><b>مدى واسع من أعماق المياه:</b> من المياه الضحلة إلى أكثر من 2500 m.</li>
+      <li><b>قابلة لإعادة الاستخدام:</b> يمكن نقل الوحدة إلى حقل آخر، وكثير منها ناقلات محوّلة، ما يختصر الجدول الزمني.</li>
+    </ul>
+    <p><b>القيود.</b></p>
+    <ul>
+      <li>حركة السفينة تحدّ من استخدام <b>الـ dry trees</b> (رؤوس الآبار على السطح)، فتكون الآبار تحت البحر (<b>wet trees</b>)، ويحتاج التدخل في الآبار إلى حفارة أو سفينة.</li>
+      <li>تؤثر الحركة أيضاً على المعالجة (تموّج السائل في الفواصل) وعلى الـ risers (الإجهاد بالتعب).</li>
+      <li>التفريغ مقيّد بالطقس.</li>
+    </ul>
+  </div>
+</div>
+<table>
+<thead><tr><th style="width:15%">Concept · المفهوم</th><th>Storage · التخزين</th><th>Typical water depth · العمق المعتاد</th><th>Trees · رؤوس الآبار</th><th>Motions · الحركة</th><th class="ar">ملاحظات</th></tr></thead>
+<tbody>
+<tr><td class="k">Fixed jacket</td><td>None (pipeline)</td><td>Up to ≈ 150–400 m</td><td>Dry</td><td>None</td><td class="ar">منصة ثابتة على قاعدة فولاذية؛ تحتاج خط تصدير.</td></tr>
+<tr><td class="k">TLP</td><td>None</td><td>≈ 300–1,500 m</td><td>Dry</td><td>Very small heave</td><td class="ar">مثبّتة بأوتار مشدودة (tendons)؛ حركة رأسية ضئيلة.</td></tr>
+<tr><td class="k">Spar</td><td>Small or none</td><td>≈ 500–3,000 m</td><td>Dry or wet</td><td>Small heave</td><td class="ar">أسطوانة عميقة الغاطس؛ تستعمل خط تصدير عادةً.</td></tr>
+<tr><td class="k">Semi-submersible</td><td>None</td><td>≈ 100–3,000 m</td><td>Wet</td><td>Moderate</td><td class="ar">طوافات مغمورة وأعمدة؛ مساحة سطح محدودة.</td></tr>
+<tr><td class="k">FPSO</td><td>≈ 1–2 MMbbl</td><td>≈ 20 to &gt; 2,500 m</td><td>Wet</td><td>Largest (ship)</td><td class="ar">تخزين وتفريغ ذاتي؛ مساحة سطح كبيرة؛ تدور مع الطقس.</td></tr>
+<tr><td class="k">FSO</td><td>Yes</td><td>Any</td><td>—</td><td>Ship</td><td class="ar">تخزين وتفريغ فقط، بلا معالجة.</td></tr>
+<tr><td class="k">FLNG</td><td>LNG / LPG</td><td>Deep</td><td>Wet</td><td>Ship</td><td class="ar">تسييل الغاز وتخزينه على متن الوحدة.</td></tr>
+</tbody></table>
+<p class="note">Depth ranges are indicative of existing installations, not design limits.<span class="ar" style="display:block">نطاقات العمق إرشادية من المنشآت القائمة، وليست حدود تصميم.</span></p>
+
+<!-- ======================= 2 ======================= -->
+<h2 class="pb"><span>2. Field architecture</span><span class="ar">2. معمارية الحقل</span></h2>
+<svg viewBox="0 0 1000 250" style="width:100%;height:auto;margin-bottom:2mm">
+  <defs><marker id="ar" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8Z" fill="#0b2340"/></marker></defs>
+  <g font-size="12" text-anchor="middle">
+  <rect x="10" y="150" width="110" height="60" rx="4" fill="#ffe9c2" stroke="#b07a10"/><text x="65" y="176" font-weight="700">Reservoir</text><text x="65" y="194" font-size="10">oil · gas · water</text>
+  <rect x="150" y="150" width="110" height="60" rx="4" fill="#fff4d6" stroke="#b07a10"/><text x="205" y="176" font-weight="700">Wells + XT</text><text x="205" y="194" font-size="10">IPR · choke · gas lift</text>
+  <rect x="290" y="150" width="120" height="60" rx="4" fill="#e3edf7" stroke="#4f6c8a"/><text x="350" y="172" font-weight="700">Jumpers · PLET</text><text x="350" y="190" font-size="10">Manifold</text><text x="350" y="204" font-size="10">flowlines · SSIV</text>
+  <rect x="440" y="150" width="110" height="60" rx="4" fill="#e3edf7" stroke="#4f6c8a"/><text x="495" y="176" font-weight="700">Risers</text><text x="495" y="194" font-size="10">lazy wave · umbilical</text>
+  <rect x="580" y="150" width="120" height="60" rx="4" fill="#fff0b3" stroke="#a88a00"/><text x="640" y="176" font-weight="700">Turret + swivel</text><text x="640" y="194" font-size="10">mooring · fluid transfer</text>
+  <rect x="730" y="60" width="120" height="60" rx="4" fill="#dde6ef" stroke="#4f6c8a"/><text x="790" y="86" font-weight="700">Topsides</text><text x="790" y="104" font-size="10">separation · gas · water</text>
+  <rect x="880" y="20" width="110" height="44" rx="4" fill="#ffe1c9" stroke="#b05a10"/><text x="935" y="47" font-weight="700">Cargo tanks</text>
+  <rect x="880" y="80" width="110" height="44" rx="4" fill="#ffe1c9" stroke="#b05a10"/><text x="935" y="100" font-weight="700">Shuttle tanker</text><text x="935" y="116" font-size="10">+ support tug</text>
+  <rect x="880" y="140" width="110" height="44" rx="4" fill="#fffbd0" stroke="#a88a00"/><text x="935" y="160" font-weight="700">Gas</text><text x="935" y="176" font-size="10">fuel · lift · export · reinj.</text>
+  <rect x="880" y="200" width="110" height="44" rx="4" fill="#dff0ff" stroke="#3f8fd0"/><text x="935" y="220" font-weight="700">Water</text><text x="935" y="236" font-size="10">overboard · injection</text>
+  </g>
+  <g stroke="#0b2340" stroke-width="2" fill="none" marker-end="url(#ar)"><path d="M120 180 H148"/><path d="M260 180 H288"/><path d="M410 180 H438"/><path d="M550 180 H578"/><path d="M700 170 L760 122"/><path d="M850 80 L878 50"/><path d="M935 64 V78"/><path d="M850 100 L878 160"/><path d="M850 110 L878 218"/><path d="M880 230 C 600 245, 200 240, 70 212" stroke="#3f8fd0" stroke-dasharray="5 4"/></g>
+  <text x="470" y="244" font-size="10" fill="#3f8fd0" text-anchor="middle">water injection back to the reservoir (pressure support)</text>
+</svg>
+<div class="sec">
+  <div>
+    <p><b>Subsea production system</b> (API RP 17A gives the general requirements):</p>
+    <ul>
+      <li><b>Subsea tree (XT)</b> on each wellhead. It holds the master and wing valves, a production <b>choke</b>, pressure and temperature sensors, and an <b>ROV panel</b> for manual override.</li>
+      <li><b>Jumpers</b> (rigid M-shaped or flexible) connect the trees to <b>PLETs</b> (pipeline end terminations) or directly to a <b>manifold</b>. The manifold commingles several wells and allows routing to production or test headers.</li>
+      <li><b>Flowlines</b>, often insulated or pipe-in-pipe, carry the commingled fluid to the <b>riser base</b>. There an <b>SSIV</b> (subsea isolation valve) can isolate the riser inventory.</li>
+      <li><b>Umbilicals</b> supply hydraulic power, chemicals (MEG, methanol, inhibitors), electrical power and signals.</li>
+      <li><b>Water injection</b> wells and <b>gas lift / gas injection</b> lines use separate risers.</li>
+    </ul>
+    <p>Every line enters the vessel through the <b>turret</b>. The <b>swivel stack</b> transfers fluids, power and signals across the rotating joint between the geostationary turret and the weathervaning hull.</p>
+  </div>
+  <div class="ar">
+    <p><b>نظام الإنتاج تحت البحر</b> (يعطي API RP 17A المتطلبات العامة):</p>
+    <ul>
+      <li><b>الـ subsea tree (XT)</b> على كل رأس بئر. فيه صمامات master و wing، و<b>choke</b> للإنتاج، وحساسات للضغط والحرارة، و<b>لوحة ROV</b> للتشغيل اليدوي.</li>
+      <li><b>الـ jumpers</b> (صلبة على شكل M أو مرنة) تصل الـ trees بالـ <b>PLETs</b> (نهايات خطوط الأنابيب) أو مباشرة بالـ <b>manifold</b>. يجمع الـ manifold عدة آبار، ويسمح بتوجيهها إلى خط الإنتاج أو خط الاختبار.</li>
+      <li><b>الـ flowlines</b>، وكثيراً ما تكون معزولة أو أنبوباً داخل أنبوب، تنقل المائع المجمّع إلى <b>قاعدة الـ riser</b>. هناك يمكن لصمام <b>SSIV</b> (صمام العزل تحت البحر) أن يعزل محتوى الـ riser.</li>
+      <li><b>الـ umbilicals</b> توصل القدرة الهيدروليكية، والكيماويات (MEG، الميثانول، المثبطات)، والقدرة الكهربائية والإشارات.</li>
+      <li>آبار <b>حقن الماء</b> وخطوط <b>الـ gas lift / حقن الغاز</b> تستخدم risers منفصلة.</li>
+    </ul>
+    <p>تدخل كل الخطوط إلى السفينة عبر <b>الـ turret</b>. وتنقل <b>مجموعة الـ swivel</b> الموائع والطاقة والإشارات عبر الوصلة الدوّارة بين الـ turret الثابت بالنسبة للأرض والبدن الذي يدور مع الطقس.</p>
+  </div>
+</div>
+<div class="figs"><figure><img src="img/rov-t0.jpg"><figcaption><span>ROV view of tree XT P-1: ROV panel, choke insert, status lamp.</span><span class="ar">منظر الـ ROV للـ tree XT P-1.</span></figcaption></figure>
+<figure><img src="img/rov-manifold.jpg"><figcaption><span>Manifold M-1 with its protection structure and jumpers.</span><span class="ar">الـ manifold M-1 مع هيكل الحماية والـ jumpers.</span></figcaption></figure>
+<figure><img src="img/rov-buoy.jpg"><figcaption><span>Lazy-wave riser buoyancy modules.</span><span class="ar">وحدات الطفو في الـ riser بشكل lazy wave.</span></figcaption></figure></div>
+<!-- ======================= 3 ======================= -->
+<h2 class="pb"><span>3. Wells and production engineering</span><span class="ar">3. الآبار وهندسة الإنتاج</span></h2>
+<div class="sec">
+  <div>
+    <p><b>Inflow performance (IPR).</b> The rate a well can deliver depends on the drawdown (Pr − Pwf).</p>
+    <ul>
+      <li><b>Above the bubble point</b>, single-phase oil flows and the rate is linear in drawdown, with productivity index J.</li>
+      <li><b>Below Pb</b>, free gas reduces the oil relative permeability and the curve bends. Vogel (1968) gave the empirical shape. The composite IPR joins the two at Pb.</li>
+    </ul>
+    <span class="eq">Pwf ≥ Pb:  q = J·(Pr − Pwf)
+Pwf &lt; Pb:  q = J·(Pr − Pb) + (J·Pb/1.8)·[1 − 0.2·(Pwf/Pb) − 0.8·(Pwf/Pb)²]
+Pr ≤ Pb:   q = (J·Pr/1.8)·[1 − 0.2·x − 0.8·x²],  x = Pwf/Pr</span>
+    <p><b>Outflow and nodal analysis.</b> From the bottom-hole to the wellhead, pressure falls by the hydrostatic head of the mixture and by friction. Gas lowers the mixture density (natural or injected gas lift). The well flows at the rate where inflow and outflow meet at the node.</p>
+    <p><b>Subsea choke.</b> The choke adds the pressure drop between the wellhead and the manifold, and sets the rate. In the model the flow coefficient follows an equal-percentage-like trim.</p>
+    <p><b>Gas lift.</b> Gas injected low in the tubing lightens the column, reducing Pwf and increasing drawdown. It is most useful for wells with high water cut or low reservoir pressure. Too much gas raises friction, so there is an optimum injection rate.</p>
+    <p><b>Water cut</b> rises as the waterflood front reaches the producers (breakthrough). <b>GOR</b> rises when the reservoir pressure falls below Pb.</p>
+  </div>
+  <div class="ar">
+    <p><b>أداء التدفق من المكمن (IPR).</b> المعدل الذي يعطيه البئر يعتمد على فرق الضغط (Pr − Pwf).</p>
+    <ul>
+      <li><b>فوق نقطة الفقاعة</b> يجري النفط بطور واحد، ويكون المعدل خطياً مع فرق الضغط بمؤشر إنتاجية J.</li>
+      <li><b>تحت Pb</b> يقلّل الغاز الحر النفاذية النسبية للنفط فينحني المنحنى. أعطى Vogel (1968) شكله التجريبي، ويصل الـ IPR المركّب بين الجزأين عند Pb.</li>
+    </ul>
+    <p><b>التدفق في الأنبوب والتحليل العُقدي (nodal analysis).</b> من قاع البئر إلى رأسه ينخفض الضغط بمقدار عمود المزيج الهيدروستاتيكي والاحتكاك. والغاز يخفف كثافة المزيج (طبيعياً أو بالـ gas lift). يجري البئر بالمعدل الذي يتقاطع عنده منحنى التدفق من المكمن مع منحنى التدفق في الأنبوب عند العُقدة.</p>
+    <p><b>الـ choke تحت البحر.</b> يضيف فرق الضغط بين رأس البئر والـ manifold، ويضبط المعدل. في النموذج يتبع معامل التدفق شكلاً قريباً من النسبة المتساوية (equal percentage).</p>
+    <p><b>الرفع بالغاز (gas lift).</b> حقن الغاز في أسفل أنبوب الإنتاج يخفف العمود، فينخفض Pwf ويزداد فرق الضغط. هو مفيد خصوصاً للآبار عالية نسبة الماء أو منخفضة الضغط. لكن كثرة الغاز ترفع الاحتكاك، فهناك معدل حقن أمثل.</p>
+    <p><b>نسبة الماء</b> ترتفع عندما تصل جبهة الماء المحقون إلى الآبار المنتجة (breakthrough). و<b>الـ GOR</b> يرتفع عندما ينخفض ضغط المكمن تحت Pb.</p>
+  </div>
+</div>
+<h3><span>Model equations (simulator)</span><span class="ar">معادلات النموذج (المحاكي)</span></h3>
+<span class="eq">GLR = (1 − wc)·GOR + q_lift/q            ρ_mix = ρ_L / (1 + a·GLR),   ρ_L = (1 − wc)·ρo + wc·ρw
+Pwh = Pwf − ρ_mix·g·TVD/10⁵ − kf·q²·(1 + b·GLR)          (bar; a = 0.0035, kf = 5×10⁻⁷, b = 0.004)
+q_choke = C·Cv(u)·√(Pwh − Pman),   Cv(u) = (u/100)^1.6,   C = 1350 Sm³/d/√bar
+Solution: bisection on Pwf until q_IPR(Pwf) = q_choke(Pwf)    (40 iterations per well per step)
+Water cut: wc = wc0 + (wc_max − wc0)·(1 − e^(−Np/Nb))     (Np cumulative oil of the well)</span>
+<p class="note">Model wells P-1…P-4: J = 80, 62, 95, 45 Sm³/d/bar; TVD ≈ 1,800–1,900 m; initial water cut 4–48 %; GOR 140–230 Sm³/Sm³. These are training values.<span class="ar" style="display:block">آبار النموذج P-1 إلى P-4: قيم تدريبية.</span></p>
+
+<!-- ======================= 4 ======================= -->
+<h2><span>4. Flow assurance</span><span class="ar">4. ضمان الجريان (flow assurance)</span></h2>
+<div class="sec">
+  <div>
+    <p>Flow assurance keeps the fluid moving from the reservoir to the vessel throughout field life, including shutdowns and restarts.</p>
+    <ul>
+      <li><b>Hydrates:</b> ice-like solids of water and light gas that form at <i>high pressure and low temperature</i>. A shut-in subsea line cools towards the seabed temperature (often 2–5 °C in deep water) and can enter the hydrate zone within hours. The <b>cooldown time</b> is set by insulation.
+        <ul>
+          <li>Prevention: keep the fluid warm (insulation, continuous flow).</li>
+          <li>Inject thermodynamic inhibitors (<b>MEG</b>, methanol), which shift the hydrate curve to lower temperatures.</li>
+          <li>Depressurise the line below the hydrate pressure.</li>
+          <li>Use low-dosage inhibitors (kinetic or anti-agglomerant).</li>
+        </ul>
+        Hammerschmidt (1934) estimates the temperature depression: <code>ΔT = K·W / (M·(100 − W))</code>, where W is the inhibitor wt % in the aqueous phase and M its molar mass. K ≈ 1297 in °C units; verify the constant for the inhibitor used.</li>
+      <li><b>Wax:</b> paraffins deposit below the wax appearance temperature (WAT). Managed by insulation, pigging and inhibitors.</li>
+      <li><b>Asphaltenes</b> precipitate with pressure decline or gas injection. <b>Scale</b> (e.g. BaSO₄ when sulphate-rich seawater mixes with barium-rich formation water) is managed with inhibitors and sulphate removal.</li>
+      <li><b>Severe slugging:</b> at low rates, liquid accumulates at the riser base, blocks the gas, then blows through in cycles. The results are surges in the separator and pressure swings. Mitigation: higher rate, riser-base gas lift, topside choking and slug control.</li>
+      <li><b>Sand</b> causes erosion and fill. <b>Corrosion</b> comes from CO₂ and H₂S. <b>Erosional velocity</b> (API RP 14E): <code>Ve = C/√ρm</code>, with C ≈ 100 for continuous service in ft/s and lb/ft³ units.</li>
+    </ul>
+  </div>
+  <div class="ar">
+    <p>ضمان الجريان هو إبقاء المائع يتحرك من المكمن إلى السفينة طوال عمر الحقل، بما في ذلك الإيقاف وإعادة التشغيل.</p>
+    <ul>
+      <li><b>الهيدرات:</b> مواد صلبة تشبه الجليد من الماء والغاز الخفيف، تتكون عند <i>ضغط عالٍ وحرارة منخفضة</i>. الخط المغلق تحت البحر يبرد نحو حرارة القاع (غالباً 2–5 °C في المياه العميقة)، وقد يدخل منطقة الهيدرات خلال ساعات. ويحدد العزل <b>زمن التبريد (cooldown time)</b>.
+        <ul>
+          <li>الوقاية: إبقاء المائع دافئاً (العزل، والتدفق المستمر).</li>
+          <li>حقن مثبطات حرارية (<b>MEG</b>، الميثانول) تزيح منحنى الهيدرات إلى حرارة أدنى.</li>
+          <li>خفض ضغط الخط تحت ضغط الهيدرات.</li>
+          <li>استخدام مثبطات بجرعات منخفضة (حركية أو مانعة للتكتل).</li>
+        </ul>
+        تقدّر معادلة Hammerschmidt (1934) انخفاض الحرارة: <code>ΔT = K·W / (M·(100 − W))</code>، حيث W النسبة الوزنية للمثبط في الطور المائي و M كتلته المولية. K ≈ 1297 بوحدات °C؛ تحقق من الثابت للمثبط المستخدم.</li>
+      <li><b>الشمع (wax):</b> تترسب البارافينات تحت حرارة ظهور الشمع (WAT). تُدار بالعزل والـ pigging والمثبطات.</li>
+      <li><b>الأسفلتين</b> يترسب مع انخفاض الضغط أو حقن الغاز. و<b>القشور (scale)</b>، مثل BaSO₄ عند اختلاط ماء البحر الغني بالكبريتات مع ماء التكوين الغني بالباريوم، تُدار بالمثبطات وإزالة الكبريتات.</li>
+      <li><b>الـ severe slugging:</b> عند المعدلات المنخفضة يتجمع السائل عند قاعدة الـ riser ويحجز الغاز، ثم يندفع على دورات. النتيجة اندفاعات في الفاصل وتذبذب في الضغط. العلاج: معدل أعلى، أو gas lift عند قاعدة الـ riser، أو التحكم بالـ choke على السطح والتحكم بالـ slug.</li>
+      <li><b>الرمل</b> يسبب التآكل الميكانيكي والترسب. و<b>التآكل الكيميائي</b> من CO₂ و H₂S. و<b>سرعة التآكل الميكانيكي</b> (API RP 14E): <code>Ve = C/√ρm</code>، مع C ≈ 100 للخدمة المستمرة بوحدات ft/s و lb/ft³.</li>
+    </ul>
+  </div>
+</div>
+<h3><span>Model equations</span><span class="ar">معادلات النموذج</span></h3>
+<span class="eq">Arrival temperature (flowing):  T_flow = 4 + 58·(1 − e^(−qL/5000)) °C,  lag 1 h;  shut in: decays to 4 °C, τ = 8 h
+Hydrate equilibrium (model fit):  T_hyd = −14 + 6.95·ln(Pman) °C;  with MEG: T_hyd − 14 °C
+Hydrate alarm: T_arr &lt; T_hyd + 3 °C and Pman &gt; 20 bar
+Slugging index: s → clamp(1 − qL/7000, 0, 1), lag 600 s;  inflow modulated by 1 ± 0.9·s·sin(2πt/900 s)</span>
+
+<!-- ======================= 5 ======================= -->
+<h2><span>5. Risers and umbilicals</span><span class="ar">5. الـ risers والـ umbilicals</span></h2>
+<div class="sec">
+  <div>
+    <ul>
+      <li><b>Flexible risers</b> are multi-layer steel and polymer pipes. They tolerate vessel motions and are the most common on FPSOs.</li>
+      <li><b>Lazy-wave configuration:</b> <b>buoyancy modules</b> create a hump that decouples the touchdown point from vessel heave and reduces fatigue and compression.</li>
+      <li><b>Steel catenary risers (SCR)</b> are cheaper per metre and suit high pressure and temperature. They are sensitive to fatigue from a moving ship, which often requires a lazy-wave shape or a hybrid tower.</li>
+      <li><b>Hybrid riser towers</b> are a vertical steel bundle tensioned by a buoyancy can, with flexible jumpers to the vessel.</li>
+      <li><b>Umbilicals</b> carry hydraulic lines, chemical lines (MEG, scale and wax inhibitors), power and fibre-optic signals. They control the subsea valves and chokes from the control room.</li>
+    </ul>
+    <p>Riser design checks include extreme loads and fatigue (wave and vortex-induced vibration), clashing with mooring lines, and the thermal and pressure ratings.</p>
+  </div>
+  <div class="ar">
+    <ul>
+      <li><b>الـ risers المرنة (flexible)</b> أنابيب متعددة الطبقات من الفولاذ والبوليمر. تتحمل حركة السفينة، وهي الأكثر شيوعاً على الـ FPSO.</li>
+      <li><b>شكل lazy wave:</b> تصنع <b>وحدات الطفو</b> حدبة تفصل نقطة الملامسة مع القاع عن الحركة الرأسية للسفينة، فتقلّ إجهادات التعب والانضغاط.</li>
+      <li><b>الـ risers الفولاذية المعلّقة (SCR)</b> أرخص لكل متر، وتناسب الضغط والحرارة العاليين. لكنها حساسة للتعب مع سفينة متحركة، فتحتاج غالباً شكل lazy wave أو برجاً هجيناً.</li>
+      <li><b>أبراج الـ risers الهجينة</b> حزمة فولاذية رأسية تشدّها علبة طفو، ثم تصلها jumpers مرنة بالسفينة.</li>
+      <li><b>الـ umbilicals</b> تحمل خطوطاً هيدروليكية وخطوط كيماويات (MEG، مثبطات القشور والشمع) وطاقة وإشارات بالألياف الضوئية. وبها يُتحكم بصمامات الآبار والـ chokes من غرفة التحكم.</li>
+    </ul>
+    <p>يتحقق تصميم الـ riser من الأحمال القصوى والتعب (من الأمواج والاهتزاز الناتج عن الدوامات VIV)، ومن التصادم مع خطوط التثبيت، ومن تصنيف الحرارة والضغط.</p>
+  </div>
+</div>
+<span class="eq">Model riser: Pman = Psep + ρ_L/(1 + 0.006·GLR)·g·L/10⁵ + kr·qL²·(1 + 0.004·GLR),   L = 1,230 m, kr = 2.2×10⁻⁸
+Wells and riser are coupled by a relaxed fixed-point iteration on Pman (3 passes per time step).</span>
+<!-- ======================= 6 ======================= -->
+<h2 class="pb"><span>6. Station keeping: turret, mooring, weathervaning</span><span class="ar">6. التثبيت في الموقع: الـ turret والتثبيت والدوران مع الطقس</span></h2>
+<div class="sec">
+  <div>
+    <p><b>Turret mooring.</b> The mooring lines and risers connect to a <b>turret</b>, a large cylinder carried on a <b>main bearing</b> in the hull. The turret stays fixed relative to the seabed while the ship rotates freely around it. The vessel <b>weathervanes</b> into the resultant of wind, waves and current, which minimises the environmental loads.</p>
+    <ul>
+      <li><b>Internal turret:</b> inside the hull, usually towards the bow, in a moonpool.</li>
+      <li><b>External turret:</b> on a bow structure. It suits milder seas and converted tankers.</li>
+      <li><b>Disconnectable turret:</b> a buoy that can be released so the vessel sails away from cyclones, hurricanes or ice.</li>
+    </ul>
+    <p><b>Spread mooring:</b> the vessel is held at a fixed heading by mooring groups at bow and stern. It is used in benign, directional environments such as West Africa. Risers then connect along the side. <b>Dynamic positioning (DP)</b> with thrusters is used for some units, mainly in very deep water.</p>
+    <p><b>Mooring lines</b> are usually <b>chain – polyester (or wire) – chain</b>: chain at the fairlead and on the seabed, where wear and abrasion occur, and a light synthetic rope in the water column. Anchors are <b>suction piles</b>, driven piles or drag anchors.</p>
+    <p><b>Design criteria</b> (API RP 2SK): line tension ≤ MBL / safety factor. For a dynamic analysis the factor is 1.67 intact and 1.25 with one line broken. The <b>offset</b> must stay within what the risers can tolerate, often a few percent of water depth.</p>
+  </div>
+  <div class="ar">
+    <p><b>التثبيت بالـ turret.</b> تتصل خطوط التثبيت والـ risers بـ <b>turret</b>، وهو أسطوانة كبيرة محمولة على <b>محمل رئيسي</b> في البدن. يبقى الـ turret ثابتاً بالنسبة لقاع البحر، بينما تدور السفينة حوله بحرية. فت<b>دور السفينة مع الطقس (weathervaning)</b> لتواجه محصلة الرياح والأمواج والتيار، فتقلّ الأحمال البيئية.</p>
+    <ul>
+      <li><b>turret داخلي:</b> داخل البدن، غالباً نحو المقدمة، في فتحة (moonpool).</li>
+      <li><b>turret خارجي:</b> على هيكل عند المقدمة. يناسب البحار الأهدأ والناقلات المحوّلة.</li>
+      <li><b>turret قابل للفصل:</b> عوامة يمكن تحريرها لتبتعد السفينة عن الأعاصير أو الجليد.</li>
+    </ul>
+    <p><b>التثبيت المنتشر (spread mooring):</b> تُثبَّت السفينة على اتجاه ثابت بمجموعات خطوط عند المقدمة والمؤخرة. يُستخدم في البيئات الهادئة ذات الاتجاه الثابت مثل غرب أفريقيا، وتتصل الـ risers عندها على جانب السفينة. ويُستخدم <b>التموضع الديناميكي (DP)</b> بالدفّاعات في بعض الوحدات، خاصة في المياه العميقة جداً.</p>
+    <p><b>خطوط التثبيت</b> عادةً <b>سلسلة – بوليستر (أو سلك) – سلسلة</b>: سلسلة عند الـ fairlead وعلى القاع حيث يحدث البلى والاحتكاك، وحبل صناعي خفيف في عمود الماء. والمراسي <b>suction piles</b> أو أوتاد مدقوقة أو مراسٍ سحبية.</p>
+    <p><b>معايير التصميم</b> (API RP 2SK): شدّ الخط ≤ MBL مقسوماً على معامل أمان. في التحليل الديناميكي يكون المعامل 1.67 والخطوط سليمة، و 1.25 مع انقطاع خط واحد. ويجب أن تبقى <b>الإزاحة (offset)</b> ضمن ما تتحمله الـ risers، وغالباً تكون بضعة بالمئة من عمق الماء.</p>
+  </div>
+</div>
+<div class="figs"><figure><img src="img/in-turret.jpg"><figcaption><span>Turret cutaway: main bearing, swivel stack, chain table, risers.</span><span class="ar">مقطع الـ turret: المحمل والـ swivel والـ chain table.</span></figcaption></figure>
+<figure><img src="img/rov-turret.jpg"><figcaption><span>ROV at the turret chain table under the keel.</span><span class="ar">الـ ROV عند الـ chain table تحت القاعدة.</span></figcaption></figure>
+<figure><img src="img/plan.jpg" style="max-height:62mm"><figcaption><span>Plan view: heading, offset (×3), nine lines coloured by tension.</span><span class="ar">منظر علوي: الاتجاه والإزاحة وشدّ الخطوط التسعة.</span></figcaption></figure></div>
+<h3><span>Model equations (quasi-static mooring)</span><span class="ar">معادلات النموذج (تثبيت شبه ساكن)</span></h3>
+<span class="eq">Projected area: A(θ) = A_front·|cos α| + A_side·|sin α|,  α = direction from − heading
+Wind:    F = ½·1.225·Cd·A_wind(θ)·V²  (Cd 0.9, A 3,200 / 9,500 m²)        Current: F = ½·1025·Cc·A_cur(θ)·U²  (Cc 0.6, A 1,300 / 5,600 m²)
+Wave drift (model): F = 8·Hs²·(1 + 2.5·|sin α|)·10 kN
+Heading → direction the resultant comes from, first-order lag τ = 600 s (weathervaning)
+Offset x = F / Σ kl·cos²(ψj − β),  kl = 18 kN/m per line;   9 lines in 3 groups (30°, 150°, 270° ± 5°)
+Tension Tj = max(0.3·T0, T0 − kl·x·cos(ψj − β) + 55·Hs²·max(0, −cos(ψj − β))),  T0 = 1,500 kN, MBL = 8,000 kN
+Alarms: Tmax &gt; 55 % MBL;  offset &gt; 4 % of water depth (1,200 m);  failed line carries no load</span>
+
+<!-- ======================= 7 ======================= -->
+<h2><span>7. Hull and marine systems</span><span class="ar">7. البدن والأنظمة البحرية</span></h2>
+<div class="sec">
+  <div>
+    <ul>
+      <li><b>New-build or conversion.</b> Many FPSOs are converted <b>VLCC</b> tankers. Conversion is faster and cheaper, but the remaining fatigue life and the steel condition govern it. New-builds are designed for the site, often for 20–30 years on station <b>without dry-docking</b>. All inspection and repair is therefore done afloat.</li>
+      <li><b>Cargo tanks</b> are behind a <b>double hull</b>; segregated <b>ballast tanks</b> keep draft and trim; slop tanks hold oily water.</li>
+      <li><b>Inert gas (IG)</b> or nitrogen blankets keep the tank atmosphere non-flammable. SOLAS limits oxygen to ≤ 8 % by volume.</li>
+      <li><b>Crude oil washing (COW)</b> uses jets of crude to clean the tanks during discharge. <b>Heating coils</b> keep waxy crude pumpable.</li>
+      <li>A <b>loading computer</b> checks still-water bending moments, shear forces and stability for every cargo and ballast condition. Production and offloading change these daily.</li>
+      <li><b>Corrosion protection</b> uses coatings, sacrificial <b>anodes</b> or impressed current, and hull inspection by ROV and divers.</li>
+      <li><b>Classification</b> (e.g. ABS, DNV, BV, LR) and <b>flag-state</b> rules apply. So do IMO conventions: SOLAS for safety, MARPOL for pollution, and load lines.</li>
+    </ul>
+  </div>
+  <div class="ar">
+    <ul>
+      <li><b>بناء جديد أو تحويل.</b> كثير من الـ FPSO ناقلات <b>VLCC</b> محوّلة. التحويل أسرع وأرخص، لكن يحكمه عمر التعب المتبقي وحالة الفولاذ. أما البناء الجديد فيُصمَّم للموقع، وغالباً لـ 20–30 سنة في الموقع <b>دون دخول حوض جاف</b>، فيتم كل الفحص والإصلاح والسفينة عائمة.</li>
+      <li><b>خزانات الحمولة</b> خلف <b>بدن مزدوج</b>؛ و<b>خزانات صابورة (ballast)</b> منفصلة تحافظ على الغاطس والميلان الطولي (trim)؛ وخزانات slop للماء الزيتي.</li>
+      <li><b>الغاز الخامل (IG)</b> أو النيتروجين يُبقي جو الخزانات غير قابل للاشتعال. تحدّ SOLAS الأكسجين بـ ≤ 8 % حجماً.</li>
+      <li><b>غسيل الخزانات بالنفط الخام (COW)</b> بنفاثات من النفط نفسه أثناء التفريغ. و<b>ملفات التسخين</b> تُبقي النفط الشمعي قابلاً للضخ.</li>
+      <li><b>حاسوب التحميل (loading computer)</b> يتحقق من عزوم الانحناء وقوى القص في الماء الساكن ومن الاتزان، لكل حالة حمولة وصابورة. والإنتاج والتفريغ يغيّران هذه يومياً.</li>
+      <li><b>الحماية من التآكل</b> بالطلاء و<b>الأنودات</b> المضحّية أو التيار المفروض، مع فحص البدن بالـ ROV والغواصين.</li>
+      <li>تنطبق قواعد <b>هيئات التصنيف</b> (مثل ABS و DNV و BV و LR) و<b>دولة العلم</b>، واتفاقيات IMO: SOLAS للسلامة، و MARPOL للتلوث، وخطوط التحميل.</li>
+    </ul>
+  </div>
+</div>
+<span class="eq">Model storage: cargo capacity 254,000 m³ (≈ 1.6 MMbbl); cargo += q_oil·dt;  PSD when ≥ 99.5 % full
+Draft (model): T = T_light + V_cargo·ρo / (A_wp·ρsw),  T_light = 9.0 m, A_wp = 16,240 m², ρo = 850, ρsw = 1,025 kg/m³</span>
+<div class="figs2"><figure><img src="img/in-cargo.jpg"><figcaption><span>Cargo tank camera: crude level, IG blanket, COW machine, radar gauge, heating coils.</span><span class="ar">كاميرا خزان الحمولة: مستوى النفط والغاز الخامل وآلة الـ COW ورادار المستوى.</span></figcaption></figure>
+<figure><img src="img/night.jpg"><figcaption><span>Night: deck floodlights, obstruction lights, helideck lighting.</span><span class="ar">ليلاً: كشافات السطح وأضواء العوائق وإضاءة مهبط المروحيات.</span></figcaption></figure></div>
+<!-- ======================= 8 ======================= -->
+<h2 class="pb"><span>8. Topsides process overview</span><span class="ar">8. نظرة عامة على المعالجة على السطح</span></h2>
+<svg viewBox="0 0 1000 300" style="width:100%;height:auto">
+  <defs><marker id="a2" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8Z" fill="#333"/></marker></defs>
+  <g font-size="11" text-anchor="middle">
+  <rect x="10" y="120" width="95" height="50" rx="4" fill="#fff0b3" stroke="#a88a00"/><text x="57" y="142" font-weight="700">Swivel</text><text x="57" y="158" font-size="9.5">well fluids</text>
+  <rect x="130" y="110" width="120" height="70" rx="30" fill="#dde6ef" stroke="#4f6c8a"/><text x="190" y="138" font-weight="700">HP separator</text><text x="190" y="154" font-size="9.5">3-phase · V-101</text>
+  <rect x="280" y="40" width="110" height="46" rx="4" fill="#ffe9c2" stroke="#b07a10"/><text x="335" y="60" font-weight="700">Heater · LP sep.</text><text x="335" y="76" font-size="9.5">coalescer · stabiliser</text>
+  <rect x="420" y="40" width="100" height="46" rx="4" fill="#ffe1c9" stroke="#b05a10"/><text x="470" y="60" font-weight="700">Metering</text><text x="470" y="76" font-size="9.5">→ cargo tanks</text>
+  <rect x="550" y="40" width="110" height="46" rx="4" fill="#ffe1c9" stroke="#b05a10"/><text x="605" y="60" font-weight="700">Offloading</text><text x="605" y="76" font-size="9.5">fiscal meter · hose</text>
+  <rect x="280" y="125" width="110" height="46" rx="4" fill="#fffbd0" stroke="#a88a00"/><text x="335" y="145" font-weight="700">Scrubbers</text><text x="335" y="161" font-size="9.5">+ compression A/B</text>
+  <rect x="420" y="125" width="100" height="46" rx="4" fill="#fffbd0" stroke="#a88a00"/><text x="470" y="145" font-weight="700">Dehydration</text><text x="470" y="161" font-size="9.5">TEG · dew point</text>
+  <rect x="550" y="110" width="110" height="34" rx="4" fill="#fffbd0" stroke="#a88a00"/><text x="605" y="131">Fuel gas → GTs</text>
+  <rect x="550" y="148" width="110" height="34" rx="4" fill="#fffbd0" stroke="#a88a00"/><text x="605" y="169">Gas lift → wells</text>
+  <rect x="690" y="110" width="140" height="34" rx="4" fill="#fffbd0" stroke="#a88a00"/><text x="760" y="131">Export / reinjection</text>
+  <rect x="690" y="40" width="110" height="46" rx="4" fill="#ffd9d0" stroke="#b03a20"/><text x="745" y="60" font-weight="700">Flare / vent</text><text x="745" y="76" font-size="9.5">PCV · PSV · blowdown</text>
+  <rect x="280" y="215" width="110" height="46" rx="4" fill="#dff0ff" stroke="#3f8fd0"/><text x="335" y="235" font-weight="700">Hydrocyclones</text><text x="335" y="251" font-size="9.5">+ flotation (CFU)</text>
+  <rect x="420" y="215" width="100" height="46" rx="4" fill="#dff0ff" stroke="#3f8fd0"/><text x="470" y="235" font-weight="700">Overboard</text><text x="470" y="251" font-size="9.5">OIW ≤ limit</text>
+  <rect x="550" y="215" width="140" height="46" rx="4" fill="#dff0ff" stroke="#3f8fd0"/><text x="620" y="235" font-weight="700">Seawater injection</text><text x="620" y="251" font-size="9.5">filter · deaerate · SRP</text>
+  <rect x="720" y="215" width="110" height="46" rx="4" fill="#dff0ff" stroke="#3f8fd0"/><text x="775" y="235" font-weight="700">Injection pumps</text><text x="775" y="251" font-size="9.5">→ WI wells</text>
+  <rect x="860" y="110" width="130" height="72" rx="4" fill="#e8e8f6" stroke="#5a5aa0"/><text x="925" y="134" font-weight="700">Utilities</text><text x="925" y="150" font-size="9.5">power · heating medium</text><text x="925" y="164" font-size="9.5">cooling · air · N₂</text>
+  </g>
+  <g stroke="#333" stroke-width="1.6" fill="none" marker-end="url(#a2)"><path d="M105 145 H128"/><path d="M230 118 L280 70" stroke="#b07a10"/><path d="M390 63 H418" stroke="#b07a10"/><path d="M520 63 H548" stroke="#b07a10"/><path d="M250 145 H278" stroke="#a88a00"/><path d="M390 148 H418" stroke="#a88a00"/><path d="M520 140 L548 127" stroke="#a88a00"/><path d="M520 155 L548 165" stroke="#a88a00"/><path d="M660 127 H688" stroke="#a88a00"/><path d="M250 125 C 400 20, 600 20, 690 55" stroke="#b03a20" stroke-dasharray="4 3"/><path d="M220 178 L280 230" stroke="#3f8fd0"/><path d="M390 238 H418" stroke="#3f8fd0"/><path d="M690 238 H718" stroke="#3f8fd0"/></g>
+  <g font-size="10" fill="#555"><text x="235" y="100">oil</text><text x="255" y="140">gas</text><text x="222" y="205">water</text><text x="550" y="290" text-anchor="middle">sea chest / lift pumps → seawater</text></g>
+</svg>
+<div class="sec">
+  <div><p>The plant splits the well stream into <b>three products</b>:</p>
+    <ul>
+      <li><b>Stabilised crude</b> that meets the export spec. It goes to the cargo tanks.</li>
+      <li><b>Gas</b> that is compressed and dried. It is used as fuel and lift gas, then exported or reinjected.</li>
+      <li><b>Produced water</b> clean enough to discharge or reinject.</li>
+    </ul>
+    <p>The <b>water injection</b> system and the <b>utilities</b> support the process. Equipment is arranged in <b>modules</b> on a pipe rack above the main deck, separated by firewalls. The hazardous process sits away from the accommodation, the lifeboats and the helideck.</p></div>
+  <div class="ar"><p>تقسم المحطة تيار الآبار إلى <b>ثلاثة منتجات</b>:</p>
+    <ul>
+      <li><b>نفط مستقر</b> مطابق لمواصفة التصدير، يذهب إلى خزانات الحمولة.</li>
+      <li><b>غاز</b> مضغوط ومجفف، يُستخدم وقوداً وغاز رفع، ثم يُصدَّر أو يُعاد حقنه.</li>
+      <li><b>ماء منتج</b> نظيف بما يكفي لتصريفه أو إعادة حقنه.</li>
+    </ul>
+    <p>يدعم المعالجةَ نظامُ <b>حقن الماء</b> و<b>المرافق</b>. وتُرتَّب المعدات في <b>وحدات (modules)</b> على حامل أنابيب فوق السطح الرئيسي، تفصلها جدران حماية من الحريق. وتكون المعالجة الخطرة بعيدة عن السكن وقوارب النجاة ومهبط المروحيات.</p></div>
+</div>
+
+<!-- ======================= 9 ======================= -->
+<h2><span>9. Separation and oil treatment</span><span class="ar">9. الفصل ومعالجة النفط</span></h2>
+<div class="sec">
+  <div>
+    <p>In a <b>3-phase gravity separator</b> the fluid enters through an <b>inlet device</b> (diverter or vane) that removes momentum. A <b>calming baffle</b> distributes the flow. Gas rises through the <b>mist extractor</b>; oil and water separate by density over the <b>retention time</b>.</p>
+    <p><b>Controls:</b></p>
+    <ul>
+      <li>The <b>liquid level</b> (LT) controls the oil outlet valve.</li>
+      <li>The <b>interface level</b> (LIT) controls the water outlet valve.</li>
+      <li>The <b>pressure controller</b> sends gas to compression. Above its set point a <b>PCV</b> relieves to the flare, and a <b>PSV</b> protects against overpressure.</li>
+      <li><b>High-high level</b> trips the inlet (PSD) to protect the compressors from liquid carry-over.</li>
+    </ul>
+    <p><b>Oil treatment:</b> heating, an LP separator or degasser, and often an <b>electrostatic coalescer</b> to remove emulsified water. <b>Stabilisation</b> lowers the vapour pressure (RVP/TVP) for safe storage.</p>
+    <p>Typical crude export specification, set by contract: <b>BS&amp;W ≤ 0.5 %</b> by volume, plus limits on salt content and vapour pressure. Sizing guidance for separators is in API Spec 12J.</p>
+  </div>
+  <div class="ar">
+    <p>في <b>الفاصل الجاذبي ثلاثي الأطوار</b> يدخل المائع عبر <b>جهاز مدخل</b> (diverter أو vane) يكسر زخمه. ثم يوزّع <b>حاجز التهدئة (calming baffle)</b> الجريان. يصعد الغاز عبر <b>مزيل الرذاذ (mist extractor)</b>، وينفصل النفط عن الماء بالكثافة خلال <b>زمن البقاء (retention time)</b>.</p>
+    <p><b>التحكم:</b></p>
+    <ul>
+      <li><b>مستوى السائل</b> (LT) يتحكم بصمام مخرج النفط.</li>
+      <li><b>مستوى السطح البيني</b> (LIT) يتحكم بصمام مخرج الماء.</li>
+      <li><b>متحكم الضغط</b> يرسل الغاز إلى الضواغط. فوق نقطة الضبط يفرّغ <b>PCV</b> إلى الشعلة، ويحمي <b>PSV</b> من الضغط الزائد.</li>
+      <li><b>المستوى العالي جداً</b> يوقف المدخل (PSD) لحماية الضواغط من دخول السائل.</li>
+    </ul>
+    <p><b>معالجة النفط:</b> تسخين، وفاصل منخفض الضغط أو مزيل غاز، وغالباً <b>مجمّع كهروستاتيكي (electrostatic coalescer)</b> لإزالة الماء المستحلب. و<b>التثبيت (stabilisation)</b> يخفّض ضغط البخار (RVP/TVP) للتخزين الآمن.</p>
+    <p>مواصفة التصدير النموذجية، ويحددها العقد: <b>BS&amp;W ≤ 0.5 %</b> حجماً، مع حدود للملوحة وضغط البخار. وإرشادات تحجيم الفواصل في API Spec 12J.</p>
+  </div>
+</div>
+<div class="figs2"><figure><img src="img/in-sep.jpg"><figcaption><span>Separator cutaway in the simulator: inlet diverter, calming baffle, gas, oil and water layers at the live LT/LIT, mist extractor and outlets.</span><span class="ar">مقطع الفاصل في المحاكي: الطبقات بالمستويات الحية.</span></figcaption></figure>
+<div><span class="eq">Volumes Vo, Vw; Vliq = 80 m³, V = 150 m³
+LT = (Vo + Vw)/Vliq·100 %,  LI = Vw/Vliq·100 %
+q_out = q_in + Kc·(L − L_sp)  (feed-forward + P),  Kc = 0.0025·Vliq·10/100 m³/s per %
+dP/dt = (qg_in − q_comp − q_PCV − q_PSV)·P_std·(T/T_std)/V_gas
+q_comp = clamp(qg_in + 25·(P − P_set), 0, capacity)
+q_PCV = 8·(P − P_set − 2) + 0.25 purge  (Sm³/s);  PSV: 40·(P − 24) above 24 bar
+ESD blowdown: + 6·(P − 1.5) Sm³/s;  PSD at LT &gt; 95 %
+BS&amp;W (model) = 0.12 + 0.9·max(0, wc − 0.45) + 1.4·(|LI − LI_sp|/30)² + slug term</span></div></div>
+
+<!-- ======================= 10 ======================= -->
+<h2 class="pb"><span>10. Gas: compression, dehydration, use and flare</span><span class="ar">10. الغاز: الضغط والتجفيف والاستخدام والشعلة</span></h2>
+<div class="sec">
+  <div>
+    <p>Gas from the separators passes through <b>scrubbers</b> that remove liquid droplets, then to <b>compression trains</b>. These are usually centrifugal, with several stages and intercoolers, and are often configured as 2 × 50 % or 3 × 50 %. An <b>anti-surge</b> recycle valve keeps each compressor away from surge at low flow.</p>
+    <p><b>Dehydration</b> with <b>TEG</b> (triethylene glycol) contactors lowers the water dew point, which prevents hydrates and corrosion in export lines and gas-lift systems.</p>
+    <p>The <b>uses</b> of gas, in priority:</p>
+    <ul>
+      <li><b>fuel</b> for the gas turbines;</li>
+      <li><b>gas lift</b> for the wells;</li>
+      <li><b>export</b> by pipeline, or <b>reinjection</b> into the reservoir for pressure support or storage when there is no market.</li>
+    </ul>
+    <p><b>Flaring</b> is a safety system: a continuous purge plus relief from PCVs, PSVs and emergency blowdown. Routine flaring is minimised (e.g. the World Bank's "Zero Routine Flaring by 2030" initiative). <b>Flare gas recovery</b> can capture low-pressure flows.</p>
+    <span class="eq">Model compression (N equal-ratio stages, intercooled, adiabatic):
+w = N·k/(k−1)·(R·T1/M)·[(r^(1/N))^((k−1)/k) − 1]/η   [J/kg],   r = Pd/Ps
+P = w·ṁ,   ṁ = Q·ρ_std;   N = 3, k = 1.28, T1 = 313 K, M = 19 kg/kmol, η = 0.75, Pd = 180 bar, 2 × 2.4 MSm³/d
+Allocation: fuel → gas lift → export/reinjection (cap 5 MSm³/d) → excess to flare</span>
+  </div>
+  <div class="ar">
+    <p>يمر الغاز من الفواصل عبر <b>الـ scrubbers</b> التي تزيل قطرات السائل، ثم إلى <b>قطارات الضغط</b>. وهي عادةً طاردة مركزية، متعددة المراحل مع مبردات بينية، وغالباً بترتيب 2 × 50 % أو 3 × 50 %. ويُبقي صمام إعادة التدوير <b>المانع للـ surge</b> كل ضاغط بعيداً عن حالة الـ surge عند التدفق المنخفض.</p>
+    <p><b>التجفيف</b> بأبراج <b>TEG</b> (ثلاثي إيثيلين جلايكول) يخفض نقطة ندى الماء، فيمنع الهيدرات والتآكل في خطوط التصدير وأنظمة الـ gas lift.</p>
+    <p><b>استخدامات</b> الغاز حسب الأولوية:</p>
+    <ul>
+      <li><b>وقود</b> للتوربينات الغازية؛</li>
+      <li><b>الرفع بالغاز</b> للآبار؛</li>
+      <li><b>التصدير</b> بخط أنابيب، أو <b>إعادة الحقن</b> في المكمن لدعم الضغط أو للتخزين إن لم يوجد سوق.</li>
+    </ul>
+    <p><b>الشعلة (flare)</b> نظام سلامة: تدفق تنظيف (purge) مستمر، إضافة إلى ما تفرّغه صمامات PCV و PSV والتنفيس الطارئ. ويُقلَّل الحرق الروتيني إلى الحد الأدنى (مثل مبادرة البنك الدولي "Zero Routine Flaring by 2030"). ويمكن لـ <b>استرجاع غاز الشعلة</b> التقاط التدفقات منخفضة الضغط.</p>
+  </div>
+</div>
+<figure><img src="img/in-comp.jpg" style="width:52%"><figcaption><span>Compressor K-101A cutaway: impeller turning with flow, three stages, anti-surge valve; stops and shows TRIPPED in the trip scenario.</span><span class="ar">مقطع الضاغط K-101A: الدافعة تدور مع التدفق، ويتوقف عند الـ trip.</span></figcaption></figure>
+
+<!-- ======================= 11 ======================= -->
+<h2><span>11. Water: produced water and water injection</span><span class="ar">11. الماء: الماء المنتج وحقن الماء</span></h2>
+<div class="sec">
+  <div>
+    <p><b>Produced water treatment:</b></p>
+    <ul>
+      <li><b>Hydrocyclones</b> separate oil droplets by centrifugal force.</li>
+      <li>A <b>degassing drum</b> or <b>compact flotation unit (CFU)</b> polishes the water.</li>
+      <li>The water is discharged overboard or reinjected.</li>
+    </ul>
+    <p>Discharge is regulated. In the North-East Atlantic the OSPAR performance standard is <b>30 mg/L</b> dispersed oil; other regions set their own limits. Samples are analysed in the laboratory. Oil-in-water rises with hydraulic overload, interface upsets in the separator, and fouling.</p>
+    <p><b>Seawater injection</b> maintains reservoir pressure (voidage replacement). The treatment train is:</p>
+    <ul>
+      <li>lift pumps;</li>
+      <li>coarse and fine filtration;</li>
+      <li><b>deaeration</b> (vacuum tower plus oxygen scavenger) to prevent corrosion;</li>
+      <li>often <b>sulphate removal</b> by nanofiltration, which lowers seawater sulphate (≈ 2,700 mg/L) to prevent BaSO₄ and SrSO₄ scale and reservoir souring;</li>
+      <li>biocide;</li>
+      <li>high-pressure injection pumps.</li>
+    </ul>
+    <span class="eq">Model OIW = 12 + 22·(q_w/30,000)² + 25·(|LI − LI_sp|/30)² + 60·fouling   mg/L   (limit 30)
+Injection power = q·ΔP/η,  ΔP = 260 bar, η = 0.75;  capacity 32,000 Sm³/d</span>
+  </div>
+  <div class="ar">
+    <p><b>معالجة الماء المنتج:</b></p>
+    <ul>
+      <li><b>الـ hydrocyclones</b> تفصل قطرات النفط بالقوة الطاردة المركزية.</li>
+      <li><b>وعاء إزالة الغاز</b> أو <b>وحدة التعويم المدمجة (CFU)</b> تصقل الماء.</li>
+      <li>ثم يُصرَّف الماء إلى البحر أو يُعاد حقنه.</li>
+    </ul>
+    <p>التصريف منظَّم. ففي شمال شرق الأطلسي معيار الأداء في OSPAR هو <b>30 mg/L</b> نفطاً مشتتاً، وللمناطق الأخرى حدودها. وتُحلَّل العينات في المختبر. يرتفع النفط في الماء مع زيادة الحمل الهيدروليكي، واضطراب السطح البيني في الفاصل، والاتساخ.</p>
+    <p><b>حقن ماء البحر</b> يحافظ على ضغط المكمن (تعويض الفراغ). وسلسلة المعالجة:</p>
+    <ul>
+      <li>مضخات رفع؛</li>
+      <li>ترشيح خشن ثم دقيق؛</li>
+      <li><b>إزالة الأكسجين</b> (برج تفريغ مع مُزيل أكسجين كيميائي) لمنع التآكل؛</li>
+      <li>وغالباً <b>إزالة الكبريتات</b> بالترشيح النانوي، تخفض كبريتات ماء البحر (≈ 2,700 mg/L) لمنع قشور BaSO₄ و SrSO₄ وتحمّض المكمن (souring)؛</li>
+      <li>مبيد حيوي؛</li>
+      <li>مضخات حقن عالية الضغط.</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ======================= 12 ======================= -->
+<h2 class="pb"><span>12. Power and utilities</span><span class="ar">12. الطاقة والمرافق</span></h2>
+<div class="sec">
+  <div>
+    <ul>
+      <li><b>Main power</b> comes from <b>gas turbine generators</b>. They are dual-fuel and fall back to diesel when fuel gas is short. <b>Waste-heat recovery units (WHRU)</b> on the exhausts heat the <b>heating medium</b> used by the process.</li>
+      <li><b>Emergency and essential power</b> comes from an emergency diesel generator and <b>UPS</b> batteries for the control, safety and telecom systems. <b>Load shedding</b> protects essential consumers when generation is short.</li>
+      <li><b>Other utilities:</b> seawater and fresh-water <b>cooling</b>, <b>instrument and plant air</b>, <b>nitrogen</b> for purging and blanketing, fresh-water makers, HVAC (pressurised rooms), chemical injection skids, and sewage and drains.</li>
+      <li>The largest loads are typically <b>gas compression</b> and <b>water injection</b>.</li>
+    </ul>
+    <span class="eq">Model demand = 12 (base) + P_compression + P_injection + 2.5 (offloading pumps) MW
+Fuel gas = demand / (η_GT·LHV),  η_GT = 0.32, LHV = 36 MJ/Sm³;  available = 4 × 25 MW (30 % during ESD)</span>
+  </div>
+  <div class="ar">
+    <ul>
+      <li><b>الطاقة الرئيسية</b> من <b>مولدات التوربينات الغازية</b>. وهي ثنائية الوقود، تتحول إلى الديزل عند نقص غاز الوقود. وتسخّن <b>وحدات استرداد الحرارة المهدورة (WHRU)</b> على العوادم <b>وسيط التسخين</b> الذي تستخدمه المعالجة.</li>
+      <li><b>الطاقة الطارئة والأساسية</b> من مولد ديزل طارئ وبطاريات <b>UPS</b> لأنظمة التحكم والسلامة والاتصالات. و<b>فصل الأحمال (load shedding)</b> يحمي المستهلكين الأساسيين عند نقص التوليد.</li>
+      <li><b>مرافق أخرى:</b> <b>التبريد</b> بماء البحر والماء العذب، و<b>هواء الأجهزة والمحطة</b>، و<b>النيتروجين</b> للتطهير والتغطية، ووحدات تحلية الماء، والتكييف (غرف مضغوطة)، ووحدات حقن الكيماويات، والصرف.</li>
+      <li>أكبر الأحمال عادةً <b>ضغط الغاز</b> و<b>حقن الماء</b>.</li>
+    </ul>
+  </div>
+</div>
+<figure><img src="img/in-gt.jpg" style="width:50%"><figcaption><span>Turbine hall CCTV: air compressor, combustor, power turbine and generator; the flame changes colour on diesel.</span><span class="ar">قاعة التوربينات: يتغير لون اللهب عند العمل على الديزل.</span></figcaption></figure>
+<!-- ======================= 13 ======================= -->
+<h2><span>13. Storage, metering and offloading</span><span class="ar">13. التخزين والقياس والتفريغ</span></h2>
+<div class="sec">
+  <div>
+    <p>Crude is stored in the cargo tanks until a <b>shuttle tanker</b> arrives. Typical FPSO storage is ≈ 1–2 MMbbl, which covers several days to a few weeks of production. Running out of storage space means production must stop (<b>tank-top</b>), so offloading planning is critical.</p>
+    <ul>
+      <li><b>Tandem offloading</b> (most common on turret FPSOs): the tanker, usually with <b>dynamic positioning</b>, keeps station astern on a <b>hawser</b> and receives a floating or reeled <b>hose</b>. Conventional tankers use a <b>hold-back tug</b> at the stern.</li>
+      <li><b>Side-by-side</b> mooring is used in benign seas. Alternatively the crude goes through a separate <b>CALM buoy</b> or an export pipeline.</li>
+      <li><b>Fiscal (custody-transfer) metering:</b> meters with a prover, plus automatic sampling for water and density. The standards are the API Manual of Petroleum Measurement Standards (MPMS).</li>
+      <li><b>Weather limits</b> (wave height, wind, relative heading) govern connection and continuation. An <b>emergency disconnect</b> releases the hose and hawser.</li>
+    </ul>
+    <span class="eq">Model tanker: 159,000 m³; rate 6,360 m³/h (adjustable); approach 2 h → hook-up 1.5 h (only if Hs ≤ 4.0 m)
+→ offloading (emergency disconnect if Hs &gt; 4.5 m or ESD) → disconnect 1 h → depart 1 h;  FPSO keeps ≥ 5 % heel</span>
+  </div>
+  <div class="ar">
+    <p>يُخزَّن النفط في خزانات الحمولة حتى وصول <b>الناقلة المكوكية</b>. التخزين النموذجي في الـ FPSO ≈ 1–2 مليون برميل، أي ما يغطي أياماً إلى بضعة أسابيع من الإنتاج. نفاد مساحة التخزين يعني إيقاف الإنتاج (<b>tank-top</b>)، لذلك تخطيط التفريغ حاسم.</p>
+    <ul>
+      <li><b>التفريغ الترادفي (tandem)</b>، وهو الأشيع مع وحدات الـ turret: الناقلة، وغالباً بـ <b>تموضع ديناميكي</b>، تبقى خلف المؤخرة على <b>حبل قطر (hawser)</b> وتستلم <b>خرطوماً</b> عائماً أو ملفوفاً على بكرة. والناقلات التقليدية تستعين بـ <b>قاطرة شدّ</b> عند مؤخرتها.</li>
+      <li><b>التفريغ جنباً إلى جنب</b> يُستخدم في البحار الهادئة. أو يذهب النفط عبر <b>عوامة CALM</b> منفصلة أو خط تصدير.</li>
+      <li><b>القياس المالي (custody transfer):</b> عدادات مع جهاز معايرة (prover) وأخذ عينات آلي للماء والكثافة. والمعايير في API Manual of Petroleum Measurement Standards (MPMS).</li>
+      <li><b>حدود الطقس</b> (ارتفاع الموج، الرياح، الاتجاه النسبي) تحكم الربط والاستمرار. و<b>الفصل الطارئ</b> يحرّر الخرطوم وحبل القطر.</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ======================= 14 ======================= -->
+<h2 class="pb"><span>14. Safety and emergency systems</span><span class="ar">14. أنظمة السلامة والطوارئ</span></h2>
+<div class="sec">
+  <div>
+    <p><b>Layers of protection</b>, from normal to emergency:</p>
+    <ol>
+      <li>Basic process control (DCS).</li>
+      <li>Alarms and operator response. Alarm management follows ISA-18.2 / EEMUA 191: few, prioritised, actionable alarms.</li>
+      <li>Safety instrumented systems (SIS, IEC 61511), with process shutdown (<b>PSD</b>) of individual units.</li>
+      <li>Mechanical relief (<b>PSV</b>) to the flare (API Std 521).</li>
+      <li><b>Fire and gas detection</b>, with deluge and passive fire protection.</li>
+      <li><b>Emergency shutdown (ESD)</b>: wells and risers isolated (SSIV, turret valves) and <b>blowdown</b> of the inventory to the flare. API 521 commonly guides blowdown to 6.9 barg or 50 % of design pressure within about 15 minutes in a fire case.</li>
+      <li>Escape, muster and evacuation: lifeboats (TEMPSC), life rafts and helicopter.</li>
+    </ol>
+    <p>ESD levels and their actions vary by operator. Safety analysis of the process follows API RP 14C (ISO 10418). Hazards are identified by <b>HAZOP</b> and quantified by <b>QRA</b>, and many regions require a <b>safety case</b>. Work is controlled by the <b>permit-to-work</b> system with isolations. Helideck operations follow national standards such as CAP 437 in the UK.</p>
+  </div>
+  <div class="ar">
+    <p><b>طبقات الحماية</b>، من التشغيل العادي إلى الطوارئ:</p>
+    <ol>
+      <li>التحكم الأساسي بالعملية (DCS).</li>
+      <li>الإنذارات واستجابة المشغل. وتتبع إدارة الإنذارات ISA-18.2 / EEMUA 191: إنذارات قليلة، مرتبة الأولوية، وقابلة للتصرف.</li>
+      <li>الأنظمة الآلية للسلامة (SIS وفق IEC 61511)، مع إيقاف العملية (<b>PSD</b>) لوحدات محددة.</li>
+      <li>التفريغ الميكانيكي (<b>PSV</b>) إلى الشعلة (API Std 521).</li>
+      <li><b>كشف الحريق والغاز</b>، مع رشاشات الإطفاء (deluge) والحماية السلبية من الحريق.</li>
+      <li><b>الإيقاف الطارئ (ESD)</b>: عزل الآبار والـ risers (SSIV وصمامات الـ turret) و<b>التنفيس (blowdown)</b> إلى الشعلة. يوجّه API 521 عادةً في حالة الحريق بالتنفيس إلى 6.9 barg أو 50 % من ضغط التصميم خلال نحو 15 دقيقة.</li>
+      <li>الهروب والتجمّع والإخلاء: قوارب نجاة مغلقة (TEMPSC)، وطوافات نجاة، ومروحية.</li>
+    </ol>
+    <p>تختلف مستويات الـ ESD وإجراءاتها حسب المشغّل. ويتبع تحليل سلامة العملية API RP 14C (ISO 10418). وتُحدَّد المخاطر بالـ <b>HAZOP</b> وتُقدَّر كمياً بالـ <b>QRA</b>، وتشترط مناطق كثيرة <b>حالة سلامة (safety case)</b>. ويُضبط العمل بنظام <b>تصاريح العمل</b> مع العزل. وتتبع عمليات المهبط معايير وطنية مثل CAP 437 في بريطانيا.</p>
+  </div>
+</div>
+<table><thead><tr><th style="width:9%">Tag</th><th style="width:28%">Alarm (simulator)</th><th style="width:7%">Prio</th><th style="width:25%">Condition (model)</th><th class="ar">ماذا يفعل المشغل</th></tr></thead><tbody>
+<tr><td class="k">ESD / PSD</td><td>Emergency / process shutdown</td><td><span class="tag p1">1</span></td><td>Operator or trip</td><td class="ar">تحقق من السبب، ثبّت المنشأة، ثم أعد التشغيل تدريجياً.</td></tr>
+<tr><td class="k">SEP_LTHH / LL</td><td>Separator level high-high / low-low</td><td><span class="tag p1">1</span></td><td>LT &gt; 90 % / &lt; 10 %</td><td class="ar">راجع نقطة ضبط المستوى وصمام النفط؛ خفّض الـ chokes.</td></tr>
+<tr><td class="k">SEP_PH · PSV</td><td>Separator pressure high · PSV lifting</td><td><span class="tag p2">2</span>/<span class="tag p1">1</span></td><td>P &gt; Pset + 3 · P &gt; 24 bar</td><td class="ar">تحقق من الضواغط؛ خفّض الإنتاج.</td></tr>
+<tr><td class="k">COMP_TRIP · FLARE</td><td>Compressor trip · high flaring</td><td><span class="tag p2">2</span></td><td>train tripped · flare &gt; 0.5 MSm³/d</td><td class="ar">أعد تشغيل القطار؛ خفّض الإنتاج حتى ذلك.</td></tr>
+<tr><td class="k">DIESEL · LOADSHED</td><td>Fuel gas short · demand &gt; generation</td><td><span class="tag p2">2</span>/<span class="tag p1">1</span></td><td>fuel &lt; need · demand &gt; available</td><td class="ar">أوقف أحمالاً غير أساسية (مثل الحقن).</td></tr>
+<tr><td class="k">OIW · BSW</td><td>Water / crude off-spec</td><td><span class="tag p2">2</span></td><td>OIW &gt; 30 mg/L · BS&amp;W &gt; 0.5 %</td><td class="ar">نظّف الـ hydrocyclones؛ ثبّت السطح البيني.</td></tr>
+<tr><td class="k">SLUG · HYD</td><td>Riser slugging · hydrate risk</td><td><span class="tag p3">3</span>/<span class="tag p1">1</span></td><td>index &gt; 0.25 · T_arr &lt; T_hyd + 3</td><td class="ar">ارفع المعدل؛ احقن MEG أو خفّض الضغط.</td></tr>
+<tr><td class="k">DEAD</td><td>Well unable to flow</td><td><span class="tag p3">3</span></td><td>open, choke &gt; 5 %, q &lt; 50</td><td class="ar">فعّل الـ gas lift.</td></tr>
+<tr><td class="k">CARGO_H / HH · OFF_DISC</td><td>Cargo high / full · emergency disconnect</td><td><span class="tag p2">2</span>/<span class="tag p1">1</span></td><td>&gt; 92 % / &gt; 98.5 % · weather/ESD</td><td class="ar">استدعِ الناقلة؛ خفّض الإنتاج.</td></tr>
+<tr><td class="k">MOOR_T · MOOR_FAIL · OFFSET</td><td>Line tension / failure / vessel offset</td><td><span class="tag p2">2</span>/<span class="tag p1">1</span></td><td>&gt; 55 % MBL · line broken · &gt; 4 % WD</td><td class="ar">راقب الطقس؛ أوقف التفريغ؛ خطط للإصلاح.</td></tr>
+<tr><td class="k">VRR · PR_LOW</td><td>Voidage replacement low · Pr below Pb</td><td><span class="tag p3">3</span></td><td>VRR &lt; 0.9 · Pr &lt; Pb</td><td class="ar">زِد حقن الماء أو إعادة حقن الغاز.</td></tr>
+</tbody></table>
+
+<!-- ======================= 15 ======================= -->
+<h2><span>15. People, logistics and inspection</span><span class="ar">15. الأفراد والإمداد والفحص</span></h2>
+<div class="sec">
+  <div>
+    <p><b>Crew.</b> An FPSO typically has ≈ 100–150 persons on board (<b>POB</b>), on 12-hour shifts and rotations of 2–3 weeks. Key roles:</p>
+    <ul>
+      <li><b>OIM</b> (Offshore Installation Manager): overall authority for safety and operations.</li>
+      <li><b>Control room operators</b>.</li>
+      <li><b>Process and production engineers</b>, and field operators.</li>
+      <li><b>Mechanical and E&amp;I technicians</b>.</li>
+      <li><b>Lab technician</b>.</li>
+      <li><b>Marine and cargo superintendent</b>.</li>
+      <li><b>Crane operators</b> and deck crew.</li>
+      <li><b>HLO</b> (Helicopter Landing Officer).</li>
+      <li><b>ROV team</b>.</li>
+      <li><b>Medic</b>.</li>
+    </ul>
+    <p><b>Logistics.</b> Crew change is by helicopter. Supply vessels bring stores, chemicals and diesel, and a standby or rescue vessel may be required.</p>
+    <p><b>Integrity.</b> Risk-based inspection of the topsides and hull; ROV inspection of risers, mooring and subsea hardware; and corrosion and fatigue monitoring.</p>
+  </div>
+  <div class="ar">
+    <p><b>الطاقم.</b> على الـ FPSO عادةً ≈ 100–150 شخصاً (<b>POB</b>)، بمناوبات 12 ساعة ودورات 2–3 أسابيع. الأدوار الرئيسية:</p>
+    <ul>
+      <li><b>الـ OIM</b> (مدير المنشأة): السلطة الكاملة على السلامة والتشغيل.</li>
+      <li><b>مشغلو غرفة التحكم</b>.</li>
+      <li><b>مهندسو العمليات والإنتاج</b>، والمشغلون الميدانيون.</li>
+      <li><b>فنيو الميكانيك والكهرباء والأجهزة</b>.</li>
+      <li><b>فني المختبر</b>.</li>
+      <li><b>المشرف البحري ومسؤول الحمولة</b>.</li>
+      <li><b>مشغلو الرافعات</b> وطاقم السطح.</li>
+      <li><b>ضابط هبوط المروحيات (HLO)</b>.</li>
+      <li><b>فريق الـ ROV</b>.</li>
+      <li><b>المسعف</b>.</li>
+    </ul>
+    <p><b>الإمداد.</b> يتبدل الطاقم بالمروحية، وتجلب سفن الإمداد المؤن والكيماويات والديزل، وقد تُشترط سفينة احتياط وإنقاذ.</p>
+    <p><b>السلامة الإنشائية (integrity).</b> فحص قائم على المخاطر للمنشآت العلوية والبدن، وفحص الـ risers والتثبيت والمعدات تحت البحر بالـ ROV، ومراقبة التآكل والتعب.</p>
+  </div>
+</div>
+<figure><img src="img/in-ccr.jpg" style="width:38%"><figcaption><span>Central control room CCTV: production, separator and alarm summary screens driven by the live model.</span><span class="ar">غرفة التحكم المركزية: شاشات حية من النموذج.</span></figcaption></figure>
+
+<!-- ======================= 16 ======================= -->
+<h2><span>16. Reservoir management, PVT and field data</span><span class="ar">16. إدارة المكمن والـ PVT والبيانات الحقلية</span></h2>
+<div class="sec">
+  <div>
+    <p><b>Pressure support and VRR.</b> Producing oil, water and free gas withdraws reservoir volume (voidage). If injection does not replace it, pressure falls. Wells then lose rate, and below Pb free gas forms. The <b>voidage replacement ratio</b> (VRR = injected / produced reservoir volumes) is the key waterflood metric; it is usually kept around 1. The general tool is the material-balance equation of Havlena &amp; Odeh (1963).</p>
+    <span class="eq">Model:  V_out = q_o·Bo + q_w + q_o·(GOR − Rs(P))·Bg,   V_in = q_wi + q_reinj·Bg     (rm³/d)
+dPr/dt = −(V_out − V_in)/(c_t·V_p),   c_t·V_p = 140,000 rm³/bar;   VRR = V_in/V_out
+Rs(P)/Rs(Pb) = [(P/18.2 + 1.4)/(Pb/18.2 + 1.4)]^1.2048  for P &lt; Pb  (P in psia; Standing shape)</span>
+    <p><b>PVT from correlations</b> (Reservoir Fluid card), in field units: p psia, T °F, Rs scf/STB:</p>
+    <span class="eq">Standing:  Pb = 18.2·[(Rs/γg)^0.83·10^a − 1.4],  a = 0.00091·T − 0.0125·API
+           Rs = γg·[(p/18.2 + 1.4)·10^(0.0125·API − 0.00091·T)]^1.2048
+           Bo = 0.9759 + 0.00012·[Rs·(γg/γo)^0.5 + 1.25·T]^1.2
+Vasquez–Beggs:  co = (−1433 + 5·Rs + 17.2·T − 1180·γg + 12.61·API)/(10⁵·p),  Bo = Bob·e^(co·(Pb − p))
+Beggs–Robinson: μod = 10^x − 1,  x = T^−1.163·e^(6.9824 − 0.04658·API);  μo = A·μod^B,
+           A = 10.715·(Rs + 100)^−0.515,  B = 5.44·(Rs + 150)^−0.338;  above Pb: μo = μob·(p/Pb)^m
+Papay z:   z = 1 − 3.53·Ppr/10^(0.9813·Tpr) + 0.274·Ppr²/10^(0.8157·Tpr);  Bg = 0.02827·z·T(°R)/p</span>
+  </div>
+  <div class="ar">
+    <p><b>دعم الضغط و VRR.</b> إنتاج النفط والماء والغاز الحر يسحب حجماً من المكمن (voidage). إن لم يعوّضه الحقن ينخفض الضغط، فتفقد الآبار معدلها، وتحت Pb يتكوّن غاز حر. و<b>نسبة تعويض الفراغ</b> (VRR = الحجوم المحقونة ÷ المنتجة بظروف المكمن) هي المقياس الأهم في الغمر المائي، وتُبقى عادةً قرب 1. والأداة العامة هي معادلة موازنة المادة عند Havlena &amp; Odeh (1963).</p>
+    <p><b>الـ PVT من الارتباطات</b> (بطاقة مائع المكمن): Standing لـ Pb و Rs و Bo؛ و Vasquez &amp; Beggs لـ co ولزوجة النفط غير المشبع؛ و Beggs &amp; Robinson للزوجة؛ و Papay لمعامل z؛ و Lee و Gonzalez و Eakin للزوجة الغاز. وتُستعمل في نطاق بياناتها، وتقرير PVT المخبري مقدَّم عليها.</p>
+    <p><b>تحليل الانخفاض (Arps, 1945).</b> يطابق تاريخ الإنتاج بالمعادلة أدناه، ويتوقع حتى الحد الاقتصادي، ويعطي الاحتياطي المتبقي و EUR. يُطبَّق على فترة انخفاض متجانسة بعد مرحلة الثبات.</p>
+    <p><b>البيانات الحقلية.</b> يقرأ المحاكي:</p>
+    <ul>
+      <li>ملفات Sodir للإنتاج الشهري أو السنوي؛</li>
+      <li>ملف Volve اليومي؛</li>
+      <li>أي CSV فيه تاريخ ونفط وغاز وماء.</li>
+    </ul>
+    <p>ثم يعاير النموذج على فترة مختارة حتى تطابق معدلات النفط والماء والغاز، بمعامل حجم ونسبة ماء و GOR. هذه مطابقة معدلات لفترة واحدة، وليست مطابقة تاريخية كاملة، والضغوط تقريبية.</p>
+  </div>
+</div>
+<div class="sec">
+  <div><span class="eq">Arps (1945):  q(t) = qi/(1 + b·Di·t)^(1/b);   b = 0 → q = qi·e^(−Di·t);   b = 1 harmonic
+Fit: grid over b ∈ [0, 1] and Di;  ln qi by least squares on ln q;  forecast to economic limit (≤ 30 y)
+Calibration: size factor S scales J, choke C, 1/S² friction (tubing, riser), separator volume; then well wc and GOR are
+shifted until model rates = field rates (1 % tolerance); facilities resized (compression, export, water, GTs)</span></div>
+  <figure style="margin:0"><img src="img/pvt.jpg"><figcaption><span>PVT card: Bo and Rs (top), μo and z (bottom); dotted line = Pb.</span><span class="ar">بطاقة الـ PVT: الخط المنقّط هو Pb.</span></figcaption></figure>
+</div>
+<!-- ======================= 17 ======================= -->
+<h2 class="pb"><span>17. Using the simulator: scenarios and exercises</span><span class="ar">17. استخدام المحاكي: السيناريوهات والتمارين</span></h2>
+<div class="sec">
+  <div>
+    <p><b>Panels.</b></p>
+    <ul>
+      <li>Key parameters; field layout (tap any part for its explanation; day, dusk or night lighting).</li>
+      <li>Live cameras: a subsea ROV, and six views inside the FPSO.</li>
+      <li>Helideck card and crew card.</li>
+      <li>Wells, manifold and risers; topsides process.</li>
+      <li>Storage and offloading; turret mooring and weather; alarms and event log.</li>
+      <li>Reservoir fluid (PVT); field data (import, calibration, Arps); trends up to 3 days.</li>
+    </ul>
+    <p>Simulation speed goes up to 3600×. Units switch between SI and field, and the language between English and Arabic.</p>
+    <p><b>Instructor scenarios:</b></p>
+    <ul>
+      <li>Compressor train A trip.</li>
+      <li>Water breakthrough in P-3.</li>
+      <li>Mooring line failure.</li>
+      <li>Storm (wind 28 m/s, Hs 6.5 m, current 1 m/s).</li>
+      <li>Hydrocyclone fouling.</li>
+      <li>Separator oil level valve stuck.</li>
+      <li>Fast reservoir depletion (×200).</li>
+      <li>Hot or cold reset.</li>
+    </ul>
+  </div>
+  <div class="ar">
+    <p><b>اللوحات.</b></p>
+    <ul>
+      <li>البارامترات الرئيسية؛ ومخطط الحقل (اضغط أي جزء لشرحه؛ وإضاءة نهار أو غروب أو ليل).</li>
+      <li>الكاميرات الحية: ROV تحت البحر، وست مشاهد داخل الـ FPSO.</li>
+      <li>بطاقة المهبط وبطاقة الطاقم.</li>
+      <li>الآبار والـ manifold والـ risers؛ والمعالجة على السطح.</li>
+      <li>التخزين والتفريغ؛ والتثبيت والطقس؛ والإنذارات وسجل الأحداث.</li>
+      <li>مائع المكمن (PVT)؛ والبيانات الحقلية (استيراد ومعايرة و Arps)؛ والمنحنيات حتى 3 أيام.</li>
+    </ul>
+    <p>سرعة المحاكاة حتى 3600×، والوحدات SI أو حقلية، واللغة عربي أو إنجليزي.</p>
+    <p><b>سيناريوهات المدرّب:</b></p>
+    <ul>
+      <li>توقف قطار الضاغط A.</li>
+      <li>وصول الماء إلى P-3.</li>
+      <li>انقطاع خط تثبيت.</li>
+      <li>عاصفة (رياح 28 m/s، Hs 6.5 m، تيار 1 m/s).</li>
+      <li>اتساخ الـ hydrocyclones.</li>
+      <li>تعطّل صمام مستوى النفط.</li>
+      <li>استنزاف سريع للمكمن (×200).</li>
+      <li>إعادة ضبط بتشغيل ساخن أو بارد.</li>
+    </ul>
+  </div>
+</div>
+<table><thead><tr><th style="width:4%">#</th><th style="width:43%">Exercise</th><th style="width:15%">What to watch</th><th class="ar">التمرين وما يُلاحظ</th></tr></thead><tbody>
+<tr><td>1</td><td>At hot start, record oil, water, gas, Psep, Pman, power and VRR. Explain where each gas stream goes.</td><td>Key parameters, gas bars</td><td class="ar">سجّل قيم الحالة المستقرة واشرح أين يذهب كل تيار غاز.</td></tr>
+<tr><td>2</td><td>Close P-1 choke from 75 % to 40 %, then raise P-4 gas lift from 0 to 0.4 MSm³/d. Compare rate gained per MSm³/d of lift gas.</td><td>Well cards, trends</td><td class="ar">قارن أثر الـ choke والـ gas lift على المعدل.</td></tr>
+<tr><td>3</td><td>Trip compressor A. Watch Psep and flaring, reduce chokes to limit flaring, restart the train.</td><td>Flare, Psep, alarms</td><td class="ar">توقف ضاغط: الضغط والحرق، ثم أعد التشغيل.</td></tr>
+<tr><td>4</td><td>Activate ESD at 3600×. Follow blowdown and cooldown until the hydrate alarm; inject MEG; reset and restart.</td><td>Tarr vs Thyd</td><td class="ar">ESD ثم خطر الهيدرات وحقن MEG وإعادة التشغيل.</td></tr>
+<tr><td>5</td><td>Call the shuttle tanker; during offloading raise Hs above 4.5 m. Observe the emergency disconnect.</td><td>Tanker state, tug, hose</td><td class="ar">التفريغ ثم الفصل الطارئ بسبب الموج.</td></tr>
+<tr><td>6</td><td>Storm + mooring line failure: compare offset and maximum tension with intact lines; relate to API RP 2SK factors.</td><td>Plan view, MOOR alarms</td><td class="ar">العاصفة وانقطاع الخط: الإزاحة والشدّ.</td></tr>
+<tr><td>7</td><td>Shut three wells and leave P-1 at 25 %: observe the slugging index and separator level control.</td><td>Slug index, LT</td><td class="ar">الـ slugging عند المعدل المنخفض.</td></tr>
+<tr><td>8</td><td>Run "fast depletion" with and without water injection; compare Pr, VRR and when Pr crosses Pb.</td><td>Pr, VRR trends</td><td class="ar">دور حقن الماء في دعم الضغط.</td></tr>
+<tr><td>9</td><td>Load a real Sodir CSV for an FPSO field (e.g. NORNE); calibrate to the peak month; fit Arps after the plateau and report EUR.</td><td>Field data card</td><td class="ar">بيانات حقلية حقيقية: معايرة وتحليل انخفاض.</td></tr>
+<tr><td>10</td><td>In the PVT card change API from 25 to 45 at the same GOR: how do Pb, Bo and μo change? Apply and compare production.</td><td>PVT curves</td><td class="ar">أثر نوع النفط على خصائص الـ PVT والإنتاج.</td></tr>
+</tbody></table>
+
+<!-- ======================= 18 ======================= -->
+<h2 class="pb"><span>18. Glossary</span><span class="ar">18. مسرد المصطلحات</span></h2>
+<table><thead><tr><th style="width:17%">Term</th><th style="width:35%">Meaning</th><th style="width:17%">Term</th><th>Meaning</th></tr></thead><tbody>
+<tr><td class="k">Anti-surge</td><td>Recycle control keeping a compressor out of surge · <span class="ar">حماية الضاغط من الـ surge</span></td><td class="k">Blowdown</td><td>Depressuring inventory to flare · <span class="ar">تنفيس المحتوى إلى الشعلة</span></td></tr>
+<tr><td class="k">BS&amp;W</td><td>Basic sediment and water in crude · <span class="ar">الماء والرواسب في النفط</span></td><td class="k">Bubble point (Pb)</td><td>Pressure where gas first leaves the oil · <span class="ar">نقطة الفقاعة</span></td></tr>
+<tr><td class="k">CALM buoy</td><td>Catenary anchor leg mooring buoy · <span class="ar">عوامة تحميل</span></td><td class="k">CFU</td><td>Compact flotation unit · <span class="ar">وحدة تعويم مدمجة</span></td></tr>
+<tr><td class="k">Choke</td><td>Adjustable restriction that sets well rate · <span class="ar">خانق التدفق</span></td><td class="k">COW</td><td>Crude oil washing of tanks · <span class="ar">غسيل الخزانات بالنفط</span></td></tr>
+<tr><td class="k">DCS / SIS</td><td>Control system / safety instrumented system · <span class="ar">نظام التحكم / نظام السلامة الآلي</span></td><td class="k">DP</td><td>Dynamic positioning by thrusters · <span class="ar">التموضع الديناميكي</span></td></tr>
+<tr><td class="k">ESD / PSD</td><td>Emergency / process shutdown · <span class="ar">إيقاف طارئ / إيقاف عملية</span></td><td class="k">EUR</td><td>Estimated ultimate recovery · <span class="ar">الاسترداد النهائي المقدّر</span></td></tr>
+<tr><td class="k">Fairlead</td><td>Guide where a mooring line leaves the vessel · <span class="ar">موجّه خط التثبيت</span></td><td class="k">FSO / FLNG</td><td>Storage-only unit / floating LNG · <span class="ar">وحدة تخزين / تسييل عائمة</span></td></tr>
+<tr><td class="k">Gas lift</td><td>Gas injected into tubing to lighten the column · <span class="ar">الرفع بالغاز</span></td><td class="k">GOR / GLR</td><td>Gas-oil / gas-liquid ratio · <span class="ar">نسبة الغاز إلى النفط / السائل</span></td></tr>
+<tr><td class="k">Hawser</td><td>Mooring rope between FPSO and tanker · <span class="ar">حبل القطر</span></td><td class="k">HAZOP / QRA</td><td>Hazard study / quantified risk assessment · <span class="ar">دراسة المخاطر / تقديرها كمياً</span></td></tr>
+<tr><td class="k">HLO</td><td>Helicopter landing officer · <span class="ar">ضابط هبوط المروحيات</span></td><td class="k">Hydrate</td><td>Ice-like gas–water solid · <span class="ar">هيدرات الغاز</span></td></tr>
+<tr><td class="k">Hydrocyclone</td><td>Centrifugal oil–water separator · <span class="ar">فاصل بالطرد المركزي</span></td><td class="k">IG</td><td>Inert gas blanket in cargo tanks · <span class="ar">الغاز الخامل</span></td></tr>
+<tr><td class="k">IPR</td><td>Inflow performance relationship · <span class="ar">علاقة أداء التدفق من المكمن</span></td><td class="k">Jumper / PLET</td><td>Short connection / pipeline end termination · <span class="ar">وصلة / نهاية خط</span></td></tr>
+<tr><td class="k">Lazy wave</td><td>Riser shape with buoyancy hump · <span class="ar">شكل riser بحدبة طفو</span></td><td class="k">LT / LIT</td><td>Level / interface level transmitter · <span class="ar">مرسل المستوى / السطح البيني</span></td></tr>
+<tr><td class="k">Manifold</td><td>Subsea structure commingling wells · <span class="ar">مجمّع الآبار</span></td><td class="k">MBL</td><td>Minimum breaking load of a line · <span class="ar">أدنى حمل كسر</span></td></tr>
+<tr><td class="k">MEG</td><td>Monoethylene glycol hydrate inhibitor · <span class="ar">مثبط هيدرات</span></td><td class="k">Moonpool</td><td>Vertical opening through the hull · <span class="ar">فتحة في البدن</span></td></tr>
+<tr><td class="k">OIM</td><td>Offshore installation manager · <span class="ar">مدير المنشأة البحرية</span></td><td class="k">OIW</td><td>Oil-in-water content · <span class="ar">النفط في الماء</span></td></tr>
+<tr><td class="k">PCV / PSV</td><td>Pressure control / safety valve · <span class="ar">صمام تحكم / أمان بالضغط</span></td><td class="k">POB</td><td>Persons on board · <span class="ar">عدد الأشخاص على المتن</span></td></tr>
+<tr><td class="k">Riser</td><td>Pipe from seabed to vessel · <span class="ar">أنبوب صاعد</span></td><td class="k">ROV / TMS / LARS</td><td>Remotely operated vehicle / tether system / launch system · <span class="ar">مركبة تُشغَّل عن بعد</span></td></tr>
+<tr><td class="k">Slugging</td><td>Intermittent liquid–gas arrival · <span class="ar">وصول متقطع للسائل والغاز</span></td><td class="k">SSIV</td><td>Subsea isolation valve · <span class="ar">صمام عزل تحت البحر</span></td></tr>
+<tr><td class="k">Swivel</td><td>Rotating fluid/power transfer in the turret · <span class="ar">وصلة دوّارة لنقل الموائع</span></td><td class="k">TEG</td><td>Triethylene glycol (gas drying) · <span class="ar">تجفيف الغاز</span></td></tr>
+<tr><td class="k">TEMPSC</td><td>Totally enclosed lifeboat · <span class="ar">قارب نجاة مغلق</span></td><td class="k">Turret</td><td>Geostationary mooring/riser cylinder · <span class="ar">أسطوانة التثبيت الدوّارة</span></td></tr>
+<tr><td class="k">Umbilical</td><td>Control/chemical/power bundle · <span class="ar">حزمة تحكم وكيماويات وطاقة</span></td><td class="k">VRR</td><td>Voidage replacement ratio · <span class="ar">نسبة تعويض الفراغ</span></td></tr>
+<tr><td class="k">Weathervaning</td><td>Vessel rotating into the weather · <span class="ar">دوران السفينة مع الطقس</span></td><td class="k">WHRU</td><td>Waste-heat recovery unit · <span class="ar">استرداد الحرارة المهدورة</span></td></tr>
+<tr><td class="k">XT (tree)</td><td>Subsea Christmas tree on a well · <span class="ar">شجرة الصمامات على البئر</span></td><td class="k">Wet / dry tree</td><td>Wellhead on seabed / on deck · <span class="ar">رأس بئر تحت البحر / على السطح</span></td></tr>
+</tbody></table>
+
+<!-- ======================= 19 ======================= -->
+<h2><span>19. References</span><span class="ar">19. المراجع</span></h2>
+<div class="sec"><div><ol class="ref">
+<li>Vogel, J.V. (1968). Inflow performance relationships for solution-gas drive wells. <i>JPT</i> 20(1), 83–92. SPE-1476-PA.</li>
+<li>Standing, M.B. (1947). A pressure-volume-temperature correlation for mixtures of California oils and gases. <i>API Drilling and Production Practice</i>, 275–287.</li>
+<li>Vasquez, M., Beggs, H.D. (1980). Correlations for fluid physical property prediction. <i>JPT</i> 32(6), 968–970. SPE-6719-PA.</li>
+<li>Beggs, H.D., Robinson, J.R. (1975). Estimating the viscosity of crude oil systems. <i>JPT</i> 27(9), 1140–1141. SPE-5434-PA.</li>
+<li>Lee, A.L., Gonzalez, M.H., Eakin, B.E. (1966). The viscosity of natural gases. <i>JPT</i> 18(8), 997–1000. SPE-1340-PA.</li>
+<li>Papay, J. (1968). Explicit z-factor correlation (OGIL, Budapest), as reproduced in Ahmed, T., <i>Reservoir Engineering Handbook</i>, Gulf Professional Publishing. The original was not consulted.</li>
+<li>Arps, J.J. (1945). Analysis of decline curves. <i>Trans. AIME</i> 160, 228–247.</li>
+<li>Havlena, D., Odeh, A.S. (1963). The material balance as an equation of a straight line. <i>JPT</i> 15(8), 896–900. SPE-559-PA.</li>
+<li>Hammerschmidt, E.G. (1934). Formation of gas hydrates in natural gas transmission lines. <i>Ind. Eng. Chem.</i> 26(8), 851–855.</li>
+</ol></div><div><ol class="ref" start="10">
+<li>API RP 2SK — Design and Analysis of Stationkeeping Systems for Floating Structures.</li>
+<li>API RP 17A — Design and Operation of Subsea Production Systems.</li>
+<li>API RP 14C (ISO 10418) — Safety analysis of surface production systems offshore.</li>
+<li>API RP 14E — Design and installation of offshore production platform piping systems (erosional velocity).</li>
+<li>API Std 521 — Pressure-relieving and depressuring systems. API Spec 12J — Oil and gas separators.</li>
+<li>API MPMS — Manual of Petroleum Measurement Standards.</li>
+<li>IEC 61511 — Safety instrumented systems for the process industry. ISA-18.2 / EEMUA 191 — Alarm management.</li>
+<li>IMO SOLAS Chapter II-2 and FSS Code ch. 15 (inert gas); MARPOL Annex I.</li>
+<li>OSPAR Recommendation 2001/1 — Management of produced water from offshore installations (30 mg/L).</li>
+<li>UK CAA CAP 437 — Standards for offshore helicopter landing areas.</li>
+</ol>
+<p class="note">Check the current edition of each standard before using it for design.<span class="ar" style="display:block">تحقق من الطبعة الحالية لكل معيار قبل استخدامه في التصميم.</span></p></div></div>
+<p class="note" style="margin-top:4mm">© 2026 Waleid (github.com/25im0024-lab) · MIT licence · Training material; not a design document.</p>
+</body>
+</html>

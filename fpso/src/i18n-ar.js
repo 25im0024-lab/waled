@@ -70,7 +70,7 @@ window.I18N.add({
   'A tanker is already in the offloading sequence': 'توجد ناقلة في تسلسل التفريغ مسبقاً', 'Shuttle tanker approaching': 'الناقلة المكوكية تقترب', 'Hawser and hose connected — offloading': 'تم ربط الحبل والخرطوم — بدأ التفريغ',
   'Emergency disconnect (weather / ESD)': 'فصل طارئ (الطقس / ESD)', 'Click again to reset ESD': 'اضغط مرة أخرى لإعادة ضبط ESD', 'Click again to activate ESD': 'اضغط مرة أخرى لتفعيل ESD',
   // ROV camera, helideck
-  'tap any part for an explanation · drag the ROV': 'اضغط على أي جزء لشرحه · اسحب الـ ROV', Labels: 'التسميات', Day: 'نهار', Dusk: 'غروب', Night: 'ليل', Umbilical: 'الـ Umbilical',
+  'tap any part for an explanation · drag the ROV': 'اضغط على أي جزء لشرحه · اسحب الـ ROV', Labels: 'التسميات', 'Guide (PDF)': 'الدليل (PDF)', Day: 'نهار', Dusk: 'غروب', Night: 'ليل', Umbilical: 'الـ Umbilical',
   'ROV Camera — Under the FPSO': 'كاميرا الـ ROV — تحت الـ FPSO', 'work-class ROV, live view': 'ROV من فئة work-class، بث حي', 'Fly the ROV to': 'وجّه الـ ROV إلى', Pilot: 'القيادة',
   'Zoom −': 'تصغير −', 'Zoom +': 'تكبير +', Lights: 'الأضواء', 'Explain what the camera sees': 'اشرح ما تراه الكاميرا',
   'Tap the camera image to steer the ROV there. The camera shows the same live model: flows, valve lamps and mooring tensions change with the process.': 'اضغط على صورة الكاميرا لتوجيه الـ ROV إلى تلك النقطة. الكاميرا تعرض النموذج الحي نفسه: الجريان ومصابيح الصمامات وشدّ خطوط التثبيت تتغير مع العملية.',
