@@ -6,7 +6,9 @@
 <title>Drilling Tools — أدوات الحفر</title>
 <meta name="description" content="Free drilling and production engineering tools: Driller's Console simulator, FPSO Console, Field Hydraulics calculator (API RP 13D, Herschel-Bulkley), UHS Pore Lab (hydrogen storage molecular dynamics) and a bilingual parameter guide. Arabic and English.">
 <meta name="theme-color" content="#0b2340">
-<link rel="icon" href="drillers-console/icon.svg" type="image/svg+xml">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
 <style>
 :root{color-scheme:dark;--bg:#040b15;--panel:#0a1a2f;--panel2:#0d223d;--line:#1e4f7d;--line2:#15385b;--text:#dcecff;--muted:#8fa9c6;--cyan:#36c8ff;--green:#2bd66f;--amber:#ffb627}
 *{box-sizing:border-box}
@@ -106,7 +108,7 @@ code{direction:ltr;unicode-bidi:isolate;background:#081830;border:1px solid var(
 <div class="steps">
   <div class="card"><h3>Android<small>Chrome</small></h3><ol><li>افتح رابط المحاكي.</li><li>القائمة ⋮ ← <b>Install app</b> أو <b>Add to Home screen</b>.</li></ol></div>
   <div class="card"><h3>iPhone / iPad<small>Safari</small></h3><ol><li>افتح رابط المحاكي في Safari.</li><li>زر المشاركة ← <b>Add to Home Screen</b>.</li></ol></div>
-  <div class="card"><h3>الكمبيوتر<small>Chrome / Edge</small></h3><ol><li>افتح رابط المحاكي.</li><li>أيقونة التثبيت ⊕ في آخر شريط العنوان، أو القائمة ← <b>Install</b>.</li></ol></div>
+  <div class="card"><h3>الكمبيوتر<small>Chrome / Edge</small></h3><ol><li>افتح هذه الصفحة (تثبَّت كتطبيق يجمع كل الأدوات) أو رابط أي محاكٍ ليُثبَّت وحده.</li><li><b>Chrome:</b> أيقونة التثبيت ⊕ في آخر شريط العنوان، أو القائمة ⋮ ← <b>Cast, save and share</b> ← <b>Install page as app</b>.</li><li><b>Edge:</b> القائمة ⋯ ← <b>Apps</b> ← <b>Install this site as an app</b>.</li><li>إن لم يظهر خيار التثبيت: القائمة ⋮ ← <b>Cast, save and share</b> ← <b>Create shortcut</b> وفعّل <b>Open as window</b>.</li></ol></div>
 </div>
 <p>بعد التثبيت، اضغط مطوّلاً على أيقونة التطبيق (أو انقر بالزر الأيمن على الكمبيوتر) لتظهر اختصارات تفتح <b>الحاسبة</b> أو <b>الدليل</b> مباشرة. يعمل التطبيق بدون إنترنت بعد أول فتح.<br><span class="en">After installing, long-press (or right-click) the app icon for shortcuts to the calculator and the guide. Works offline after the first visit.</span></p>
 
@@ -132,5 +134,6 @@ code{direction:ltr;unicode-bidi:isolate;background:#081830;border:1px solid var(
   <p>لا تجمع هذه الأدوات أي بيانات: كل ما تدخله يبقى في متصفحك. · <span class="en">No data is collected; everything you enter stays in your browser.</span></p>
 </footer>
 </div>
+<script>if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(() => {});</script>
 </body>
 </html>
