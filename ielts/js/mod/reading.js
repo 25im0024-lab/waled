@@ -31,6 +31,8 @@
     const test = X.number(structuredClone(def));
     const state = { ans: {}, flags: new Set() };
     let part = 0, submitted = false, timer;
+    const partSecs = test.parts.map(() => 0); let since = Date.now();   // time spent per passage (for pace analysis)
+    const tick = () => { partSecs[part] += (Date.now() - since) / 1000; since = Date.now(); };
     if (resume) { state.ans = resume.ans || {}; (resume.flags || []).forEach(n => state.flags.add(n)); part = resume.part || 0; }
     const endsAt = resume ? resume.endsAt : Date.now() + test.minutes * 60000;
     I.examActive = true;
@@ -53,7 +55,7 @@
     X.updateNav($('#view'), state);
 
     const showPart = i => {
-      part = i;
+      tick(); part = i;
       $$('[data-part]').forEach(el => el.hidden = +el.dataset.part !== i);
       $$('#tabs button').forEach(b => b.classList.toggle('on', +b.dataset.i === i));
       persist();
@@ -84,18 +86,28 @@
       if (submitted) return;
       const unanswered = Array.from({ length: test.total }, (_, i) => i + 1).filter(n => !X.has(state.ans[n]) && !(Array.isArray(state.ans[n - 1]) && state.ans[n - 1].length === 2)).length;
       if (!auto && !confirm(unanswered ? `لديك ${unanswered} سؤالًا بلا إجابة. التسليم الآن؟` : 'تسليم الاختبار؟')) return;
-      submitted = true; timer.stop(); I.examActive = false; I.leaveGuard = null; clearP();
+      submitted = true; tick(); timer.stop(); I.examActive = false; I.leaveGuard = null; clearP();
       const marks = X.mark(test, state.ans);
-      I.addHistory('reading', { date: I.dayKey(new Date()), title: test.title, score: marks.score, of: marks.total, byType: marks.byType });
+      I.addHistory('reading', { date: I.dayKey(new Date()), title: test.title, score: marks.score, of: marks.total, byType: marks.byType, times: partSecs.map(Math.round) });
       I.addHistory('mocks', { date: I.dayKey(new Date()), skill: 'reading', raw: marks.score, of: marks.total, band: I.band.fromRaw('reading', marks.score, marks.total), id: def.id });
       I.mark();
       X.annotate(split, marks); X.markNav($('#view'), marks);
       $('#sub').disabled = true; $('#hl').disabled = true;
-      $('#out').innerHTML = X.summaryHtml(test, marks, 'reading', `<div class="row"><button class="primary" id="again">العودة للقائمة</button></div>`) + reviewTable(marks);
+      $('#out').innerHTML = X.summaryHtml(test, marks, 'reading', paceHtml(test, partSecs) + `<div class="row"><button class="primary" id="again">العودة للقائمة</button></div>`) + reviewTable(marks);
       $('#again').onclick = () => I.show('reading');
       $('#out').scrollIntoView({ behavior: 'smooth' });
       if (auto) I.toast('انتهى الوقت: تم التسليم تلقائيًا');
     }
+  }
+
+  /** Pace per passage: the recommended budget is ~20 minutes each. */
+  function paceHtml(test, secs) {
+    const rows = test.parts.map((p, i) => {
+      const m = secs[i] / 60, q = p.last - p.first + 1, perQ = secs[i] / q;
+      const flag = m > 24 ? '<span class="bad">أطول من الموصى به</span>' : m < 12 ? '<span class="warn">سريع جدًا: راجع إجاباتك</span>' : '<span class="ok">ضمن الوتيرة</span>';
+      return `<tr><td class="l">${esc(p.title)}</td><td>${m.toFixed(1)} د</td><td>${Math.round(perQ)} ث/سؤال</td><td>${flag}</td></tr>`;
+    }).join('');
+    return `<h3>الوقت لكل نص (الموصى به ≈ 20 دقيقة)</h3><table class="result-table" style="width:100%"><tr><th>النص</th><th>الوقت</th><th>لكل سؤال</th><th></th></tr>${rows}</table><p class="muted">الوقت محسوب بحسب فترة بقائك في كل تبويب. إن تأخرتَ في النص الأول فعلى الأغلب ستُضحّي بالثالث.</p>`;
   }
 
   function reviewTable(marks) {

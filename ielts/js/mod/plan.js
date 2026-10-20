@@ -27,6 +27,15 @@
   const label = t => { const i = t.indexOf(' — '); return i > 0 ? `<b dir="ltr">${esc(t.slice(0, i))}</b> · ${esc(t.slice(i + 3))}` : esc(t); };
   const fmtD = d => `${DAY[d.getDay()]} ${d.getDate()}/${d.getMonth() + 1}`;
 
+  /* ---------- adaptive weak skill: lowest latest band among skills with at least two measured ---------- */
+  function autoWeak() {
+    const latest = {};
+    I.S.mocks.forEach(m => { if (m.band != null && SKILL_AR[m.skill]) latest[m.skill] = m.band; });
+    const ks = Object.keys(latest);
+    if (ks.length < 2) return '';
+    return ks.sort((a, b) => latest[a] - latest[b])[0];
+  }
+
   /* ---------- schedule model ---------- */
   function totalWeeks(P) { return P.exam ? Math.max(6, Math.ceil((diff(parse(P.exam), parse(P.start)) + 1) / 7)) : 12; }
   function phaseOf(w, W) {
@@ -49,7 +58,7 @@
     const check = w % 4 === 0 && ['found', 'build', 'timed'].includes(phase);
     const full = phase === 'mock' || check || (phase === 'timed' && w % 2 === 1);
     const ext = w > TOOL_DRILL_WEEKS;
-    const weak = P.weak || '';
+    const weak = P.weak || autoWeak();
 
     if (phase === 'final') {
       if (P.exam && diff(parse(P.exam), date) === 1) return [T('toolkit', 'راحة: راجع قائمة المستندات والموقع والوقت، ولا تدرس مواد جديدة. نم مبكرًا.', 20, { fixed: 1 })];
@@ -119,7 +128,11 @@
   }
 
   /* ---------- views ---------- */
-  function render() { viewWeek = 0; if (!plan()) setup(); else view(); }
+  function render() {
+    viewWeek = 0;
+    if (plan() && plan().errors) { I.S.errors = (plan().errors || []).concat(I.S.errors); delete plan().errors; I.save(); }   // migrate notebook from older versions
+    if (!plan()) setup(); else view();
+  }
 
   function setup() {
     const P = plan() || {};
@@ -131,7 +144,7 @@
         <label>موعد الاختبار (تقريبي، اختياري)<br><input type="date" id="pe" value="${esc(P.exam || '')}"></label>
         <label>وقت الدراسة اليومي<br><select id="pm">${[45, 60, 90, 120].map(m => `<option value="${m}" ${(P.mpd || 60) === m ? 'selected' : ''}>${m} دقيقة</option>`).join('')}</select></label>
         <label>يوم الراحة<br><select id="pr"><option value="5" ${P.rest === 5 || P.rest == null ? 'selected' : ''}>الجمعة</option>${[6, 0, 1, 2, 3, 4].map(d => `<option value="${d}" ${P.rest === d ? 'selected' : ''}>${DAY[d]}</option>`).join('')}<option value="-1" ${P.rest === -1 ? 'selected' : ''}>بلا راحة (7 أيام)</option></select></label>
-        <label>أضعف مهارة (إن كنتَ تعرفها)<br><select id="pw"><option value="">لا أعرف بعد (يحددها التشخيص)</option>${Object.entries(SKILL_AR).map(([k, l]) => `<option value="${k}" ${P.weak === k ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+        <label>أضعف مهارة (اتركها فارغة لتُحدَّد تلقائيًا من آخر نتائجك)<br><select id="pw"><option value="">تلقائي (من نتائجك)</option>${Object.entries(SKILL_AR).map(([k, l]) => `<option value="${k}" ${P.weak === k ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
       </div>
       <p id="perr" class="bad"></p>
       <div class="row"><button class="primary" id="pgo">${plan() ? 'حدّث الخطة' : 'أنشئ الخطة'}</button>${plan() ? '<button id="pcancel">إلغاء</button>' : ''}</div>
@@ -142,7 +155,7 @@
       if (!start) return $('#perr').textContent = 'اختر تاريخ البدء.';
       if (exam && diff(parse(exam), parse(start)) < 42) return $('#perr').textContent = 'موعد الاختبار قريب جدًا: يلزم 6 أسابيع على الأقل من تاريخ البدء.';
       const old = plan() || {};
-      I.S.plan = { start, exam, mpd: +$('#pm').value, rest: +$('#pr').value, weak: $('#pw').value, done: old.done || {}, errors: old.errors || [] };
+      I.S.plan = { start, exam, mpd: +$('#pm').value, rest: +$('#pr').value, weak: $('#pw').value, done: old.done || {} };
       I.save(); view();
     };
   }
@@ -166,7 +179,8 @@
       <div class="bar" style="margin-top:10px"><i style="width:${st.n ? Math.round(100 * st.d / st.n) : 0}%"></i></div>
       <p class="muted">${esc(PHASES[phase][1])}</p>
       <div class="row"><button id="pprev" ${w <= 1 ? 'disabled' : ''}>‹ الأسبوع السابق</button><button id="pnow">الأسبوع الحالي</button><button id="pnext" ${w >= W ? 'disabled' : ''}>الأسبوع التالي ›</button><button id="pedit">تعديل الإعدادات</button></div>
-      ${w === 1 ? '<p class="warn">بعد التشخيص: افتح الصفحة الرئيسية، وانظر الدرجات التقديرية وأضعف الأسئلة، ثم عدّل "أضعف مهارة" في الإعدادات ليُعاد توزيع أيام الأسبوع.</p>' : ''}</div>
+      <div class="row"><label class="muted">وقت التذكير <input type="time" id="ict" value="20:00" style="width:auto"></label><button id="pics">تصدير الخطة إلى التقويم (.ics)</button><span class="muted">${weakNote(P)}</span></div>
+      ${w === 1 ? '<p class="warn">بعد التشخيص: ستُحدَّد أضعف مهارة تلقائيًا من درجاتك التقديرية (تظهر أدناه) ويُعاد توزيع أيام الخميس. يمكنك فرض مهارة من الإعدادات.</p>' : ''}</div>
     ${weekRange(P, w).map(day => {
       const iso = ymd(day), tasks = dayTasks(P, day), isToday = iso === todayIso;
       return `<div class="card" ${isToday ? 'style="border-color:var(--green)"' : ''}><h3 style="margin-top:0">${fmtD(day)} ${isToday ? '<span class="tag ok">اليوم</span>' : ''}${day.getDay() === P.rest ? '<span class="tag">راحة</span>' : ''}${P.exam && iso === P.exam ? '<span class="tag warn">الاختبار</span>' : ''}</h3>
@@ -185,10 +199,41 @@
 
     $('#pprev').onclick = () => view(w - 1); $('#pnext').onclick = () => view(w + 1); $('#pnow').onclick = () => { viewWeek = 0; view(); };
     $('#pedit').onclick = setup;
+    $('#pics').onclick = () => exportIcs(P, $('#ict').value || '20:00');
     $$('#view [data-open]').forEach(b => b.onclick = () => I.show(b.dataset.open));
     $$('#view [data-done]').forEach(c => c.onchange = () => { const y = window.scrollY; if (c.checked) { P.done[c.dataset.done] = 1; I.mark(); } else delete P.done[c.dataset.done]; I.save(); view(w); window.scrollTo(0, y); });
     $$('#view [data-ext]').forEach(b => b.onclick = () => extForm(b, P, w));
     errors(P);
+  }
+
+  function weakNote(P) {
+    const w = P.weak || autoWeak();
+    return w ? `أضعف مهارة ${P.weak ? '(مختارة)' : '(تلقائية من نتائجك)'}: <b>${SKILL_AR[w]}</b>` : 'أضعف مهارة: ستُحدَّد تلقائيًا بعد نتيجتين مختلفتين على الأقل.';
+  }
+
+  /* iCalendar export: one event per study day (from today to the exam) at a chosen local time. */
+  const icsEsc = t => String(t).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+  function icsFold(line) {
+    const enc = new TextEncoder(); let out = '', cur = '', bytes = 0;
+    for (const ch of line) { const n = enc.encode(ch).length; if (bytes + n > 73) { out += cur + '\r\n '; cur = ''; bytes = 1; } cur += ch; bytes += n; }
+    return out + cur;
+  }
+  function exportIcs(P, hhmm) {
+    const W = totalWeeks(P), end = P.exam ? parse(P.exam) : addDays(parse(P.start), W * 7 - 1), today = parse(ymd(new Date()));
+    let d = diff(today, parse(P.start)) > 0 ? today : parse(P.start);
+    const [hh, mm] = hhmm.split(':'), stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+/, '');
+    const L = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//IELTS Coach//Plan//AR', 'CALSCALE:GREGORIAN'];
+    let n = 0;
+    for (; diff(end, d) >= 0; d = addDays(d, 1)) {
+      const tasks = dayTasks(P, d); if (!tasks.length) continue;
+      const mins = tasks.reduce((a, t) => a + t.mins, 0) || 30, iso = ymd(d).replace(/-/g, '');
+      L.push('BEGIN:VEVENT', `UID:${iso}-${n}@ielts-coach`, `DTSTAMP:${stamp}`, `DTSTART:${iso}T${hh}${mm}00`, `DURATION:PT${mins}M`,
+        `SUMMARY:${icsEsc('IELTS — ' + tasks.length + ' مهام (' + mins + ' د)')}`, `DESCRIPTION:${icsEsc(tasks.map(t => '• ' + t.text + (t.mins ? ' (' + t.mins + ' د)' : '')).join('\n'))}`, 'END:VEVENT');
+      n++;
+    }
+    L.push('END:VCALENDAR');
+    I.download('ielts-plan.ics', L.map(icsFold).join('\r\n') + '\r\n', 'text/calendar');
+    I.toast(`صُدّر ${n} حدثًا. استورد الملف في تقويم Google أو Apple.`);
   }
 
   function phaseRows(P, W) {
@@ -217,18 +262,18 @@
 
   function errors(P) {
     const draw = () => {
-      $('#elist').innerHTML = P.errors.length ? `<table class="result-table" style="width:100%"><tr><th>خطئي</th><th>الصواب</th><th>القاعدة</th><th></th></tr>${P.errors.map((e, i) => `<tr><td class="l bad">${esc(e.w)}</td><td class="l ok">${esc(e.c)}</td><td class="l">${esc(e.r)}</td><td><button class="sm danger" data-edel="${i}" aria-label="حذف">×</button></td></tr>`).join('')}</table><div class="row"><button class="sm" id="ecopy">نسخ الدفتر (لمشاركته مع Claude)</button></div>` : '<p class="muted">لا توجد أخطاء مسجّلة بعد.</p>';
-      $$('#elist [data-edel]').forEach(b => b.onclick = () => { P.errors.splice(+b.dataset.edel, 1); I.save(); draw(); });
-      const cp = $('#ecopy'); if (cp) cp.onclick = async () => I.toast(await I.copy(P.errors.map(e => `${e.w} → ${e.c} (${e.r})`).join('\n')) ? 'تم النسخ' : 'تعذّر النسخ');
+      $('#elist').innerHTML = I.S.errors.length ? `<table class="result-table" style="width:100%"><tr><th>خطئي</th><th>الصواب</th><th>القاعدة</th><th></th></tr>${I.S.errors.map((e, i) => `<tr><td class="l bad">${e.src === 'ai' ? '🤖 ' : ''}${esc(e.w)}</td><td class="l ok">${esc(e.c)}</td><td class="l">${esc(e.r)}</td><td><button class="sm danger" data-edel="${i}" aria-label="حذف">×</button></td></tr>`).join('')}</table><div class="row"><button class="sm" id="ecopy">نسخ الدفتر (لمشاركته مع Claude)</button></div>` : '<p class="muted">لا توجد أخطاء مسجّلة بعد.</p>';
+      $$('#elist [data-edel]').forEach(b => b.onclick = () => { I.S.errors.splice(+b.dataset.edel, 1); I.save(); draw(); });
+      const cp = $('#ecopy'); if (cp) cp.onclick = async () => I.toast(await I.copy(I.S.errors.map(e => `${e.w} → ${e.c} (${e.r})`).join('\n')) ? 'تم النسخ' : 'تعذّر النسخ');
     };
     $('#eadd').onclick = () => {
       const w = $('#ew').value.trim(), c = $('#ec').value.trim(), r = $('#er').value.trim();
       if (!w || !c) return I.toast('اكتب الخطأ والصواب');
-      P.errors.unshift({ w, c, r }); I.save(); $('#ew').value = $('#ec').value = $('#er').value = ''; draw();
+      I.S.errors.unshift({ w, c, r }); I.save(); $('#ew').value = $('#ec').value = $('#er').value = ''; draw();
     };
     draw();
   }
 
   I.register('plan', 'Plan', render);
-  I.planApi = { dayTasks, totalWeeks, phaseOf };   // exposed for tests
+  I.planApi = { dayTasks, totalWeeks, phaseOf, autoWeak, exportIcs };   // exposed for tests
 })();

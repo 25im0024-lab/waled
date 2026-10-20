@@ -20,7 +20,7 @@
       <div class="row"><label>النوع <select id="pt"><option>Task 1</option><option>Task 2</option></select></label>
         <label id="pfw"></label><button class="primary" id="pg">ابدأ</button></div></div>
     ${I.ai.settingsHtml()}
-    <div class="card"><h2>سجل Writing</h2>${hist.length ? `<table class="result-table"><tr><th>التاريخ</th><th>المهمة</th><th>كلمات</th><th>Band (Claude)</th></tr>${hist.map(h => `<tr><td>${esc(h.date)}</td><td class="l">${esc(h.task)}${h.mode === 'mock' ? ' (mock)' : ''}</td><td>${h.words}</td><td>${h.band != null ? h.band.toFixed(1) : '—'}</td></tr>`).join('')}</table>` : '<p class="muted">لا توجد محاولات محفوظة بعد.</p>'}</div>
+    <div class="card"><h2>سجل Writing</h2>${hist.length ? `<table class="result-table"><tr><th>التاريخ</th><th>المهمة</th><th>كلمات</th><th>Band (Claude)</th></tr>${hist.map(h => `<tr><td>${esc(h.date)}</td><td class="l">${esc(h.task)}${h.mode === 'mock' ? ' (mock)' : h.mode === 'revision' ? ' (مراجعة)' : ''}</td><td>${h.words}</td><td>${h.band != null ? h.band.toFixed(1) : '—'}</td></tr>`).join('')}</table>` : '<p class="muted">لا توجد محاولات محفوظة بعد.</p>'}</div>
     <div class="card"><h2>نصائح</h2><ul class="muted">
       <li>Task 1: ابدأ بـ paraphrase للسؤال، ثم <b>overview</b> (2–3 سمات رئيسية)، ثم تفاصيل منتقاة بأرقام. لا رأي شخصي ولا أسباب مخترعة.</li>
       <li>Task 2: حدّد position واضحًا من المقدمة وأجب عن كل أجزاء السؤال؛ فكرة رئيسية واحدة لكل فقرة مع تفسير ومثال.</li>
@@ -81,15 +81,38 @@
       $('#out').innerHTML = tasks.map((t, i) => `<div class="card"><h2>${esc(t.task)} — ${I.wordCount(t.text)} words</h2><h3>فحوص آلية</h3>${I.local.html(I.local.writing(t.text, t.task))}<div id="ai${i}" style="margin-top:12px"></div></div>`).join('') + `<div id="sum"></div><div class="row"><button class="primary" id="back">العودة للقائمة</button></div>`;
       $('#back').onclick = () => I.show('writing'); $('#out').scrollIntoView({ behavior: 'smooth' });
       if (auto) I.toast('انتهى الوقت: تم التسليم تلقائيًا');
-      const bands = [];
-      for (let i = 0; i < tasks.length; i++) bands[i] = await gradeOne(tasks[i], i);
+      const res = [];
+      for (let i = 0; i < tasks.length; i++) res[i] = await gradeOne(tasks[i], i);
+      const bands = res.map(r => r ? r.band : null);
       I.mark();
-      tasks.forEach((t, i) => I.addHistory('writing', { date: I.dayKey(new Date()), task: t.task, mode: cfg.mode, words: I.wordCount(t.text), band: bands[i], id: t.id, text: t.text.slice(0, 8000) }));
+      tasks.forEach((t, i) => I.addHistory('writing', { date: I.dayKey(new Date()), task: t.task, mode: cfg.mode, words: I.wordCount(t.text), band: bands[i], crit: res[i] ? res[i].crit : null, id: t.id, text: t.text.slice(0, 8000) }));
       if (cfg.mode === 'mock') {
         const w = bands[0] != null && bands[1] != null ? I.band.roundHalf((bands[0] + 2 * bands[1]) / 3) : null;
         I.addHistory('mocks', { date: I.dayKey(new Date()), skill: 'writing', band: w, parts: bands });
         if (w != null) $('#sum').innerHTML = `<div class="card"><h2>Writing band (تقدير)</h2><span class="band-chip">≈ ${w.toFixed(1)}</span><p class="muted">= (Task 1 + 2 × Task 2) ÷ 3 مقرّبًا لأقرب نصف band. Task 2 يحمل ضعف الوزن. التقدير آلي وغير رسمي.</p></div>`;
       }
+    }
+    function revisionBox(i) {
+      return `<div class="card"><h2>✏️ أعد الكتابة وقارن</h2><p class="muted">عدّل مقالك بحسب الملاحظات ثم اضغط "قارن". يقيّم Claude النسخة الجديدة ويخبرك بما تحسّن فعلًا وما بقي.</p>
+        <textarea class="en" id="rv${i}" style="min-height:220px"></textarea><div class="row"><button class="primary" id="rvb${i}">قارن النسختين</button><span class="muted" id="rvw${i}"></span></div><div id="rvo${i}"></div></div>`;
+    }
+    function bindRevision(t, i, payload, before) {
+      const ta = $('#rv' + i); ta.value = t.text;
+      ta.oninput = () => { $('#rvw' + i).textContent = I.wordCount(ta.value) + ' words'; };
+      $('#rvb' + i).onclick = async () => {
+        const revised = ta.value.trim(), out = $('#rvo' + i);
+        if (revised === t.text.trim()) return I.toast('لم تغيّر النص بعد');
+        if (I.wordCount(revised) < 20) return I.toast('النص قصير جدًا');
+        $('#rvb' + i).disabled = true; out.innerHTML = '<p class="muted">⏳ Claude يقارن النسختين…</p>';
+        try {
+          const r = await I.ai.compareRevision({ task: t.task, prompt: payload.prompt, data: payload.data, original: t.text, revised, before });
+          out.innerHTML = I.ai.compareHtml(r.data, { cost: r.usd != null ? `≈ $${r.usd.toFixed(3)}` : '' });
+          const crit = {}; r.data.criteria.forEach(c => { const k = /Task/.test(c.name) ? 'TA' : /Coherence/.test(c.name) ? 'CC' : /Lexical/.test(c.name) ? 'LR' : 'GRA'; crit[k] = Number(c.after_band); });
+          I.addHistory('writing', { date: I.dayKey(new Date()), task: t.task, mode: 'revision', words: I.wordCount(revised), band: I.band.overall(Object.values(crit)), crit, id: t.id, text: revised.slice(0, 8000) });
+          I.mark();
+        } catch (e) { out.innerHTML = `<p class="bad">✗ ${esc(I.ai.explain(e))}</p>`; }
+        $('#rvb' + i).disabled = false;
+      };
     }
     async function gradeOne(t, i) {
       const box = $('#ai' + i), payload = { task: t.task, prompt: t.item.q, data: t.item.chart ? I.charts.describe(t.item.chart) : '', essay: t.text };
@@ -102,8 +125,11 @@
       }
       box.innerHTML = '<p class="muted" aria-live="polite">⏳ Claude يصحّح… (قد يستغرق حتى دقيقة)</p>';
       try {
-        const r = await I.ai.gradeWriting(payload), rep = I.ai.reportHtml(r.data, 'writing', { title: t.task, model: r.model });
-        box.innerHTML = rep.html; return rep.overall;
+        const r = await I.ai.gradeWriting(payload), rep = I.ai.reportHtml(r.data, 'writing', { title: t.task, model: r.model, usd: r.usd });
+        const got = I.ai.capture(r.data), crit = I.ai.critMap(r.data);
+        box.innerHTML = rep.html + (got.e || got.w ? `<p class="ok">✓ أُضيف ${got.e} تصحيح إلى دفتر الأخطاء (تبويب Plan) و${got.w} كلمة إلى "كلماتي" في Vocabulary.</p>` : '') + revisionBox(i);
+        bindRevision(t, i, payload, crit);
+        return { band: rep.overall, crit };
       } catch (e) {
         box.innerHTML = `<p class="bad">✗ ${esc(I.ai.explain(e))}</p><div class="row"><button id="rt${i}">أعد المحاولة</button></div>${paste}`;
         $('#cp' + i).onclick = async () => I.toast(await I.copy(I.ai.pastePromptWriting(payload)) ? 'تم النسخ' : 'تعذّر النسخ');

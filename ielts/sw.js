@@ -1,5 +1,5 @@
 /* IELTS Coach service worker: offline cache for same-origin static files (stale-while-revalidate). */
-const CACHE = 'ielts-coach-v2';
+const CACHE = 'ielts-coach-v3';
 const PRECACHE = ['./', 'index.html', 'css/app.css', 'js/core.js', 'js/charts.js', 'js/exam.js', 'js/ai.js', 'js/main.js',
   'js/data/vocab.js', 'js/data/grammar.js', 'js/data/writing.js', 'js/data/speaking.js', 'js/data/reading.js', 'js/data/listening.js',
   'js/mod/home.js', 'js/mod/plan.js', 'js/mod/vocab.js', 'js/mod/grammar.js', 'js/mod/reading.js', 'js/mod/listening.js', 'js/mod/writing.js', 'js/mod/speaking.js', 'js/mod/toolkit.js',
