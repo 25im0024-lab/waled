@@ -23,16 +23,28 @@
     const overall = have.length === 4 ? I.band.overall(bands) : null;
     const weak = weakAreas().slice(0, 3);
 
-    $('#view').innerHTML = `
-    <div class="card"><h2>خطة اليوم (~60 دقيقة)</h2>
+    const generic = `<div class="card"><h2>خطة اليوم (~60 دقيقة)</h2>
       <ol><li>10 د: Vocabulary — لديك <b>${vs.due}</b> كلمة للمراجعة</li><li>10 د: Grammar</li><li>40 د: <b>${esc(plan[0])}</b></li></ol>
       <div class="row"><button class="primary" data-go="vocab">Vocabulary</button><button data-go="grammar">Grammar</button><button class="primary" data-go="${plan[1]}">${esc(plan[0].split(' ')[0])}</button></div>
-      <p class="muted">${days}</p></div>
+      <p class="muted">${days}</p><p class="muted">أنشئ خطة كاملة من تبويب <a href="#/plan">Plan</a> لتظهر مهامك اليومية هنا.</p></div>`;
+    let todayCard = '';
+    if (S.plan) {
+      const iso = I.dayKey(new Date()), tasks = I.planApi.dayTasks(S.plan, new Date());
+      todayCard = `<div class="card" style="border-color:var(--green)"><h2>مهمة اليوم</h2>${tasks.length ? tasks.map((t, i) => { const id = iso + ':' + i, ok = !!S.plan.done[id]; return `<div class="q" style="display:flex;gap:10px;align-items:flex-start"><label style="flex:1"><input type="checkbox" data-pdone="${esc(id)}" ${ok ? 'checked' : ''}> <span ${ok ? 'style="opacity:.6;text-decoration:line-through"' : ''}>${t.star ? '⭐ ' : ''}${esc(t.text)}</span> <span class="tag">${t.mins ? t.mins + ' د' : ''}</span></label><button class="sm" data-go="${t.tab}">افتح ›</button></div>`; }).join('') : '<p class="muted">اليوم راحة أو لا مهام. استمتع بيومك.</p>'}<p class="muted">${days}</p><div class="row"><button class="sm" data-go="plan">كل الخطة ›</button></div></div>`;
+    }
+    const lastE = S.lastExport || 0, activeDays = Object.keys(S.days).length;
+    const banner = activeDays >= 3 && Date.now() - lastE > 7 * 864e5
+      ? `<div class="card" style="border-color:var(--orange)"><p class="warn" style="margin:0 0 6px">${lastE ? `لم تُصدّر نسخة احتياطية منذ ${Math.floor((Date.now() - lastE) / 864e5)} يومًا.` : 'لم تُصدّر نسخة احتياطية من تقدمك بعد.'} بياناتك في هذا المتصفح فقط، وقد تضيع إن مُسحت بيانات الموقع.</p><button class="sm primary" id="bkp">تصدير نسخة احتياطية الآن</button></div>` : '';
+
+    $('#view').innerHTML = `
+    ${banner}
+    ${S.plan ? todayCard : generic}
 
     <div class="card"><h2>مستواك التقديري</h2>
       <div class="grid">${SKILLS.map(([k, l], i) => `<div class="stat"><small>${l} (آخر محاولة)</small><b>${bands[i] != null ? bands[i].toFixed(1) : '–'}</b></div>`).join('')}
         <div class="stat"><small>Overall (تقدير)</small><b>${overall != null ? overall.toFixed(1) : '–'}</b></div><div class="stat"><small>الهدف</small><b>${S.target}</b></div></div>
       <div id="chart"></div>
+      <div id="chartW"></div>
       <p class="muted">كل الدرجات تقديرية: Reading/Listening من جدول تحويل تقريبي، وWriting/Speaking من تقييم Claude الآلي. Overall يظهر عند وجود محاولة لكل المهارات الأربع.</p></div>
 
     ${weak.length ? `<div class="card"><h2>أضعف أنواع الأسئلة (آخر 10 اختبارات)</h2><table class="result-table" style="width:100%">${weak.map(w => `<tr><td class="l">${esc(I.exam.LABEL[w.t] || w.t)}</td><td>${w.ok}/${w.of}</td><td style="width:40%"><div class="bar"><i style="width:${w.pct}%;background:${w.pct >= 75 ? 'var(--green)' : w.pct >= 50 ? 'var(--orange)' : 'var(--red)'}"></i></div></td></tr>`).join('')}</table><p class="muted">ركّز تدريبك القادم على هذه الأنواع.</p></div>` : ''}
@@ -45,7 +57,7 @@
       <div class="stat"><small>اختبارات Reading</small><b>${S.reading.length}</b></div>
       <div class="stat"><small>اختبارات Listening</small><b>${S.listening.filter(h => h.kind === 'test').length}</b></div>
       <div class="stat"><small>مقالات</small><b>${S.writing.length}</b></div>
-      <div class="stat"><small>جلسات Speaking</small><b>${S.speaking.length}</b></div></div></div>
+      <div class="stat"><small>جلسات Speaking</small><b>${S.speaking.length}</b></div>${S.aiSpend && S.aiSpend.calls ? `<div class="stat"><small>إنفاق Claude (تقدير)</small><b>$${S.aiSpend.usd.toFixed(2)}</b></div>` : ''}</div></div>
 
     <div class="card"><h2>إعدادات</h2><div class="row">
       <label>Band المستهدف <select id="tgt">${[5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9].map(b => `<option ${b === S.target ? 'selected' : ''}>${b}</option>`).join('')}</select></label>
@@ -58,7 +70,10 @@
     $$('#view [data-go]').forEach(b => b.onclick = () => I.show(b.dataset.go));
     $('#tgt').onchange = e => { S.target = +e.target.value; I.save(); render(); $('#topinfo').textContent = `Streak ${I.streak()} يوم · الهدف Band ${S.target}`; };
     $('#exam').onchange = e => { S.exam = e.target.value; I.save(); render(); };
-    $('#exp').onclick = () => I.download('ielts-progress.json', JSON.stringify(S, null, 1));
+    const doExport = () => { S.lastExport = Date.now(); I.save(); I.download('ielts-progress.json', JSON.stringify(S, null, 1)); };
+    $('#exp').onclick = () => { doExport(); render(); };
+    if ($('#bkp')) $('#bkp').onclick = () => { doExport(); render(); };
+    $$('#view [data-pdone]').forEach(c => c.onchange = () => { if (c.checked) { S.plan.done[c.dataset.pdone] = 1; I.mark(); } else delete S.plan.done[c.dataset.pdone]; I.save(); render(); });
     $('#imp').onchange = e => { const f = e.target.files[0]; if (!f) return; f.text().then(t => { try { if (confirm('سيُستبدل تقدمك الحالي بالملف. متابعة؟')) { I.replaceState(JSON.parse(t)); render(); } } catch (err) { I.toast('ملف غير صالح'); } }); };
     $('#rst').onclick = () => { if (confirm('سيتم حذف كل التقدم. متأكد؟')) { I.resetState(); render(); } };
 
@@ -69,6 +84,11 @@
       series.push({ name: 'Target', ci: 4, data: mocks.map(() => S.target) });
       I.charts.render({ type: 'line', title: 'Estimated band by test', sub: 'Most recent tests, oldest → newest', categories: mocks.map(m => m.date.slice(5)), y: { label: 'Band', min: 4, max: 9, step: 1 }, x: { label: 'Test date (MM-DD)' }, series }, box);
     } else box.innerHTML = '<p class="muted">أنجز اختبارين على الأقل لرؤية منحنى التقدم.</p>';
+    const wc = S.writing.filter(w => w.crit && Object.keys(w.crit).length === 4).slice(-12), bw = $('#chartW');
+    if (wc.length >= 2) {
+      const K = [['TA', 'Task Achievement/Response'], ['CC', 'Coherence & Cohesion'], ['LR', 'Lexical Resource'], ['GRA', 'Grammar Range & Accuracy']];
+      I.charts.render({ type: 'line', title: 'Writing — band per criterion (Claude estimate)', sub: 'Each point is one graded response or revision', categories: wc.map(w => w.date.slice(5) + (w.mode === 'revision' ? ' ✎' : '')), y: { label: 'Band', min: 4, max: 9, step: 1 }, x: { label: 'Date (MM-DD), ✎ = revision' }, series: K.map(([k, n], ci) => ({ name: n, ci, data: wc.map(w => w.crit[k]) })) }, bw);
+    }
   }
   I.register('home', 'الرئيسية', render);
 })();

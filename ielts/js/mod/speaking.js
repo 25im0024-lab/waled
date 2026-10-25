@@ -144,8 +144,8 @@
       const its = items(); if (its.every(x => !x.transcript)) { $('#ai').innerHTML = '<p class="warn">لا يوجد نص للتقييم.</p>'; return; }
       $('#gr').disabled = true; $('#ai').innerHTML = '<p class="muted">⏳ Claude يقيّم…</p>';
       try {
-        const r = await I.ai.gradeSpeaking(its), rep = I.ai.reportHtml(r.data, 'speaking', { title: 'Speaking', model: r.model });
-        $('#ai').innerHTML = rep.html; rec.band = rep.overall; rec.words = wordsNow(); I.save();
+        const r = await I.ai.gradeSpeaking(its), rep = I.ai.reportHtml(r.data, 'speaking', { title: 'Speaking', model: r.model, usd: r.usd }), got = I.ai.capture(r.data);
+        $('#ai').innerHTML = rep.html + (got.e ? `<p class="ok">✓ أُضيف ${got.e} تصحيح إلى دفتر الأخطاء (تبويب Plan).</p>` : ''); rec.band = rep.overall; rec.words = wordsNow(); I.save();
         if (mode === 'full' && rep.overall != null) I.addHistory('mocks', { date: rec.date, skill: 'speaking', band: rep.overall });
       } catch (e) { $('#ai').innerHTML = `<p class="bad">✗ ${esc(I.ai.explain(e))}</p>`; $('#gr').disabled = false; }
     };
