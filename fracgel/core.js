@@ -194,6 +194,18 @@
     return best;
   }
 
-  return { KB, G, parseTable, crossover, fitMaxwell, maxwellModel, gppMin, meshSizeNm, linreg, fitPowerLaw, interpLogLog,
+  /* UTF-8 safe base64 for the GitHub contents API (Arabic notes survive the round trip). */
+  function b64encodeUtf8(str) {
+    const bytes = new TextEncoder().encode(str); let bin = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    return btoa(bin);
+  }
+  function b64decodeUtf8(b64) {
+    const bin = atob(String(b64).replace(/\s+/g, '')), bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new TextDecoder().decode(bytes);
+  }
+
+  return { KB, G, parseTable, b64encodeUtf8, b64decodeUtf8, crossover, fitMaxwell, maxwellModel, gppMin, meshSizeNm, linreg, fitPowerLaw, interpLogLog,
     stokesNewtonian, stokesPowerLaw, reynoldsPowerLaw, synergy, desirability, overallD, solve, quadFit, gridOptimum };
 });

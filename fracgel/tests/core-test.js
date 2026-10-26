@@ -45,5 +45,10 @@ near('RSM optimum NaOA', o.x1, 3.5 + 0.3 * 0.6 / 2, 2e-2);
 near('parse tabs', c.parseTable('Angular Frequency\tG\'\tG\'\'\n[rad/s]\t[Pa]\t[Pa]\n0,1\t1,5\t2\n1\t3\t4').length, 2);
 near('parse csv', c.parseTable('0.1,1.5,2\n1,3,4')[1][2], 4);
 
+// base64 round trip with Arabic text, as sent to and read from the GitHub contents API
+const txt = JSON.stringify({ notes: 'guar hydrated 60 min ثم أُضيف NaOA', eta: 152.2 });
+near('base64 UTF-8 round trip', +(c.b64decodeUtf8(c.b64encodeUtf8(txt)) === txt), 1);
+near('base64 matches Buffer', +(c.b64encodeUtf8(txt) === Buffer.from(txt, 'utf8').toString('base64')), 1);
+
 if (fails) { console.error(`${fails} check(s) failed`); process.exit(1); }
 console.log('all FracGel core checks passed');

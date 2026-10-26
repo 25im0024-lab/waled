@@ -141,12 +141,32 @@ footer{margin-top:28px;border-top:1px solid var(--line);padding-top:12px;color:v
   </div>
   <div class="actions">
     <span class="status" id="saveStatus">محفوظ في هذا المتصفح</span>
+    <button id="btnGh" aria-expanded="false" aria-controls="ghPanel">GitHub</button>
     <button id="btnExport" title="نسخة احتياطية كاملة">تصدير JSON</button>
     <button id="btnCsv">تصدير CSV</button>
     <label class="btn" for="fileImport">استيراد JSON</label>
     <input type="file" id="fileImport" accept="application/json,.json" hidden>
   </div>
 </header>
+
+<section class="panel" id="ghPanel" hidden style="margin-bottom:12px">
+  <div class="row" style="justify-content:space-between"><h2>الحفظ في مستودع GitHub خاص</h2><span class="status" id="ghStatus">غير متصل</span></div>
+  <p class="note">تُحفظ كل بيانات الأداة ملفاً واحداً (JSON) في مستودعك الخاص، وكل حفظ يصبح commit فيبقى عندك سجل كامل لكل تعديل. تحتاج <b>fine-grained personal access token</b> مقصوراً على هذا المستودع وحده، بصلاحية <span class="en">Contents: Read and write</span> فقط.</p>
+  <div class="row">
+    <label class="f">المالك<input type="text" id="ghOwner" dir="ltr" autocomplete="off"></label>
+    <label class="f">المستودع<input type="text" id="ghRepo" dir="ltr" autocomplete="off"></label>
+    <label class="f">الفرع<input type="text" id="ghBranch" dir="ltr" autocomplete="off" style="width:7em"></label>
+    <label class="f">الملف<input type="text" id="ghPath" dir="ltr" autocomplete="off"></label>
+    <label class="f">Token<input type="password" id="ghToken" dir="ltr" autocomplete="off" placeholder="github_pat_…"></label>
+  </div>
+  <div class="row">
+    <button class="pri" id="btnGhSave">احفظ في GitHub</button>
+    <button id="btnGhLoad">حمّل من GitHub</button>
+    <label class="f" style="flex-direction:row;align-items:center;gap:6px;color:var(--ink)"><input type="checkbox" id="ghAuto" style="min-height:auto"> حفظ تلقائي بعد دقيقة من آخر تعديل</label>
+    <button class="ghost danger" id="btnGhForget">احذف الـ token من هذا المتصفح</button>
+  </div>
+  <p class="callout">الـ token يُحفظ في هذا المتصفح فقط ويُرسل إلى api.github.com وحده. لا تستخدمه على جهاز مشترك، واجعل له تاريخ انتهاء. إذا تسرّب، ألغه من GitHub ← Settings ← Developer settings ← Personal access tokens.</p>
+</section>
 
 <div class="banner" id="demoBanner" hidden>
   <div><b>بيانات مثال وهمية.</b> الأرقام المعروضة مولّدة للتجربة فقط وليست نتائج قياس، فلا تنقلها إلى الرسالة. امسحها وأدخل نتائجك.</div>
@@ -438,12 +458,13 @@ function demoState() {
 function load() { try { const raw = localStorage.getItem(STORE); if (!raw) return null; const st = JSON.parse(raw); return st && st.samples ? st : null; } catch { return null; } }
 let S = load() || demoState();
 let saveTimer = 0;
+function localSave() {
+  try { localStorage.setItem(STORE, JSON.stringify(S)); $('#saveStatus').textContent = 'محفوظ في هذا المتصفح'; }
+  catch { $('#saveStatus').textContent = 'تعذّر الحفظ في المتصفح، فصدّر JSON'; }
+}
 function save() {
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => {
-    try { localStorage.setItem(STORE, JSON.stringify(S)); $('#saveStatus').textContent = 'محفوظ في هذا المتصفح'; }
-    catch { $('#saveStatus').textContent = 'تعذّر الحفظ في المتصفح، فصدّر JSON'; }
-  }, 250);
+  saveTimer = setTimeout(() => { localSave(); if (typeof ghAutoQueue === 'function') ghAutoQueue(); }, 250);
 }
 
 /* ---------- metrics ---------- */
@@ -923,6 +944,68 @@ function renderProtocol() {
   $('#protocol').innerHTML = PROTOCOL.map((p, i) => `<li><input type="checkbox" id="chk${i}" ${S.checks[i] ? 'checked' : ''}><label for="chk${i}">${p[0]} <span class="pill ${p[1]} conf">${p[2]}</span></label></li>`).join('');
   $$('#protocol input').forEach((c, i) => c.addEventListener('change', () => { S.checks[i] = c.checked; save(); }));
 }
+
+/* ---------- GitHub sync (private repo, contents API) ---------- */
+const GH_STORE = 'fracgel.gh';
+let GH = { owner: '25im0024-lab', repo: 'fracgel-data', branch: 'main', path: 'fracgel-data.json', token: '', auto: false, last: '' };
+try { Object.assign(GH, JSON.parse(localStorage.getItem(GH_STORE) || '{}')); } catch {}
+const ghSaveCfg = () => { try { localStorage.setItem(GH_STORE, JSON.stringify(GH)); } catch {} };
+const ghFields = { owner: '#ghOwner', repo: '#ghRepo', branch: '#ghBranch', path: '#ghPath', token: '#ghToken' };
+for (const [k, id] of Object.entries(ghFields)) { $(id).value = GH[k] || ''; $(id).addEventListener('change', () => { GH[k] = $(id).value.trim(); ghSaveCfg(); ghShow(); }); }
+$('#ghAuto').checked = !!GH.auto;
+$('#ghAuto').addEventListener('change', () => { GH.auto = $('#ghAuto').checked; ghSaveCfg(); });
+function ghShow(msg, bad) {
+  const el = $('#ghStatus');
+  el.textContent = msg || (GH.token ? (GH.last ? `آخر حفظ أو تحميل: ${GH.last}` : 'جاهز') : 'أدخل الـ token');
+  el.style.color = bad ? 'var(--bad)' : '';
+}
+$('#btnGh').addEventListener('click', () => { const p = $('#ghPanel'); p.hidden = !p.hidden; $('#btnGh').setAttribute('aria-expanded', !p.hidden); });
+const ghUrl = () => `https://api.github.com/repos/${encodeURIComponent(GH.owner)}/${encodeURIComponent(GH.repo)}/contents/${GH.path.split('/').map(encodeURIComponent).join('/')}`;
+async function ghFetch(method, body) {
+  if (!GH.token || !GH.owner || !GH.repo || !GH.path) throw new Error('أكمل المالك والمستودع والملف والـ token');
+  const url = ghUrl() + (method === 'GET' ? `?ref=${encodeURIComponent(GH.branch || 'main')}` : '');
+  let res;
+  try {
+    res = await fetch(url, { method, cache: 'no-store', headers: { Authorization: `Bearer ${GH.token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', ...(body ? { 'Content-Type': 'application/json' } : {}) }, body: body ? JSON.stringify(body) : undefined });
+  } catch { throw new Error('تعذّر الاتصال بـ GitHub، فتحقق من الإنترنت'); }
+  if (res.status === 404 && method === 'GET') return null;
+  if (!res.ok) {
+    const why = { 401: 'الـ token غير صالح أو انتهت مدته', 403: 'الـ token لا يملك صلاحية Contents: Read and write على هذا المستودع', 404: 'المستودع أو الفرع غير موجود، أو الـ token لا يصل إليه', 409: 'تعارض: الملف تغيّر على GitHub، فحمّله أولاً ثم احفظ', 422: 'GitHub رفض الطلب، فتحقق من اسم الفرع والملف' }[res.status];
+    throw new Error(why || `GitHub أعاد الخطأ ${res.status}`);
+  }
+  return res.json();
+}
+const measuredCount = () => Object.values(S.samples).filter(s => num(s.eta170_25) !== null).length;
+let ghBusy = false;
+async function ghSave(auto) {
+  if (S.demo) { const m = 'هذه بيانات مثال وهمية، فلن تُحفظ في مستودع بياناتك. امسحها أولاً.'; ghShow(m, true); if (!auto) toast(m); return; }
+  if (ghBusy) return; ghBusy = true; ghShow('جارٍ الحفظ…');
+  try {
+    const cur = await ghFetch('GET');
+    const text = JSON.stringify(S, null, 1) + '\n';
+    if (cur && cur.content && C.b64decodeUtf8(cur.content) === text) { GH.last = new Date().toLocaleString(); ghSaveCfg(); ghShow('لا تغييرات منذ آخر حفظ'); return; }
+    await ghFetch('PUT', { message: `FracGel data: ${measuredCount()} samples with η(170) at 25 °C${S.demo ? ' (DEMO data)' : ''}${auto ? ' [auto]' : ''}`, content: C.b64encodeUtf8(text), branch: GH.branch || 'main', ...(cur ? { sha: cur.sha } : {}) });
+    GH.last = new Date().toLocaleString(); ghSaveCfg(); ghShow(); if (!auto) toast('حُفظت البيانات في GitHub');
+  } catch (e) { ghShow(e.message, true); if (!auto) toast(e.message); }
+  finally { ghBusy = false; }
+}
+async function ghLoad() {
+  const btn = $('#btnGhLoad');
+  if (!S.demo && measuredCount() && btn.dataset.armed !== '1') { btn.dataset.armed = '1'; btn.textContent = 'اضغط مجدداً: سيستبدل بيانات هذا المتصفح'; setTimeout(() => { btn.dataset.armed = ''; btn.textContent = 'حمّل من GitHub'; }, 4000); return; }
+  btn.dataset.armed = ''; btn.textContent = 'حمّل من GitHub'; ghShow('جارٍ التحميل…');
+  try {
+    const cur = await ghFetch('GET');
+    if (!cur) throw new Error('الملف غير موجود في المستودع بعد، فاحفظ أولاً');
+    const st = JSON.parse(C.b64decodeUtf8(cur.content)); if (!st.samples) throw new Error('الملف ليس بيانات FracGel Lab');
+    S = Object.assign(emptyState(), st); localSave(); GH.last = new Date().toLocaleString(); ghSaveCfg(); ghShow(); toast('حُمّلت البيانات من GitHub'); render();
+  } catch (e) { ghShow(e.message, true); toast(e.message); }
+}
+$('#btnGhSave').addEventListener('click', () => ghSave(false));
+$('#btnGhLoad').addEventListener('click', ghLoad);
+$('#btnGhForget').addEventListener('click', () => { GH.token = ''; $('#ghToken').value = ''; ghSaveCfg(); ghShow(); toast('حُذف الـ token من هذا المتصفح'); });
+let ghTimer = 0;
+function ghAutoQueue() { if (!GH.auto || !GH.token) return; clearTimeout(ghTimer); ghTimer = setTimeout(() => ghSave(true), 60000); }
+ghShow();
 
 /* ---------- import / export ---------- */
 function download(name, text, type) {
