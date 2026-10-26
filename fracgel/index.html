@@ -93,6 +93,7 @@ table.matrix th.num{font-size:13px;color:var(--ink)}
 .rankname{white-space:nowrap;min-height:30px;padding:2px 8px}
 .cell.sel{outline:2px solid var(--accent);outline-offset:1px}
 .cell.ctrl{border-style:dashed}
+.cell.unplanned{opacity:.6;border-color:var(--warn)}
 .dots{display:flex;gap:3px}.dots i{width:7px;height:7px;border-radius:50%;background:var(--line);display:block}.dots i.on{background:var(--accent)}
 .legend-seq{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
 .legend-seq .bar{width:140px;height:10px;border-radius:5px;background:linear-gradient(to left,var(--seq1),var(--seq0));border:1px solid var(--line)}
@@ -136,7 +137,7 @@ footer{margin-top:28px;border-top:1px solid var(--line);padding-top:12px;color:v
 <header class="top">
   <div class="brand">
     <h1>FracGel <b>Lab</b></h1>
-    <p>منضدة عمل لجل التكسير <span class="en">NaOA / 1 wt% KCl / guar</span>: سجّل كل عينة، حلّل الـ rheology، احسب التآزر والترسيب، ورتّب التركيبات للوصول إلى الأفضل.</p>
+    <p>منضدة عمل لجل التكسير <span class="en">NaOA / KCl / guar</span> (غرام لكل 100 mL ماء): سجّل كل عينة، حلّل الـ rheology، احسب التآزر والترسيب، ورتّب التركيبات للوصول إلى الأفضل.</p>
   </div>
   <div class="actions">
     <span class="status" id="saveStatus">محفوظ في هذا المتصفح</span>
@@ -167,7 +168,7 @@ footer{margin-top:28px;border-top:1px solid var(--line);padding-top:12px;color:v
 <section class="tab" id="tab-matrix" role="tabpanel">
   <div class="panel">
     <div class="row" style="justify-content:space-between">
-      <h2>مصفوفة التصميم <span class="en muted" style="font-size:14px">NaOA × guar, KCl 1 wt%</span></h2>
+      <h2>مصفوفة التصميم <span class="en muted" style="font-size:14px">NaOA × guar, KCl 1 g · per 100 mL water</span></h2>
       <label class="f">المقياس المعروض<select id="matMetric"></select></label>
     </div>
     <div class="scroll"><table class="matrix" id="matrix"></table></div>
@@ -181,8 +182,8 @@ footer{margin-top:28px;border-top:1px solid var(--line);padding-top:12px;color:v
       <h3>عينات إضافية</h3>
       <p class="note">لتركيز خارج المصفوفة، مثل نقطة التحقق التي يقترحها تبويب الأمثلية.</p>
       <div class="row">
-        <label class="f">NaOA <span class="u">wt%</span><input type="number" id="xNaoa" step="any" min="0" value="3"></label>
-        <label class="f">guar <span class="u">wt%</span><input type="number" id="xGuar" step="any" min="0" value="0.6"></label>
+        <label class="f">NaOA <span class="u">g/100 mL</span><input type="number" id="xNaoa" step="any" min="0" value="0"></label>
+        <label class="f">guar <span class="u">g/100 mL</span><input type="number" id="xGuar" step="any" min="0" value="0.3"></label>
         <button id="btnAddExtra">أضف عينة</button>
       </div>
       <div id="extraList" class="row"></div>
@@ -203,9 +204,9 @@ footer{margin-top:28px;border-top:1px solid var(--line);padding-top:12px;color:v
     </div>
     <form id="sampleForm" class="grid2" onsubmit="return false">
       <fieldset><legend>التركيب</legend>
-        <label class="f">NaOA <span class="u">wt%</span><input type="number" step="any" data-f="naoa" id="f_naoa" readonly></label>
-        <label class="f">guar <span class="u">wt%</span><input type="number" step="any" data-f="guar" id="f_guar" readonly></label>
-        <label class="f">KCl <span class="u">wt%</span><input type="number" step="any" data-f="kcl" id="f_kcl"></label>
+        <label class="f">NaOA <span class="u">g/100 mL</span><input type="number" step="any" data-f="naoa" id="f_naoa" readonly></label>
+        <label class="f">guar <span class="u">g/100 mL</span><input type="number" step="any" data-f="guar" id="f_guar" readonly></label>
+        <label class="f">KCl <span class="u">g/100 mL</span><input type="number" step="any" data-f="kcl" id="f_kcl"></label>
         <label class="f">pH<input type="number" step="any" data-f="pH" id="f_pH"></label>
       </fieldset>
       <fieldset><legend>اللزوجة عند 170 s⁻¹</legend>
@@ -307,7 +308,7 @@ footer{margin-top:28px;border-top:1px solid var(--line);padding-top:12px;color:v
     <div class="scroll"><table class="data" id="rankTable"></table></div>
   </div>
   <div class="panel">
-    <h2>سطح الاستجابة <span class="en muted" style="font-size:14px">quadratic RSM over NaOA 2–6 × guar 0.4–1 wt%</span></h2>
+    <h2>سطح الاستجابة <span class="en muted" style="font-size:14px">quadratic RSM over NaOA 6–10 × guar 0.3–0.7 g/100 mL</span></h2>
     <div class="row">
       <label class="f">الاستجابة<select id="rsmResp"></select></label>
       <label class="f">الهدف<select id="rsmGoal"><option value="max">أعلى قيمة</option><option value="min">أدنى قيمة</option></select></label>
@@ -333,8 +334,8 @@ footer{margin-top:28px;border-top:1px solid var(--line);padding-top:12px;color:v
     </div>
     <canvas id="net" aria-label="Schematic of wormlike micelles and guar chains"></canvas>
     <div class="row">
-      <label class="f">NaOA <span class="u" id="nvN">4 wt%</span><input type="range" id="nNaoa" min="0" max="6" step="0.5" value="4"></label>
-      <label class="f">guar <span class="u" id="nvG">0.7 wt%</span><input type="range" id="nGuar" min="0" max="1" step="0.05" value="0.7"></label>
+      <label class="f">NaOA <span class="u" id="nvN">8 g</span><input type="range" id="nNaoa" min="0" max="10" step="1" value="8"></label>
+      <label class="f">guar <span class="u" id="nvG">0.5 g</span><input type="range" id="nGuar" min="0" max="0.7" step="0.05" value="0.5"></label>
       <label class="f">الحرارة <span class="u" id="nvT">25 °C</span><input type="range" id="nTemp" min="25" max="120" step="5" value="25"></label>
       <div class="f">الـ breaker<div class="seg" id="nBreak"><button aria-pressed="true" data-b="none">بدون</button><button aria-pressed="false" data-b="hc">Hydrocarbon</button><button aria-pressed="false" data-b="ox">Oxidizer</button><button aria-pressed="false" data-b="both">الاثنان</button></div></div>
     </div>
@@ -364,10 +365,14 @@ footer{margin-top:28px;border-top:1px solid var(--line);padding-top:12px;color:v
 <script>
 'use strict';
 const C = window.FracCore;
-const NAOA = [0, 2, 4, 6], GUAR = [0, 0.4, 0.7, 1];
-const BOX = { x1: [2, 6], x2: [0.4, 1] };
-const STORE = 'fracgel.v1';
+// Waleid's sample plan: NaOA 6/8/10 g × guar 0/0.3/0.5/0.7 g, KCl 1 g, all per 100 mL water, plus G0.7-K.
+// The grid also shows K (blank), G0.3-K and G0.5-K: not in the plan, but the synergy index needs them.
+const NAOA = [0, 6, 8, 10], GUAR = [0, 0.3, 0.5, 0.7];
+const BOX = { x1: [6, 10], x2: [0.3, 0.7] };
+const STORE = 'fracgel.v2';
 const key = (n, g) => `${+n}|${+g}`;
+const MID = key(8, 0.5);
+const PLAN = new Set([...[6, 8, 10].flatMap(n => [0, 0.3, 0.5, 0.7].map(g => key(n, g))), key(0, 0.7)]);
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -394,33 +399,33 @@ const DEFAULT_SPECS = [
   { m: 'settle', goal: 'min', lo: 1, hi: 20, w: 2, on: true },
   { m: 'brokenVisc', goal: 'min', lo: 2, hi: 5, w: 2, on: true },
   { m: 'residue', goal: 'min', lo: 100, hi: 600, w: 1, on: true },
-  { m: 'loading', goal: 'min', lo: 3, hi: 7, w: 1, on: true },
+  { m: 'loading', goal: 'min', lo: 6, hi: 12, w: 1, on: true },
 ];
 function emptyState() {
   const samples = {};
   for (const n of NAOA) for (const g of GUAR) samples[key(n, g)] = blankSample(n, g);
-  return { v: 1, demo: false, samples, specs: JSON.parse(JSON.stringify(DEFAULT_SPECS)), sel: key(4, 0.7), matMetric: 'eta170_25', rsm: { resp: 'eta170_T', goal: 'max' }, settle: { d: 0.6, rhoP: 2.65, rhoF: 1.01 }, checks: {} };
+  return { v: 1, demo: false, samples, specs: JSON.parse(JSON.stringify(DEFAULT_SPECS)), sel: MID, matMetric: 'eta170_25', rsm: { resp: 'eta170_T', goal: 'max' }, settle: { d: 0.6, rhoP: 2.65, rhoF: 1.01 }, checks: {} };
 }
 /* Clearly fake numbers so the page shows what it does on first open. Seeded, so they never change. */
 function demoState() {
   const st = emptyState(); st.demo = true;
   let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
   const jit = (v, p = 0.06) => v * (1 + (rnd() * 2 - 1) * p);
-  const eN = { 0: 0, 2: 35, 4: 85, 6: 140 }, eG = { 0: 0, 0.4: 22, 0.7: 55, 1: 105 };
+  const eN = n => n ? 25 * (n / 6) ** 1.8 : 0, eG = g => g ? 110 * g ** 2.2 : 0;
   for (const n of NAOA) for (const g of GUAR) {
     const s = st.samples[key(n, g)];
-    const bump = n && g ? 1 + 0.55 * Math.exp(-((n - 4) ** 2) / 4 - ((g - 0.7) ** 2) / 0.08) : 1;
-    const e25 = n || g ? (eN[n] + eG[g]) * bump : 1.1;
-    const ret = n && g ? 0.55 + 0.12 * Math.exp(-((g - 0.7) ** 2) / 0.1) : n ? 0.32 : g ? 0.5 : 0.9;
+    const bump = n && g ? 1.4 + 0.6 * Math.exp(-((n - 8) ** 2) / 8 - ((g - 0.5) ** 2) / 0.05) : 1;
+    const e25 = n || g ? (eN(n) + eG(g)) * bump : 1.1;
+    const ret = n && g ? 0.55 + 0.12 * Math.exp(-((g - 0.5) ** 2) / 0.05) : n ? 0.32 : g ? 0.5 : 0.9;
     Object.assign(s, { pH: n ? +jit(9.8, 0.02).toFixed(1) : 7.2, eta170_25: +jit(e25).toFixed(1), eta170_T: +jit(e25 * ret).toFixed(1) });
     if (n) {
-      const G0 = 2.2 * (n / 2) ** 2.2 * (1 + 0.4 * g), tau = 0.7 * (n / 2) ** 1.4 * (1 + 1.2 * g);
+      const G0 = 2.2 * (n / 6) ** 2.2 * (1 + 0.6 * g), tau = 0.9 * (n / 6) ** 1.4 * (1 + 1.6 * g);
       Object.assign(s, { G0: +jit(G0).toFixed(2), tauR: +jit(tau).toFixed(2), eta0: +(G0 * tau).toFixed(1), n: +jit(0.22 + 0.1 * g, 0.05).toFixed(2), K: +jit(G0 * tau * 0.25).toFixed(2) });
     } else if (g) Object.assign(s, { eta0: +jit(0.4 * g ** 3 * 10).toFixed(2), n: +jit(0.75 - 0.3 * g, 0.05).toFixed(2), K: +jit(0.15 * g ** 2.5 * 10).toFixed(2) });
     if (n || g) Object.assign(s, { settle: +jit(60 / (1 + (s.eta0 || 0.5) * 2)).toFixed(1), breaker: 'APS 0.05 wt% + kerosene 5 vol% (مثال)', breakTime: +jit(2 + g * 2).toFixed(1), brokenVisc: +jit(1.4 + 3.4 * g).toFixed(2), residue: Math.round(jit(15 + 480 * g)) });
   }
   // example raw curves for the 4 / 0.7 sample
-  const s = st.samples[key(4, 0.7)], fl = [], fr = [];
+  const s = st.samples[MID], fl = [], fr = [];
   for (let k = -2; k <= 2.001; k += 0.2) {
     const w = 10 ** k, m = C.maxwellModel(w, s.G0, s.tauR), rouse = 0.012 * s.G0 * Math.sqrt(w * s.tauR);
     fr.push(`${w.toPrecision(4)}\t${jit(m.Gp, 0.03).toPrecision(4)}\t${jit(m.Gpp + rouse, 0.03).toPrecision(4)}`);
@@ -460,7 +465,7 @@ const METRICS = [
   { id: 'breakTime', label: 'زمن الكسر', unit: 'h' },
   { id: 'brokenVisc', label: 'لزوجة المكسور', unit: 'mPa·s' },
   { id: 'residue', label: 'Residue', unit: 'mg/L' },
-  { id: 'loading', label: 'مجموع NaOA + guar', unit: 'wt%', get: s => s.naoa + s.guar },
+  { id: 'loading', label: 'مجموع NaOA + guar', unit: 'g/100 mL', get: s => s.naoa + s.guar },
   { id: 'SI', label: 'مؤشر التآزر (η 170، 25 °C)', unit: '×', get: s => synergyOf(s, 'eta170_25') },
   { id: 'SI0', label: 'مؤشر التآزر (η₀)', unit: '×', get: s => synergyOf(s, 'eta0') },
   { id: 'D', label: 'الدرجة الكلية D', unit: '0–1', get: s => scoreOf(s).D },
@@ -474,8 +479,9 @@ function scoreOf(s) {
   return { D: measured ? C.overallD(ds, ws) : NaN, parts, complete: measured === parts.length };
 }
 const progress = s => [num(s.eta170_25) !== null, num(s.G0) !== null || num(s.eta0) !== null, num(s.eta170_T) !== null, num(s.settle) !== null, num(s.brokenVisc) !== null || num(s.residue) !== null];
-const sampleName = s => `NaOA ${s.naoa} / guar ${s.guar}`;
-const sampleKind = s => s.naoa && s.guar ? 'خليط' : s.naoa ? 'ضبط: NaOA فقط' : s.guar ? 'ضبط: guar فقط' : 'ضبط: KCl فقط';
+const sampleName = s => s.naoa ? `S${s.naoa}-${s.guar}` : s.guar ? `G${s.guar}-K` : 'K (blank)';
+const inPlan = s => PLAN.has(key(s.naoa, s.guar));
+const sampleKind = s => (s.naoa && s.guar ? 'خليط' : s.naoa ? 'ضبط: NaOA فقط' : s.guar ? 'ضبط: guar فقط' : 'ضبط: KCl فقط') + (isGrid(s) && !inPlan(s) ? ' (مقترح)' : '');
 const sortedKeys = () => Object.keys(S.samples).sort((a, b) => { const A = S.samples[a], B = S.samples[b]; return A.naoa - B.naoa || A.guar - B.guar; });
 const isGrid = s => NAOA.includes(s.naoa) && GUAR.includes(s.guar);
 
@@ -524,17 +530,17 @@ function renderMatrix() {
   const lo = vals.length ? Math.min(...vals.map(tf)) : 0, hi = vals.length ? Math.max(...vals.map(tf)) : 1;
   $('#legMin').textContent = vals.length ? fmt(Math.min(...vals)) : '—'; $('#legMax').textContent = vals.length ? fmt(Math.max(...vals)) : '—';
   const s0 = tok('--seq0'), s1 = tok('--seq1'), ink = tok('--ink'), panel = tok('--panel');
-  let h = `<tr><th>NaOA ↓ / guar →</th>${GUAR.map(g => `<th class="num">${g === 0 ? '0 (بدون)' : g + ' wt%'}</th>`).join('')}</tr>`;
+  let h = `<tr><th>NaOA ↓ / guar →</th>${GUAR.map(g => `<th class="num">${g === 0 ? '0 (بدون)' : g + ' g'}</th>`).join('')}</tr>`;
   for (const n of NAOA) {
-    h += `<tr><th class="num">${n === 0 ? '0 (بدون)' : n + ' wt%'}</th>`;
+    h += `<tr><th class="num">${n === 0 ? '0 (بدون)' : n + ' g'}</th>`;
     for (const g of GUAR) {
       const k = key(n, g), s = S.samples[k], v = val(s, mid);
       const t = Number.isFinite(v) && hi > lo ? (tf(v) - lo) / (hi - lo) : Number.isFinite(v) ? 1 : 0;
       const bg = Number.isFinite(v) ? mixHex(s0, s1, 0.15 + 0.85 * t) : '';
       const fg = Number.isFinite(v) && t > 0.55 ? panel : ink;
       const pr = progress(s).map(p => `<i class="${p ? 'on' : ''}"></i>`).join('');
-      h += `<td><div class="cell ${n && g ? '' : 'ctrl'} ${k === S.sel ? 'sel' : ''}" role="button" tabindex="0" data-k="${k}" style="${bg ? `background:${bg};color:${fg}` : ''}">
-        <span class="t" style="${bg ? 'color:inherit;opacity:.8' : ''}">${n && g ? 'خليط' : n || g ? 'ضبط' : 'KCl فقط'}</span>
+      h += `<td><div class="cell ${n && g ? '' : 'ctrl'} ${inPlan(s) ? '' : 'unplanned'} ${k === S.sel ? 'sel' : ''}" role="button" tabindex="0" data-k="${k}" style="${bg ? `background:${bg};color:${fg}` : ''}">
+        <span class="t" style="${bg ? 'color:inherit;opacity:.8' : ''}">${sampleName(s)}${inPlan(s) ? '' : ' · مقترح'}</span>
         <span class="v">${fmt(v)}</span><span class="dots">${pr}</span></div></td>`;
     }
     h += '</tr>';
@@ -555,7 +561,9 @@ function renderTodo() {
   const noVE = all.filter(s => s.naoa > 0 && num(s.G0) === null).length;
   const noT = all.filter(s => (s.naoa || s.guar) && num(s.eta170_T) === null).length;
   const ctrls = NAOA.slice(1).filter(n => num(S.samples[key(n, 0)].eta170_25) === null).length + GUAR.slice(1).filter(g => num(S.samples[key(0, g)].eta170_25) === null).length;
-  if (ctrls) items.push(`أكمل قياس ${ctrls} من عينات الضبط، فبدونها لا يُحسب مؤشر التآزر.`);
+  const missing = GUAR.slice(1).filter(g => !PLAN.has(key(0, g))).map(g => `G${g}-K`);
+  if (missing.length) items.push(`خطتك لا تضم ${missing.join(' و ')}. أضفها (guar + KCl فقط) ليُحسب مؤشر التآزر لخلائط ${missing.map(m => m.slice(1, -2)).join(' و ')} g guar.`);
+  if (ctrls) items.push(`${ctrls} من عينات الضبط بلا قياس بعد، وبدونها لا يُحسب مؤشر التآزر.`);
   if (noBase) items.push(`${noBase} عينة بلا لزوجة أساسية عند 170 s⁻¹ و25 °C.`);
   if (noVE) items.push(`${noVE} عينة تحتوي NaOA بلا frequency sweep (G₀ و τR).`);
   if (noT) items.push(`${noT} عينة بلا اختبار القص الحراري.`);
@@ -598,7 +606,7 @@ $('#sampleForm').addEventListener('input', e => {
 });
 $('#btnDelSample').addEventListener('click', () => {
   const s = cur(); if (isGrid(s)) return;
-  delete S.samples[S.sel]; S.sel = key(4, 0.7); save(); toast('حُذفت العينة'); showTab('matrix');
+  delete S.samples[S.sel]; S.sel = MID; save(); toast('حُذفت العينة'); showTab('matrix');
 });
 
 /* ---------- log-log plot ---------- */
@@ -780,12 +788,15 @@ function runRsm(announce) {
   const o = C.gridOptimum(f, BOX, S.rsm.goal, 80); lastOpt = o;
   const back = y => logT ? 10 ** y : y;
   $('#rsmOut').innerHTML = [
-    ['أفضل نقطة متوقعة', `${o.x1.toFixed(2)} / ${o.x2.toFixed(2)}`, 'NaOA / guar wt%'],
+    ['أفضل نقطة متوقعة', `<bdi dir="ltr">NaOA ${o.x1.toFixed(1)} · guar ${o.x2.toFixed(2)}</bdi>`, 'g/100 mL'],
     ['القيمة المتوقعة', fmt(back(o.y)), MET[resp].unit],
     ['R²', q.r2.toFixed(3), logT ? 'على log10' : ''],
     ['Adjusted R²', Number.isFinite(q.adjR2) ? q.adjR2.toFixed(3) : '—', `dof = ${q.dof}`],
   ].map(r => `<div><dt>${r[0]}</dt><dd>${r[1]} <small>${r[2]}</small></dd></div>`).join('');
   $('#btnAddVerify').disabled = false;
+  const edge = [o.x1 <= BOX.x1[0], o.x1 >= BOX.x1[1], o.x2 <= BOX.x2[0], o.x2 >= BOX.x2[1]].some(Boolean);
+  $('#rsmWarn').innerHTML = (edge ? '<b>النقطة على حافة المدى المقاس</b>، فالأمثل الحقيقي قد يقع خارجه، والنموذج لا يصح هناك. الخطوة المنطقية تمديد المدى في ذلك الاتجاه بعينة أو اثنتين، لا اعتماد الحافة. ' : '') +
+    'نموذج من 6 معاملات على 9 نقاط يترك 3 درجات حرية فقط، فالنقطة المقترحة <b>مرشّح للاختبار</b> وليست نتيجة. أكّدها بعينة تحقق مكررة قبل اعتمادها.';
   drawRsm(cv, f, pts, o, logT);
 }
 function drawRsm(cv, f, pts, o, logT) {
@@ -810,10 +821,11 @@ function drawRsm(cv, f, pts, o, logT) {
   } else { g.fillStyle = tok('--panel2'); g.fillRect(L, T, pw, ph); g.fillStyle = muted; g.textAlign = 'center'; g.fillText('Need ≥ 6 measured mixtures', L + pw / 2, T + ph / 2); }
   g.strokeStyle = tok('--line'); g.strokeRect(L, T, pw, ph);
   g.fillStyle = muted; g.textAlign = 'center';
-  for (const v of [2, 3, 4, 5, 6]) g.fillText(v, X(v), T + ph + 15);
-  g.textAlign = 'right'; for (const v of [0.4, 0.55, 0.7, 0.85, 1]) g.fillText(v, L - 6, Y(v) + 4);
-  g.fillStyle = ink; g.textAlign = 'center'; g.fillText('NaOA (wt%)', L + pw / 2, H - 6);
-  g.save(); g.translate(12, T + ph / 2); g.rotate(-Math.PI / 2); g.fillText('guar (wt%)', 0, 0); g.restore();
+  const ticks = b => [0, 1, 2, 3, 4].map(i => +(b[0] + (b[1] - b[0]) * i / 4).toFixed(2));
+  for (const v of ticks(BOX.x1)) g.fillText(v, X(v), T + ph + 15);
+  g.textAlign = 'right'; for (const v of ticks(BOX.x2)) g.fillText(v, L - 6, Y(v) + 4);
+  g.fillStyle = ink; g.textAlign = 'center'; g.fillText('NaOA (g/100 mL)', L + pw / 2, H - 6);
+  g.save(); g.translate(12, T + ph / 2); g.rotate(-Math.PI / 2); g.fillText('guar (g/100 mL)', 0, 0); g.restore();
   for (const p of pts) { g.beginPath(); g.arc(X(p.x1), Y(p.x2), 4.5, 0, 7); g.fillStyle = tok('--panel'); g.fill(); g.lineWidth = 2; g.strokeStyle = ink; g.stroke(); }
   if (o) {
     const cx = X(o.x1), cy = Y(o.x2); g.beginPath();
@@ -836,13 +848,13 @@ const net = { breaker: 'none', chains: [], sig: '', t: 0, raf: 0 };
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 function syncNetwork() {
   const s = cur();
-  $("#nNaoa").value = Math.min(6, s.naoa); $("#nGuar").value = Math.min(1, s.guar);
+  $("#nNaoa").value = Math.min(10, s.naoa); $("#nGuar").value = Math.min(0.7, s.guar);
   buildNet(); if (!net.raf) loopNet();
 }
 function rng(seed) { return () => (seed = (seed * 16807) % 2147483647) / 2147483647; }
 function buildNet() {
   const n = +$('#nNaoa').value, gu = +$('#nGuar').value, T = +$('#nTemp').value;
-  $('#nvN').textContent = n + ' wt%'; $('#nvG').textContent = gu + ' wt%'; $('#nvT').textContent = T + ' °C';
+  $('#nvN').textContent = n + ' g'; $('#nvG').textContent = gu + ' g'; $('#nvT').textContent = T + ' °C';
   const cv = $('#net'), W = cv.clientWidth || 600, H = cv.clientHeight || 380, r = rng(11), chains = [];
   const lenF = Math.max(0.15, 1 - (T - 25) / 110);  // micelles shorten with temperature (qualitative)
   const hc = net.breaker === 'hc' || net.breaker === 'both', ox = net.breaker === 'ox' || net.breaker === 'both';
@@ -852,12 +864,12 @@ function buildNet() {
     chains.push({ kind, pts });
   };
   if (n > 0) {
-    const count = Math.round(4 + n * 3);
+    const count = Math.round(4 + n * 1.8);
     if (hc) for (let i = 0; i < count * 6; i++) chains.push({ kind: 'sphere', pts: [[r() * W, r() * H, r() * 6.283]] });
-    else for (let i = 0; i < count; i++) walk(Math.round((8 + n * 7) * lenF), 9, 1.1, 'wlm');
+    else for (let i = 0; i < count; i++) walk(Math.round((8 + n * 4) * lenF), 9, 1.1, 'wlm');
   }
   if (gu > 0) {
-    const count = Math.round(2 + gu * 9);
+    const count = Math.round(2 + gu * 13);
     for (let i = 0; i < count; i++) {
       if (ox) { for (let j = 0; j < 4; j++) walk(4, 11, 0.5, 'guar'); }
       else walk(48, 11, 0.5, 'guar');

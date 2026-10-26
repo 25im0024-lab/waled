@@ -28,7 +28,7 @@ Live 3D molecular dynamics of H2 with a cushion gas (CO2, CH4 or N2) in a calcit
 
 ### ▶ [افتح FracGel Lab](https://25im0024-lab.github.io/waled/fracgel/)
 
-منضدة عمل بحثية لجل التكسير المكوّن من sodium oleate و 1 wt% KCl و guar: مصفوفة العينات (NaOA 0/2/4/6 × guar 0/0.4/0.7/1 wt%) مع عينات الضبط ومؤشر التآزر، وتحليل Maxwell للـ frequency sweep، و power law للـ flow curve، وحاسبة ترسيب الـ proppant، وترتيب التركيبات بالـ desirability (Derringer–Suich)، وسطح استجابة quadratic يقترح نقطة تحقق. البيانات تبقى في المتصفح مع تصدير JSON و CSV. اختبار الحسابات: `node fracgel/tests/core-test.js`.
+منضدة عمل بحثية لجل التكسير المكوّن من sodium oleate و KCl و guar: مصفوفة العينات (NaOA 6/8/10 × guar 0/0.3/0.5/0.7 g مع KCl 1 g لكل 100 mL ماء، و G0.7-K) مع عينات الضبط ومؤشر التآزر، وتحليل Maxwell للـ frequency sweep، و power law للـ flow curve، وحاسبة ترسيب الـ proppant، وترتيب التركيبات بالـ desirability (Derringer–Suich)، وسطح استجابة quadratic يقترح نقطة تحقق. البيانات تبقى في المتصفح مع تصدير JSON و CSV. اختبار الحسابات: `node fracgel/tests/core-test.js`.
 
 ## IELTS Coach
 
