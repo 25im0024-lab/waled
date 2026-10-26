@@ -597,8 +597,8 @@
     const sup = s => s.replace(/[-0-9]/g, c => '⁻⁰¹²³⁴⁵⁶⁷⁸⁹'['-0123456789'.indexOf(c)]);
     g.strokeStyle = line; g.fillStyle = mut; g.textAlign = 'center';
     const ticks = o.log ? Array.from({ length: Math.round((x1 - x0) / 3) + 1 }, (_, i) => 10 ** (x0 + 3 * i)) : Array.from({ length: 6 }, (_, i) => o.min + (o.max - o.min) * i / 5);
-    for (const t of ticks) { const x = X(t); g.beginPath(); g.moveTo(x, top); g.lineTo(x, H - bottom); g.stroke(); g.fillText(o.log ? (t >= 1 && t < 1e4 ? String(t) : '10' + sup(String(Math.round(Math.log10(t))))) : String(Math.round(t)), x, H - bottom + 13); }
-    g.fillText(o.unit, W / 2, H - 3);
+    for (const [ti, t] of ticks.entries()) { const x = X(t); g.textAlign = ti === 0 ? 'left' : ti === ticks.length - 1 ? 'right' : 'center'; g.beginPath(); g.moveTo(x, top); g.lineTo(x, H - bottom); g.stroke(); g.fillText(o.log ? (t >= 1 && t < 1e4 ? String(t) : '10' + sup(String(Math.round(Math.log10(t))))) : String(Math.round(t)), x, H - bottom + 13); }
+    g.textAlign = 'center'; g.fillText(o.unit, W / 2, H - 3);
     rows.forEach((r, i) => {
       const y = top + i * rh, bh = rh * 0.62;
       g.fillStyle = r.color; g.globalAlpha = 0.85; g.fillRect(L0, y + (rh - bh) / 2, Math.max(2, X(r.v) - L0), bh); g.globalAlpha = 1;
