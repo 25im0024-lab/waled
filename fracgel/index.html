@@ -1,0 +1,964 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>FracGel Lab — NaOA/KCl/Guar</title>
+<meta name="description" content="Research workbench for a sodium oleate/KCl wormlike-micelle + guar fracturing gel: sample matrix, Maxwell and power-law analysis, synergy index, proppant settling, desirability ranking and response-surface optimum.">
+<link rel="icon" href="../icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: a lab-notebook workbench — sticky tab rail, one working panel per tab, data set in mono. */
+:root{
+  --bg:#f3f5f6; --panel:#ffffff; --panel2:#e9eef0; --line:#cfd8dc; --ink:#14232a; --muted:#56666e;
+  --accent:#0d6b77;  /* teal: elastic / G' / the gel */
+  --micelle:#6a4cb0; /* violet: NaOA wormlike micelles */
+  --guar:#b8730f;    /* amber: guar chains / G'' */
+  --good:#1f7a3f; --warn:#a86400; --bad:#b3261e;
+  --seq0:#e7f0f1; --seq1:#0d6b77;
+  --font-body:"IBM Plex Sans Arabic","Segoe UI",Tahoma,system-ui,sans-serif;
+  --font-data:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0c1316; --panel:#131d21; --panel2:#1a272c; --line:#2a3b42; --ink:#e2ecef; --muted:#93a6ad;
+  --accent:#3fbfcc; --micelle:#a990f2; --guar:#e7a548; --good:#5fcf86; --warn:#f0b35a; --bad:#ff8a80;
+  --seq0:#18262b; --seq1:#3fbfcc; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0c1316; --panel:#131d21; --panel2:#1a272c; --line:#2a3b42; --ink:#e2ecef; --muted:#93a6ad;
+  --accent:#3fbfcc; --micelle:#a990f2; --guar:#e7a548; --good:#5fcf86; --warn:#f0b35a; --bad:#ff8a80;
+  --seq0:#18262b; --seq1:#3fbfcc; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.6 var(--font-body);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 40px}
+.wrap{max-width:1180px;margin:0 auto}
+a{color:var(--accent)}
+h1,h2,h3{text-wrap:balance;margin:0;line-height:1.3}
+h2{font-size:20px} h3{font-size:16px}
+.en,.num,code,input[type=number],textarea.data{direction:ltr;unicode-bidi:isolate}
+.num{font-family:var(--font-data);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+small{font-size:12.5px}
+
+header.top{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:flex-end;justify-content:space-between;padding-block:22px 14px}
+.brand h1{font-size:26px;letter-spacing:-.2px}
+.brand h1 b{color:var(--accent);font-weight:700}
+.brand p{margin:2px 0 0;color:var(--muted);max-width:62ch}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.status{font-size:12.5px;color:var(--muted);align-self:center}
+
+button,.btn{font:inherit;font-size:14px;font-weight:600;min-height:36px;padding:5px 14px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;gap:6px;text-decoration:none}
+button:hover,.btn:hover{border-color:var(--accent)}
+button.pri{background:var(--accent);border-color:var(--accent);color:var(--panel)}
+button.ghost{background:transparent}
+button.danger{color:var(--bad)}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,.cell:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.banner{border:1px solid var(--bad);background:color-mix(in srgb,var(--bad) 9%,var(--panel));border-radius:8px;padding:10px 14px;display:flex;gap:10px 16px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.banner b{color:var(--bad)}
+
+nav.tabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);display:flex;gap:4px;overflow-x:auto;border-bottom:1px solid var(--line);padding-block:6px 0;scrollbar-width:thin}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+nav.tabs button{border:0;border-bottom:3px solid transparent;border-radius:0;background:transparent;white-space:nowrap;color:var(--muted);font-weight:600}
+nav.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+
+main{padding-top:18px}
+section.tab{display:flex;flex-direction:column;gap:16px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.row{display:flex;gap:10px 14px;flex-wrap:wrap;align-items:flex-end}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:16px}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:16px}
+label.f{display:flex;flex-direction:column;gap:3px;font-size:13px;color:var(--muted);min-width:0}
+label.f span.u{font-family:var(--font-data);font-size:11.5px}
+input,select,textarea{font:inherit;font-size:14px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:5px;padding:6px 8px;min-height:36px;max-width:100%}
+input[type=number]{width:9.5em;font-family:var(--font-data);text-align:left}
+textarea.data{width:100%;min-height:150px;font:13px/1.45 var(--font-data);resize:vertical}
+fieldset{border:1px solid var(--line);border-radius:8px;padding:10px 14px 14px;margin:0;display:flex;flex-wrap:wrap;gap:10px 14px;min-width:0}
+legend{font-weight:600;padding:0 6px;font-size:14px}
+.note{font-size:13px;color:var(--muted);margin:0;max-width:75ch}
+.callout{border-inline-start:3px solid var(--warn);padding:6px 12px;background:color-mix(in srgb,var(--warn) 8%,var(--panel));border-radius:0 6px 6px 0;font-size:13.5px;margin:0}
+
+/* matrix */
+.scroll{overflow-x:auto;min-width:0}
+table.matrix{border-collapse:separate;border-spacing:6px;margin-inline:-6px}
+table.matrix th{font-size:12.5px;color:var(--muted);font-weight:600;padding:2px 4px;white-space:nowrap}
+table.matrix th.num{font-size:13px;color:var(--ink)}
+.cell{width:118px;min-height:74px;border:1px solid var(--line);border-radius:7px;padding:7px 9px;cursor:pointer;display:flex;flex-direction:column;justify-content:space-between;gap:2px;text-align:start;background:var(--panel)}
+.cell .v{font-family:var(--font-data);font-size:17px;font-weight:500;font-variant-numeric:tabular-nums}
+.cell .t{font-size:11.5px;color:var(--muted)}
+.rankname{white-space:nowrap;min-height:30px;padding:2px 8px}
+.cell.sel{outline:2px solid var(--accent);outline-offset:1px}
+.cell.ctrl{border-style:dashed}
+.cell.unplanned{opacity:.6;border-color:var(--warn)}
+.dots{display:flex;gap:3px}.dots i{width:7px;height:7px;border-radius:50%;background:var(--line);display:block}.dots i.on{background:var(--accent)}
+.legend-seq{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+.legend-seq .bar{width:140px;height:10px;border-radius:5px;background:linear-gradient(to left,var(--seq1),var(--seq0));border:1px solid var(--line)}
+
+/* tables */
+table.data{border-collapse:collapse;width:100%;font-size:13.5px}
+table.data th,table.data td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:start;vertical-align:middle}
+table.data th{color:var(--muted);font-weight:600;font-size:12.5px;white-space:nowrap}
+table.data td.num{text-align:left}
+table.data input[type=number]{width:6.5em}
+.pill{display:inline-block;font-size:11.5px;font-weight:600;padding:1px 8px;border-radius:10px;border:1px solid currentColor;white-space:nowrap}
+.pill.good{color:var(--good)}.pill.warn{color:var(--warn)}.pill.bad{color:var(--bad)}.pill.mut{color:var(--muted)}
+.dbar{display:inline-block;width:60px;height:7px;border-radius:4px;background:var(--panel2);vertical-align:middle;overflow:hidden}
+.dbar i{display:block;height:100%;background:var(--accent)}
+
+/* results */
+.kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.kv div{background:var(--panel2);border-radius:6px;padding:8px 10px;min-width:0}
+.kv dt{font-size:12px;color:var(--muted)}
+.kv dd{margin:0;font-family:var(--font-data);font-size:16px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.kv dd small{color:var(--muted);font-size:11.5px}
+.plotbox{direction:ltr;position:relative;width:100%;height:320px;max-width:100%}
+.plotbox canvas{width:100%;height:100%;display:block}
+canvas#net{width:100%;height:380px;display:block;border-radius:8px;background:var(--panel2)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg button{border:0;border-radius:0;min-height:34px}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--panel)}
+
+ol.check{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px}
+ol.check li{display:flex;gap:10px;align-items:flex-start}
+ol.check input{margin-top:5px;min-height:auto}
+ol.check .conf{font-size:11.5px}
+footer{margin-top:28px;border-top:1px solid var(--line);padding-top:12px;color:var(--muted);font-size:13px;display:flex;flex-direction:column;gap:6px}
+.toast{position:fixed;bottom:calc(16px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:6px;font-size:14px;z-index:20}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+@media (max-width:520px){.cell{width:92px;min-height:66px;padding:6px}.cell .v{font-size:15px}input[type=number]{width:7.5em}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <div class="brand">
+    <h1>FracGel <b>Lab</b></h1>
+    <p>منضدة عمل لجل التكسير <span class="en">NaOA / KCl / guar</span> (غرام لكل 100 mL ماء): سجّل كل عينة، حلّل الـ rheology، احسب التآزر والترسيب، ورتّب التركيبات للوصول إلى الأفضل.</p>
+  </div>
+  <div class="actions">
+    <span class="status" id="saveStatus">محفوظ في هذا المتصفح</span>
+    <button id="btnExport" title="نسخة احتياطية كاملة">تصدير JSON</button>
+    <button id="btnCsv">تصدير CSV</button>
+    <label class="btn" for="fileImport">استيراد JSON</label>
+    <input type="file" id="fileImport" accept="application/json,.json" hidden>
+  </div>
+</header>
+
+<div class="banner" id="demoBanner" hidden>
+  <div><b>بيانات مثال وهمية.</b> الأرقام المعروضة مولّدة للتجربة فقط وليست نتائج قياس، فلا تنقلها إلى الرسالة. امسحها وأدخل نتائجك.</div>
+  <button class="danger" id="btnClearDemo">امسح المثال وابدأ ببياناتي</button>
+</div>
+
+<nav class="tabs" role="tablist" aria-label="أقسام الأداة">
+  <button role="tab" data-tab="matrix">مصفوفة العينات</button>
+  <button role="tab" data-tab="sample">بطاقة العينة</button>
+  <button role="tab" data-tab="maxwell">Oscillatory · Maxwell</button>
+  <button role="tab" data-tab="flow">Flow curve · الترسيب</button>
+  <button role="tab" data-tab="optimum">الأمثلية</button>
+  <button role="tab" data-tab="network">تصوّر الشبكة</button>
+  <button role="tab" data-tab="protocol">بروتوكول القياس</button>
+</nav>
+
+<main>
+<!-- ============ MATRIX ============ -->
+<section class="tab" id="tab-matrix" role="tabpanel">
+  <div class="panel">
+    <div class="row" style="justify-content:space-between">
+      <h2>مصفوفة التصميم <span class="en muted" style="font-size:14px">NaOA × guar, KCl 1 g · per 100 mL water</span></h2>
+      <label class="f">المقياس المعروض<select id="matMetric"></select></label>
+    </div>
+    <div class="scroll"><table class="matrix" id="matrix"></table></div>
+    <div class="row" style="justify-content:space-between">
+      <div class="legend-seq"><span id="legMin" class="num">—</span><span class="bar"></span><span id="legMax" class="num">—</span></div>
+      <p class="note">الصف الأول (guar = 0) والعمود الأول (NaOA = 0) هما عينات الضبط (controls)، وهي ضرورية لحساب مؤشر التآزر. النقاط الخمس أسفل كل خلية: اللزوجة، و Maxwell، والحرارة، والترسيب، والكسر.</p>
+    </div>
+  </div>
+  <div class="grid2">
+    <div class="panel">
+      <h3>عينات إضافية</h3>
+      <p class="note">لتركيز خارج المصفوفة، مثل نقطة التحقق التي يقترحها تبويب الأمثلية.</p>
+      <div class="row">
+        <label class="f">NaOA <span class="u">g/100 mL</span><input type="number" id="xNaoa" step="any" min="0" value="0"></label>
+        <label class="f">guar <span class="u">g/100 mL</span><input type="number" id="xGuar" step="any" min="0" value="0.3"></label>
+        <button id="btnAddExtra">أضف عينة</button>
+      </div>
+      <div id="extraList" class="row"></div>
+    </div>
+    <div class="panel">
+      <h3>الخطوة التالية</h3>
+      <div id="todo" class="note"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SAMPLE ============ -->
+<section class="tab" id="tab-sample" role="tabpanel" hidden>
+  <div class="panel">
+    <div class="row" style="justify-content:space-between">
+      <h2 id="sampleTitle">بطاقة العينة</h2>
+      <div class="row"><label class="f">العينة<select class="sampleSel"></select></label><button class="danger ghost" id="btnDelSample" hidden>احذف هذه العينة</button></div>
+    </div>
+    <form id="sampleForm" class="grid2" onsubmit="return false">
+      <fieldset><legend>التركيب</legend>
+        <label class="f">NaOA <span class="u">g/100 mL</span><input type="number" step="any" data-f="naoa" id="f_naoa" readonly></label>
+        <label class="f">guar <span class="u">g/100 mL</span><input type="number" step="any" data-f="guar" id="f_guar" readonly></label>
+        <label class="f">KCl <span class="u">g/100 mL</span><input type="number" step="any" data-f="kcl" id="f_kcl"></label>
+        <label class="f">pH<input type="number" step="any" data-f="pH" id="f_pH"></label>
+      </fieldset>
+      <fieldset><legend>اللزوجة عند 170 s⁻¹</legend>
+        <label class="f">عند 25 °C <span class="u">mPa·s</span><input type="number" step="any" data-f="eta170_25" id="f_eta170_25"></label>
+        <label class="f">حرارة الاختبار <span class="u">°C</span><input type="number" step="any" data-f="testT" id="f_testT"></label>
+        <label class="f">مدة القص <span class="u">min</span><input type="number" step="any" data-f="shearMin" id="f_shearMin"></label>
+        <label class="f">في نهاية القص الحراري <span class="u">mPa·s</span><input type="number" step="any" data-f="eta170_T" id="f_eta170_T"></label>
+      </fieldset>
+      <fieldset><legend>Viscoelasticity (من تبويب Maxwell أو يدوياً)</legend>
+        <label class="f">G₀ <span class="u">Pa</span><input type="number" step="any" data-f="G0" id="f_G0"></label>
+        <label class="f">τR <span class="u">s</span><input type="number" step="any" data-f="tauR" id="f_tauR"></label>
+        <label class="f">η₀ <span class="u">Pa·s</span><input type="number" step="any" data-f="eta0" id="f_eta0"></label>
+        <label class="f">n <span class="u">power-law</span><input type="number" step="any" data-f="n" id="f_n"></label>
+        <label class="f">K <span class="u">Pa·sⁿ</span><input type="number" step="any" data-f="K" id="f_K"></label>
+      </fieldset>
+      <fieldset><legend>Proppant والكسر (breaker)</legend>
+        <label class="f">سرعة الترسيب المقاسة <span class="u">mm/min</span><input type="number" step="any" data-f="settle" id="f_settle"></label>
+        <label class="f">نوع الـ breaker وتركيزه<input type="text" data-f="breaker" id="f_breaker" placeholder="APS 0.05 wt% + kerosene 5 vol%"></label>
+        <label class="f">زمن الكسر <span class="u">h</span><input type="number" step="any" data-f="breakTime" id="f_breakTime"></label>
+        <label class="f">لزوجة المكسور <span class="u">mPa·s</span><input type="number" step="any" data-f="brokenVisc" id="f_brokenVisc"></label>
+        <label class="f">Residue <span class="u">mg/L</span><input type="number" step="any" data-f="residue" id="f_residue"></label>
+      </fieldset>
+      <label class="f" style="grid-column:1/-1">ملاحظات (ترتيب الخلط، زمن الـ hydration، المظهر، الفقاعات…)<textarea data-f="notes" id="f_notes" rows="3"></textarea></label>
+    </form>
+  </div>
+  <div class="panel">
+    <h3>قيم محسوبة لهذه العينة</h3>
+    <dl class="kv" id="derived"></dl>
+  </div>
+</section>
+
+<!-- ============ MAXWELL ============ -->
+<section class="tab" id="tab-maxwell" role="tabpanel" hidden>
+  <div class="grid2">
+    <div class="panel">
+      <div class="row" style="justify-content:space-between"><h2>Frequency sweep</h2><label class="f">العينة<select class="sampleSel"></select></label></div>
+      <p class="note">الصق ثلاثة أعمدة: <span class="en">ω, G′ (Pa), G″ (Pa)</span> مباشرة من برنامج الـ rheometer. تُتجاهل أسطر العناوين والوحدات تلقائياً. أجرِ الـ sweep داخل الـ LVR المحدد من amplitude sweep.</p>
+      <textarea class="data" id="freqText" spellcheck="false" placeholder="0.1	0.42	1.9&#10;0.158	0.98	2.7&#10;…"></textarea>
+      <div class="row">
+        <label class="f">وحدة التردد<select id="freqUnit"><option value="rad">rad/s</option><option value="hz">Hz</option></select></label>
+        <label class="f">أعلى ω في الـ fit <span class="u">rad/s</span><input type="number" step="any" id="wMax" placeholder="تلقائي"></label>
+        <label class="f">حرارة القياس <span class="u">°C</span><input type="number" step="any" id="freqT" value="25"></label>
+        <button class="pri" id="btnFitMax">حلّل</button>
+      </div>
+      <p class="note">الـ Maxwell المفرد يصف الـ WLMs جيداً عند الترددات المنخفضة فقط. إذا انحرف G″ صعوداً عند الترددات العالية (Rouse/breathing modes) فالـ fit يتوقف تلقائياً عند أدنى G″ (G″min)، ويمكنك تحديد حد آخر يدوياً.</p>
+    </div>
+    <div class="panel">
+      <div class="plotbox"><canvas id="plotMax" aria-label="G prime and G double prime versus angular frequency"></canvas></div>
+      <dl class="kv" id="maxOut"></dl>
+      <div class="row"><button id="btnSaveMax" disabled>احفظ G₀ و τR و η₀ في العينة</button></div>
+      <p class="callout" id="maxWarn" hidden></p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FLOW ============ -->
+<section class="tab" id="tab-flow" role="tabpanel" hidden>
+  <div class="grid2">
+    <div class="panel">
+      <div class="row" style="justify-content:space-between"><h2>Steady-shear flow curve</h2><label class="f">العينة<select class="sampleSel"></select></label></div>
+      <p class="note">الصق عمودين: <span class="en">γ̇ (s⁻¹), η</span>. يُطابَق نموذج power law <span class="en">η = K·γ̇ⁿ⁻¹</span> على منطقة الـ shear-thinning التي تحددها.</p>
+      <textarea class="data" id="flowText" spellcheck="false" placeholder="0.01	12.1&#10;0.0316	11.8&#10;…"></textarea>
+      <div class="row">
+        <label class="f">وحدة η<select id="flowUnit"><option value="Pa·s">Pa·s</option><option value="mPa·s">mPa·s</option></select></label>
+        <label class="f">γ̇ من <span class="u">s⁻¹</span><input type="number" step="any" id="rMin" value="10"></label>
+        <label class="f">إلى <span class="u">s⁻¹</span><input type="number" step="any" id="rMax" value="1000"></label>
+        <button class="pri" id="btnFitFlow">حلّل</button>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="plotbox"><canvas id="plotFlow" aria-label="Viscosity versus shear rate"></canvas></div>
+      <dl class="kv" id="flowOut"></dl>
+      <div class="row"><button id="btnSaveNK" disabled>احفظ n و K</button><button id="btnSave170" disabled>احفظ η(170) كقيمة 25 °C</button></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>حاسبة ترسيب الـ proppant <span class="en muted" style="font-size:14px">single particle, unbounded fluid</span></h2>
+    <div class="row">
+      <label class="f">قطر الحبة <span class="u">mm</span><input type="number" step="any" id="pD" value="0.6"></label>
+      <label class="f">كثافة الحبة <span class="u">g/cm³</span><input type="number" step="any" id="pRho" value="2.65"></label>
+      <label class="f">كثافة السائل <span class="u">g/cm³</span><input type="number" step="any" id="fRho" value="1.01"></label>
+    </div>
+    <p class="note">0.6 mm تقريباً هو منتصف رمل 20/40 mesh (0.425–0.85 mm). الرمل 2.65 g/cm³، والـ ceramic proppant أثقل.</p>
+    <dl class="kv" id="settleOut"></dl>
+    <p class="callout">هذه تقديرات من الـ shear viscosity فقط. في الـ WLM gels تتباطأ الحبة عادةً أكثر بكثير مما تتوقعه المعادلة بسبب المرونة، فالمعتمد في الرسالة هو الترسيب الساكن المقاس في مخبار مدرّج عند حرارة الاختبار. صيغة الـ power law هنا تقريب بمعامل تصحيح <span class="en">X(n)=1</span>.</p>
+  </div>
+</section>
+
+<!-- ============ OPTIMUM ============ -->
+<section class="tab" id="tab-optimum" role="tabpanel" hidden>
+  <div class="panel">
+    <h2>معايير الأداء <span class="en muted" style="font-size:14px">Derringer–Suich desirability</span></h2>
+    <p class="note">لكل معيار تحوّل القيمة إلى درجة d بين 0 و 1، والدرجة الكلية D هي المتوسط الهندسي الموزون. إذا فشلت عينة في معيار واحد (d = 0) فإن D = 0. الحدود الافتراضية أمثلة، فعدّلها لتطابق المعيار الذي تعتمده في الرسالة.</p>
+    <div class="scroll"><table class="data" id="specTable"></table></div>
+    <p class="callout">حد 50 mPa·s عند 170 s⁻¹ بعد القص الحراري، وحد 5 mPa·s لسائل الكسر، مأخوذان من المعيار الصيني SY/T 6376 كما يُستشهد به كثيراً في أبحاث الـ VES. ثقتي في رقم المعيار والقيم متوسطة، فتحقق من النص الأصلي قبل الاستشهاد.</p>
+  </div>
+  <div class="panel">
+    <h2>ترتيب العينات</h2>
+    <div class="scroll"><table class="data" id="rankTable"></table></div>
+  </div>
+  <div class="panel">
+    <h2>سطح الاستجابة <span class="en muted" style="font-size:14px">quadratic RSM over NaOA 6–10 × guar 0.3–0.7 g/100 mL</span></h2>
+    <div class="row">
+      <label class="f">الاستجابة<select id="rsmResp"></select></label>
+      <label class="f">الهدف<select id="rsmGoal"><option value="max">أعلى قيمة</option><option value="min">أدنى قيمة</option></select></label>
+      <button class="pri" id="btnRsm">طابِق النموذج</button>
+    </div>
+    <div class="grid2">
+      <div class="plotbox" style="height:340px"><canvas id="plotRsm" aria-label="Response surface heat map"></canvas></div>
+      <div style="display:flex;flex-direction:column;gap:10px;min-width:0">
+        <dl class="kv" id="rsmOut"></dl>
+        <p class="callout" id="rsmWarn">نموذج من 6 معاملات على 9 نقاط يترك 3 درجات حرية فقط، فالنقطة المقترحة <b>مرشّح للاختبار</b> وليست نتيجة. أكّدها بعينة تحقق مكررة قبل اعتمادها، ولا تستخدم النموذج خارج المربع المقاس.</p>
+        <div class="row"><button id="btnAddVerify" disabled>أضف نقطة التحقق كعينة</button></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ NETWORK ============ -->
+<section class="tab" id="tab-network" role="tabpanel" hidden>
+  <div class="panel">
+    <div class="row" style="justify-content:space-between">
+      <h2>تصوّر الشبكة <span class="en muted" style="font-size:14px">pseudo-interpenetrating WLM–guar network</span></h2>
+      <span class="pill warn">رسم توضيحي غير كمّي</span>
+    </div>
+    <canvas id="net" aria-label="Schematic of wormlike micelles and guar chains"></canvas>
+    <div class="row">
+      <label class="f">NaOA <span class="u" id="nvN">8 g</span><input type="range" id="nNaoa" min="0" max="10" step="1" value="8"></label>
+      <label class="f">guar <span class="u" id="nvG">0.5 g</span><input type="range" id="nGuar" min="0" max="0.7" step="0.05" value="0.5"></label>
+      <label class="f">الحرارة <span class="u" id="nvT">25 °C</span><input type="range" id="nTemp" min="25" max="120" step="5" value="25"></label>
+      <div class="f">الـ breaker<div class="seg" id="nBreak"><button aria-pressed="true" data-b="none">بدون</button><button aria-pressed="false" data-b="hc">Hydrocarbon</button><button aria-pressed="false" data-b="ox">Oxidizer</button><button aria-pressed="false" data-b="both">الاثنان</button></div></div>
+    </div>
+    <p class="note" id="netCaption"></p>
+    <div class="row"><span class="legend-seq"><i style="width:22px;height:4px;background:var(--micelle);display:inline-block;border-radius:2px"></i>Wormlike micelle (NaOA + K⁺)</span><span class="legend-seq"><i style="width:22px;height:4px;background:var(--guar);display:inline-block;border-radius:2px"></i>Guar chain</span></div>
+  </div>
+</section>
+
+<!-- ============ PROTOCOL ============ -->
+<section class="tab" id="tab-protocol" role="tabpanel" hidden>
+  <div class="panel">
+    <h2>قائمة التحقق لكل عينة</h2>
+    <p class="note">علامة الثقة بجانب كل بند: <span class="pill good">ثابت</span> معروف في الأدبيات، <span class="pill warn">استنتاج</span> رأيي ويحتاج تحققاً، <span class="pill mut">ممارسة</span> عرف مخبري شائع.</p>
+    <ol class="check" id="protocol"></ol>
+  </div>
+</section>
+</main>
+
+<footer>
+  <p>كل البيانات محفوظة في هذا المتصفح فقط ولا تُرسل إلى أي مكان. صدّر JSON بانتظام كنسخة احتياطية، فمسح بيانات المتصفح يحذفها.</p>
+  <p>الحسابات: single-mode Maxwell fit على log G′ و log G″، و power law، و Stokes، و Derringer &amp; Suich (1980, J. Quality Technology 12:214)، ونموذج quadratic RSM. الأداة مساعدة تحليلية، والقرار النهائي لبياناتك المكررة.</p>
+  <div class="row"><button class="ghost" id="btnLoadDemo">حمّل بيانات المثال</button><button class="ghost" id="btnTheme">تبديل الوضع الليلي</button><a class="btn ghost" href="../">كل الأدوات</a></div>
+</footer>
+</div>
+
+<script src="core.js"></script>
+<script>
+'use strict';
+const C = window.FracCore;
+// Waleid's sample plan: NaOA 6/8/10 g × guar 0/0.3/0.5/0.7 g, KCl 1 g, all per 100 mL water, plus G0.7-K.
+// The grid also shows K (blank), G0.3-K and G0.5-K: not in the plan, but the synergy index needs them.
+const NAOA = [0, 6, 8, 10], GUAR = [0, 0.3, 0.5, 0.7];
+const BOX = { x1: [6, 10], x2: [0.3, 0.7] };
+const STORE = 'fracgel.v2';
+const key = (n, g) => `${+n}|${+g}`;
+const MID = key(8, 0.5);
+const PLAN = new Set([...[6, 8, 10].flatMap(n => [0, 0.3, 0.5, 0.7].map(g => key(n, g))), key(0, 0.7)]);
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const num = v => (v === '' || v === null || v === undefined || !Number.isFinite(+v)) ? null : +v;
+function fmt(v) {
+  if (v === null || v === undefined || !Number.isFinite(v)) return '—';
+  const a = Math.abs(v);
+  if (a === 0) return '0';
+  if (a >= 100) return v.toFixed(0);
+  if (a >= 10) return v.toFixed(1);
+  if (a >= 1) return v.toFixed(2);
+  return v.toPrecision(2);
+}
+function toast(msg) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 2200); }
+
+/* ---------- state ---------- */
+function blankSample(naoa, guar) {
+  return { naoa, guar, kcl: 1, pH: null, eta170_25: null, testT: 90, shearMin: 60, eta170_T: null, G0: null, tauR: null, eta0: null, n: null, K: null,
+    settle: null, breaker: '', breakTime: null, brokenVisc: null, residue: null, notes: '', freq: '', flow: '', flowUnit: 'Pa·s' };
+}
+const DEFAULT_SPECS = [
+  { m: 'eta170_T', goal: 'max', lo: 50, hi: 150, w: 3, on: true },
+  { m: 'ret', goal: 'max', lo: 40, hi: 90, w: 1, on: true },
+  { m: 'settle', goal: 'min', lo: 1, hi: 20, w: 2, on: true },
+  { m: 'brokenVisc', goal: 'min', lo: 2, hi: 5, w: 2, on: true },
+  { m: 'residue', goal: 'min', lo: 100, hi: 600, w: 1, on: true },
+  { m: 'loading', goal: 'min', lo: 6, hi: 12, w: 1, on: true },
+];
+function emptyState() {
+  const samples = {};
+  for (const n of NAOA) for (const g of GUAR) samples[key(n, g)] = blankSample(n, g);
+  return { v: 1, demo: false, samples, specs: JSON.parse(JSON.stringify(DEFAULT_SPECS)), sel: MID, matMetric: 'eta170_25', rsm: { resp: 'eta170_T', goal: 'max' }, settle: { d: 0.6, rhoP: 2.65, rhoF: 1.01 }, checks: {} };
+}
+/* Clearly fake numbers so the page shows what it does on first open. Seeded, so they never change. */
+function demoState() {
+  const st = emptyState(); st.demo = true;
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const jit = (v, p = 0.06) => v * (1 + (rnd() * 2 - 1) * p);
+  const eN = n => n ? 25 * (n / 6) ** 1.8 : 0, eG = g => g ? 110 * g ** 2.2 : 0;
+  for (const n of NAOA) for (const g of GUAR) {
+    const s = st.samples[key(n, g)];
+    const bump = n && g ? 1.4 + 0.6 * Math.exp(-((n - 8) ** 2) / 8 - ((g - 0.5) ** 2) / 0.05) : 1;
+    const e25 = n || g ? (eN(n) + eG(g)) * bump : 1.1;
+    const ret = n && g ? 0.55 + 0.12 * Math.exp(-((g - 0.5) ** 2) / 0.05) : n ? 0.32 : g ? 0.5 : 0.9;
+    Object.assign(s, { pH: n ? +jit(9.8, 0.02).toFixed(1) : 7.2, eta170_25: +jit(e25).toFixed(1), eta170_T: +jit(e25 * ret).toFixed(1) });
+    if (n) {
+      const G0 = 2.2 * (n / 6) ** 2.2 * (1 + 0.6 * g), tau = 0.9 * (n / 6) ** 1.4 * (1 + 1.6 * g);
+      Object.assign(s, { G0: +jit(G0).toFixed(2), tauR: +jit(tau).toFixed(2), eta0: +(G0 * tau).toFixed(1), n: +jit(0.22 + 0.1 * g, 0.05).toFixed(2), K: +jit(G0 * tau * 0.25).toFixed(2) });
+    } else if (g) Object.assign(s, { eta0: +jit(0.4 * g ** 3 * 10).toFixed(2), n: +jit(0.75 - 0.3 * g, 0.05).toFixed(2), K: +jit(0.15 * g ** 2.5 * 10).toFixed(2) });
+    if (n || g) Object.assign(s, { settle: +jit(60 / (1 + (s.eta0 || 0.5) * 2)).toFixed(1), breaker: 'APS 0.05 wt% + kerosene 5 vol% (مثال)', breakTime: +jit(2 + g * 2).toFixed(1), brokenVisc: +jit(1.4 + 3.4 * g).toFixed(2), residue: Math.round(jit(15 + 480 * g)) });
+  }
+  // example raw curves for the 4 / 0.7 sample
+  const s = st.samples[MID], fl = [], fr = [];
+  for (let k = -2; k <= 2.001; k += 0.2) {
+    const w = 10 ** k, m = C.maxwellModel(w, s.G0, s.tauR), rouse = 0.012 * s.G0 * Math.sqrt(w * s.tauR);
+    fr.push(`${w.toPrecision(4)}\t${jit(m.Gp, 0.03).toPrecision(4)}\t${jit(m.Gpp + rouse, 0.03).toPrecision(4)}`);
+  }
+  for (let k = -2; k <= 3.001; k += 0.25) { const g = 10 ** k, eta = s.eta0 / (1 + (s.tauR * g) ** 0.85); fl.push(`${g.toPrecision(4)}\t${jit(eta, 0.03).toPrecision(4)}`); }
+  s.freq = 'ω [rad/s]\tG\' [Pa]\tG\'\' [Pa]\n' + fr.join('\n'); s.flow = 'γ̇ [1/s]\tη [Pa·s]\n' + fl.join('\n');
+  s.notes = 'مثال: guar hydrated 60 min ثم أُضيف NaOA و KCl، راحة 24 h، centrifuge لإزالة الفقاعات.';
+  return st;
+}
+function load() { try { const raw = localStorage.getItem(STORE); if (!raw) return null; const st = JSON.parse(raw); return st && st.samples ? st : null; } catch { return null; } }
+let S = load() || demoState();
+let saveTimer = 0;
+function save() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    try { localStorage.setItem(STORE, JSON.stringify(S)); $('#saveStatus').textContent = 'محفوظ في هذا المتصفح'; }
+    catch { $('#saveStatus').textContent = 'تعذّر الحفظ في المتصفح، فصدّر JSON'; }
+  }, 250);
+}
+
+/* ---------- metrics ---------- */
+const ratio = (a, b) => (a > 0 && b > 0) ? a / b : NaN;
+function synergyOf(s, f) {
+  if (!(s.naoa > 0 && s.guar > 0)) return NaN;
+  const a = S.samples[key(s.naoa, 0)], b = S.samples[key(0, s.guar)];
+  return a && b ? C.synergy(num(s[f]), num(a[f]), num(b[f])) : NaN;
+}
+const METRICS = [
+  { id: 'eta170_25', label: 'η عند 170 s⁻¹، 25 °C', unit: 'mPa·s', log: true },
+  { id: 'eta170_T', label: 'η بعد القص الحراري', unit: 'mPa·s', log: true },
+  { id: 'ret', label: 'الاحتفاظ باللزوجة حرارياً', unit: '%', get: s => ratio(num(s.eta170_T), num(s.eta170_25)) * 100 },
+  { id: 'G0', label: 'G₀ plateau modulus', unit: 'Pa', log: true },
+  { id: 'tauR', label: 'τR relaxation time', unit: 's', log: true },
+  { id: 'eta0', label: 'η₀ zero-shear', unit: 'Pa·s', log: true },
+  { id: 'n', label: 'n flow index', unit: '–' },
+  { id: 'settle', label: 'سرعة الترسيب', unit: 'mm/min', log: true },
+  { id: 'breakTime', label: 'زمن الكسر', unit: 'h' },
+  { id: 'brokenVisc', label: 'لزوجة المكسور', unit: 'mPa·s' },
+  { id: 'residue', label: 'Residue', unit: 'mg/L' },
+  { id: 'loading', label: 'مجموع NaOA + guar', unit: 'g/100 mL', get: s => s.naoa + s.guar },
+  { id: 'SI', label: 'مؤشر التآزر (η 170، 25 °C)', unit: '×', get: s => synergyOf(s, 'eta170_25') },
+  { id: 'SI0', label: 'مؤشر التآزر (η₀)', unit: '×', get: s => synergyOf(s, 'eta0') },
+  { id: 'D', label: 'الدرجة الكلية D', unit: '0–1', get: s => scoreOf(s).D },
+];
+const MET = Object.fromEntries(METRICS.map(m => [m.id, m]));
+const val = (s, id) => { const m = MET[id]; const v = m.get ? m.get(s) : num(s[id]); return Number.isFinite(v) ? v : NaN; };
+function scoreOf(s) {
+  const ds = [], ws = [], parts = [];
+  for (const sp of S.specs) { if (!sp.on) continue; const y = val(s, sp.m), d = C.desirability(y, sp); ds.push(d); ws.push(+sp.w || 1); parts.push({ sp, y, d }); }
+  const measured = parts.filter(p => Number.isFinite(p.d)).length;
+  return { D: measured ? C.overallD(ds, ws) : NaN, parts, complete: measured === parts.length };
+}
+const progress = s => [num(s.eta170_25) !== null, num(s.G0) !== null || num(s.eta0) !== null, num(s.eta170_T) !== null, num(s.settle) !== null, num(s.brokenVisc) !== null || num(s.residue) !== null];
+const sampleName = s => s.naoa ? `S${s.naoa}-${s.guar}` : s.guar ? `G${s.guar}-K` : 'K (blank)';
+const inPlan = s => PLAN.has(key(s.naoa, s.guar));
+const sampleKind = s => (s.naoa && s.guar ? 'خليط' : s.naoa ? 'ضبط: NaOA فقط' : s.guar ? 'ضبط: guar فقط' : 'ضبط: KCl فقط') + (isGrid(s) && !inPlan(s) ? ' (مقترح)' : '');
+const sortedKeys = () => Object.keys(S.samples).sort((a, b) => { const A = S.samples[a], B = S.samples[b]; return A.naoa - B.naoa || A.guar - B.guar; });
+const isGrid = s => NAOA.includes(s.naoa) && GUAR.includes(s.guar);
+
+/* ---------- theme helpers for canvas ---------- */
+const tok = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+function hexRgb(h) { h = h.replace('#', ''); if (h.length === 3) h = [...h].map(c => c + c).join(''); return [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16)); }
+function mixHex(a, b, t) { const A = hexRgb(a), B = hexRgb(b); return `rgb(${A.map((v, i) => Math.round(v + (B[i] - v) * t)).join(',')})`; }
+
+/* ---------- tabs ---------- */
+const TABS = ['matrix', 'sample', 'maxwell', 'flow', 'optimum', 'network', 'protocol'];
+function showTab(t) {
+  if (!TABS.includes(t)) t = 'matrix';
+  for (const b of $$('nav.tabs button')) b.setAttribute('aria-selected', b.dataset.tab === t);
+  for (const id of TABS) $('#tab-' + id).hidden = id !== t;
+  if (location.hash.slice(1) !== t) history.replaceState(null, '', '#' + t);
+  render(t);
+}
+$$('nav.tabs button').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
+window.addEventListener('hashchange', () => showTab(location.hash.slice(1)));
+const current = () => ($$('nav.tabs button').find(b => b.getAttribute('aria-selected') === 'true') || {}).dataset?.tab || 'matrix';
+function render(t = current()) {
+  $('#demoBanner').hidden = !S.demo;
+  fillSampleSelects();
+  if (t === 'matrix') renderMatrix();
+  if (t === 'sample') renderSample();
+  if (t === 'maxwell') renderMaxwell();
+  if (t === 'flow') renderFlow();
+  if (t === 'optimum') renderOptimum();
+  if (t === 'network') syncNetwork();
+  if (t === 'protocol') renderProtocol();
+}
+function fillSampleSelects() {
+  const opts = sortedKeys().map(k => `<option value="${k}">${esc(sampleName(S.samples[k]))} · ${sampleKind(S.samples[k])}</option>`).join('');
+  for (const sel of $$('.sampleSel')) { sel.innerHTML = opts; sel.value = S.sel; }
+}
+$$('.sampleSel').forEach(sel => sel.addEventListener('change', () => { S.sel = sel.value; save(); render(); }));
+const cur = () => S.samples[S.sel] || S.samples[sortedKeys()[0]];
+
+/* ---------- matrix ---------- */
+$('#matMetric').innerHTML = METRICS.map(m => `<option value="${m.id}">${m.label} (${m.unit})</option>`).join('');
+$('#matMetric').addEventListener('change', e => { S.matMetric = e.target.value; save(); renderMatrix(); });
+function renderMatrix() {
+  const mid = S.matMetric || 'eta170_25', m = MET[mid]; $('#matMetric').value = mid;
+  const vals = Object.values(S.samples).filter(isGrid).map(s => val(s, mid)).filter(Number.isFinite);
+  const tf = v => m.log && v > 0 ? Math.log10(v) : v;
+  const lo = vals.length ? Math.min(...vals.map(tf)) : 0, hi = vals.length ? Math.max(...vals.map(tf)) : 1;
+  $('#legMin').textContent = vals.length ? fmt(Math.min(...vals)) : '—'; $('#legMax').textContent = vals.length ? fmt(Math.max(...vals)) : '—';
+  const s0 = tok('--seq0'), s1 = tok('--seq1'), ink = tok('--ink'), panel = tok('--panel');
+  let h = `<tr><th>NaOA ↓ / guar →</th>${GUAR.map(g => `<th class="num">${g === 0 ? '0 (بدون)' : g + ' g'}</th>`).join('')}</tr>`;
+  for (const n of NAOA) {
+    h += `<tr><th class="num">${n === 0 ? '0 (بدون)' : n + ' g'}</th>`;
+    for (const g of GUAR) {
+      const k = key(n, g), s = S.samples[k], v = val(s, mid);
+      const t = Number.isFinite(v) && hi > lo ? (tf(v) - lo) / (hi - lo) : Number.isFinite(v) ? 1 : 0;
+      const bg = Number.isFinite(v) ? mixHex(s0, s1, 0.15 + 0.85 * t) : '';
+      const fg = Number.isFinite(v) && t > 0.55 ? panel : ink;
+      const pr = progress(s).map(p => `<i class="${p ? 'on' : ''}"></i>`).join('');
+      h += `<td><div class="cell ${n && g ? '' : 'ctrl'} ${inPlan(s) ? '' : 'unplanned'} ${k === S.sel ? 'sel' : ''}" role="button" tabindex="0" data-k="${k}" style="${bg ? `background:${bg};color:${fg}` : ''}">
+        <span class="t" style="${bg ? 'color:inherit;opacity:.8' : ''}">${sampleName(s)}${inPlan(s) ? '' : ' · مقترح'}</span>
+        <span class="v">${fmt(v)}</span><span class="dots">${pr}</span></div></td>`;
+    }
+    h += '</tr>';
+  }
+  $('#matrix').innerHTML = h;
+  $$('#matrix .cell').forEach(c => {
+    const go = () => { S.sel = c.dataset.k; save(); showTab('sample'); };
+    c.addEventListener('click', go); c.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+  });
+  const extras = sortedKeys().filter(k => !isGrid(S.samples[k]));
+  $('#extraList').innerHTML = extras.length ? extras.map(k => `<button class="ghost" data-k="${k}">${esc(sampleName(S.samples[k]))} · ${fmt(val(S.samples[k], mid))}</button>`).join('') : '<span class="note">لا توجد عينات إضافية بعد.</span>';
+  $$('#extraList button').forEach(b => b.addEventListener('click', () => { S.sel = b.dataset.k; save(); showTab('sample'); }));
+  renderTodo();
+}
+function renderTodo() {
+  const all = Object.values(S.samples), items = [];
+  const noBase = all.filter(s => (s.naoa || s.guar) && num(s.eta170_25) === null).length;
+  const noVE = all.filter(s => s.naoa > 0 && num(s.G0) === null).length;
+  const noT = all.filter(s => (s.naoa || s.guar) && num(s.eta170_T) === null).length;
+  const ctrls = NAOA.slice(1).filter(n => num(S.samples[key(n, 0)].eta170_25) === null).length + GUAR.slice(1).filter(g => num(S.samples[key(0, g)].eta170_25) === null).length;
+  const missing = GUAR.slice(1).filter(g => !PLAN.has(key(0, g))).map(g => `G${g}-K`);
+  if (missing.length) items.push(`خطتك لا تضم ${missing.join(' و ')}. أضفها (guar + KCl فقط) ليُحسب مؤشر التآزر لخلائط ${missing.map(m => m.slice(1, -2)).join(' و ')} g guar.`);
+  if (ctrls) items.push(`${ctrls} من عينات الضبط بلا قياس بعد، وبدونها لا يُحسب مؤشر التآزر.`);
+  if (noBase) items.push(`${noBase} عينة بلا لزوجة أساسية عند 170 s⁻¹ و25 °C.`);
+  if (noVE) items.push(`${noVE} عينة تحتوي NaOA بلا frequency sweep (G₀ و τR).`);
+  if (noT) items.push(`${noT} عينة بلا اختبار القص الحراري.`);
+  const mixes = all.filter(s => s.naoa > 0 && s.guar > 0 && Number.isFinite(val(s, S.rsm.resp))).length;
+  items.push(mixes >= 6 ? `لديك ${mixes} خلائط مقاسة، وهذا يكفي لمطابقة سطح الاستجابة في تبويب الأمثلية.` : `تحتاج 6 خلائط مقاسة على الأقل (لديك ${mixes}) لمطابقة سطح الاستجابة.`);
+  $('#todo').innerHTML = '<ul style="margin:0;padding-inline-start:18px">' + items.map(i => `<li>${i}</li>`).join('') + '</ul>';
+}
+$('#btnAddExtra').addEventListener('click', () => {
+  const n = num($('#xNaoa').value), g = num($('#xGuar').value);
+  if (n === null || g === null || n < 0 || g < 0) return toast('أدخل تركيزين صحيحين');
+  const k = key(n, g); if (!S.samples[k]) S.samples[k] = blankSample(n, g);
+  S.sel = k; save(); showTab('sample');
+});
+
+/* ---------- sample card ---------- */
+const NUM_FIELDS = ['kcl', 'pH', 'eta170_25', 'testT', 'shearMin', 'eta170_T', 'G0', 'tauR', 'eta0', 'n', 'K', 'settle', 'breakTime', 'brokenVisc', 'residue'];
+function renderSample() {
+  const s = cur();
+  $('#sampleTitle').textContent = `${sampleName(s)} · ${sampleKind(s)}`;
+  for (const el of $$('#sampleForm [data-f]')) { const f = el.dataset.f; if (document.activeElement !== el) el.value = s[f] ?? ''; }
+  $('#btnDelSample').hidden = isGrid(s);
+  renderDerived();
+}
+function renderDerived() {
+  const s = cur(), sc = scoreOf(s), ms = C.meshSizeNm(num(s.G0), 25);
+  const rows = [
+    ['الاحتفاظ باللزوجة', fmt(val(s, 'ret')), '%'],
+    ['مؤشر التآزر (η 170)', fmt(val(s, 'SI')), s.naoa && s.guar ? '> 1 = تآزر' : 'للخلائط فقط'],
+    ['مؤشر التآزر (η₀)', fmt(val(s, 'SI0')), ''],
+    ['η₀ من G₀·τR', fmt(num(s.G0) * num(s.tauR)), 'Pa·s'],
+    ['Mesh size ξ ≈ (kT/G₀)^⅓', fmt(ms), 'nm، عند 25 °C'],
+    ['الدرجة الكلية D', fmt(sc.D), sc.complete ? '' : 'بيانات ناقصة'],
+  ];
+  $('#derived').innerHTML = rows.map(r => `<div><dt>${r[0]}</dt><dd>${r[1]} <small>${r[2]}</small></dd></div>`).join('');
+}
+$('#sampleForm').addEventListener('input', e => {
+  const el = e.target, f = el.dataset.f; if (!f) return;
+  cur()[f] = NUM_FIELDS.includes(f) ? num(el.value) : el.value;
+  save(); renderDerived();
+});
+$('#btnDelSample').addEventListener('click', () => {
+  const s = cur(); if (isGrid(s)) return;
+  delete S.samples[S.sel]; S.sel = MID; save(); toast('حُذفت العينة'); showTab('matrix');
+});
+
+/* ---------- log-log plot ---------- */
+function niceTick(e) { const v = 10 ** e; return v >= 1e4 || v < 1e-3 ? `1e${e}` : String(+v.toPrecision(1)); }
+function plotLog(cv, series, o) {
+  const dpr = window.devicePixelRatio || 1, W = cv.clientWidth, H = cv.clientHeight;
+  cv.width = W * dpr; cv.height = H * dpr; const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
+  const xs = [], ys = []; for (const s of series) s.x.forEach((x, i) => { if (x > 0 && s.y[i] > 0) { xs.push(x); ys.push(s.y[i]); } });
+  const ink = tok('--ink'), muted = tok('--muted'), line = tok('--line');
+  g.font = '12px ' + tok('--font-data'); g.direction = 'ltr';
+  if (!xs.length) { g.fillStyle = muted; g.textAlign = 'center'; g.fillText(o.empty || 'No data yet', W / 2, H / 2); return; }
+  const x0 = Math.floor(Math.log10(Math.min(...xs))), x1 = Math.max(x0 + 1, Math.ceil(Math.log10(Math.max(...xs))));
+  const y0 = Math.floor(Math.log10(Math.min(...ys))), y1 = Math.max(y0 + 1, Math.ceil(Math.log10(Math.max(...ys))));
+  const L = 52, R = 12, T = 14, B = 40, pw = W - L - R, ph = H - T - B;
+  const X = v => L + (Math.log10(v) - x0) / (x1 - x0) * pw, Y = v => T + ph - (Math.log10(v) - y0) / (y1 - y0) * ph;
+  g.strokeStyle = line; g.lineWidth = 1; g.fillStyle = muted;
+  for (let e = x0; e <= x1; e++) { const px = X(10 ** e); g.globalAlpha = .6; g.beginPath(); g.moveTo(px, T); g.lineTo(px, T + ph); g.stroke(); g.globalAlpha = 1; g.textAlign = 'center'; g.fillText(niceTick(e), px, T + ph + 15); }
+  for (let e = y0; e <= y1; e++) { const py = Y(10 ** e); g.globalAlpha = .6; g.beginPath(); g.moveTo(L, py); g.lineTo(L + pw, py); g.stroke(); g.globalAlpha = 1; g.textAlign = 'right'; g.fillText(niceTick(e), L - 6, py + 4); }
+  g.fillStyle = ink; g.textAlign = 'center'; g.fillText(o.xlabel, L + pw / 2, H - 6);
+  g.save(); g.translate(13, T + ph / 2); g.rotate(-Math.PI / 2); g.fillText(o.ylabel, 0, 0); g.restore();
+  g.save(); g.beginPath(); g.rect(L, T, pw, ph); g.clip();
+  for (const s of series) {
+    g.strokeStyle = g.fillStyle = s.color; g.lineWidth = 2;
+    if (s.mode === 'line') { g.beginPath(); let first = true; s.x.forEach((x, i) => { if (!(x > 0 && s.y[i] > 0)) return; first ? g.moveTo(X(x), Y(s.y[i])) : g.lineTo(X(x), Y(s.y[i])); first = false; }); g.stroke(); }
+    else s.x.forEach((x, i) => { if (!(x > 0 && s.y[i] > 0)) return; g.beginPath(); g.arc(X(x), Y(s.y[i]), 3.6, 0, 7); s.hollow ? (g.lineWidth = 1.6, g.stroke()) : g.fill(); });
+  }
+  g.restore();
+  let ly = T + 6; g.textAlign = 'left';
+  for (const s of series) { if (!s.label) continue; g.fillStyle = s.color; g.fillRect(L + 10, ly, 14, 3); g.fillStyle = ink; g.fillText(s.label, L + 30, ly + 5); ly += 16; }
+}
+
+/* ---------- Maxwell ---------- */
+let lastMax = null;
+function readFreq() {
+  const rows = C.parseTable($('#freqText').value), hz = $('#freqUnit').value === 'hz';
+  return { w: rows.map(r => hz ? r[0] * 2 * Math.PI : r[0]), gp: rows.map(r => r[1]), gpp: rows.map(r => r[2] ?? NaN) };
+}
+function renderMaxwell() {
+  const s = cur(); if (document.activeElement !== $('#freqText')) $('#freqText').value = s.freq || '';
+  analyseMaxwell(false);
+}
+function analyseMaxwell(announce) {
+  const { w, gp, gpp } = readFreq(), T = num($('#freqT').value) ?? 25;
+  const x = w.length ? C.crossover(w, gp, gpp) : null;
+  // default fit window ends at the G'' minimum: above it Rouse/breathing modes, not the Maxwell mode, set G''
+  const auto = w.length ? C.gppMin(w, gpp, x ? x.wc : 0) : null, wMax = num($('#wMax').value) ?? (auto ? auto.w : null);
+  const f = w.length ? C.fitMaxwell(w, gp, gpp, wMax) : null;
+  lastMax = f;
+  const series = [{ x: w, y: gp, color: tok('--accent'), label: "G′ measured" }, { x: w, y: gpp, color: tok('--guar'), hollow: true, label: "G″ measured" }];
+  if (f) {
+    const lw = w.filter(v => v > 0); const a = Math.min(...lw), b = Math.max(...lw), xs = [];
+    for (let k = 0; k <= 80; k++) xs.push(a * (b / a) ** (k / 80));
+    series.push({ x: xs, y: xs.map(v => C.maxwellModel(v, f.G0, f.tau).Gp), color: tok('--accent'), mode: 'line', label: 'Maxwell fit' });
+    series.push({ x: xs, y: xs.map(v => C.maxwellModel(v, f.G0, f.tau).Gpp), color: tok('--guar'), mode: 'line' });
+  }
+  plotLog($('#plotMax'), series, { xlabel: 'ω (rad/s)', ylabel: "G′, G″ (Pa)", empty: 'Paste a frequency sweep' });
+  const mn = f ? C.gppMin(w, gpp, x ? x.wc : 0) : null;
+  const out = [];
+  if (x) out.push(['ω crossover', fmt(x.wc), 'rad/s'], ['τR = 1/ωc', fmt(1 / x.wc), 's'], ['G at crossover', fmt(x.Gc), 'Pa']);
+  else if (w.length) out.push(['crossover', 'لا يوجد', 'في المدى المقاس']);
+  if (f) out.push(['مدى الـ fit حتى ω', wMax ? fmt(wMax) : 'كل النقاط', num($('#wMax').value) === null && auto ? 'rad/s، عند G″min تلقائياً' : 'rad/s']);
+  if (f) out.push(['G₀ (fit)', fmt(f.G0), 'Pa'], ['τR (fit)', fmt(f.tau), 's'], ['η₀ = G₀·τR', fmt(f.eta0), 'Pa·s'], ['RMS انحراف', fmt(f.rmsLog), 'decade'], ['ξ mesh size', fmt(C.meshSizeNm(f.G0, T)), 'nm']);
+  if (f && mn) out.push(['G″min / G₀ ≈ le/L̄', fmt(mn.Gpp / f.G0), '']);
+  $('#maxOut').innerHTML = out.map(r => `<div><dt>${r[0]}</dt><dd>${r[1]} <small>${r[2]}</small></dd></div>`).join('');
+  $('#btnSaveMax').disabled = !f;
+  const warn = $('#maxWarn'); warn.hidden = true;
+  if (f && f.rmsLog > 0.1) { warn.hidden = false; warn.textContent = 'الانحراف عن Maxwell المفرد كبير (أكثر من 0.1 decade). جرّب تحديد أعلى ω، أو اذكر في الرسالة أن السلوك لا يتبع Maxwell بسيطاً، وهذا متوقع مع وجود guar.'; }
+  else if (w.length && !x) { warn.hidden = false; warn.textContent = 'لا يوجد تقاطع G′ و G″ في المدى المقاس، فالـ τR من الـ fit هنا استقراء. وسّع مدى التردد إن أمكن.'; }
+  if (announce && !f) toast('أحتاج 3 أسطر على الأقل فيها ω و G′ و G″ موجبة');
+}
+$('#freqText').addEventListener('input', () => { cur().freq = $('#freqText').value; save(); });
+$('#btnFitMax').addEventListener('click', () => analyseMaxwell(true));
+$('#btnSaveMax').addEventListener('click', () => {
+  if (!lastMax) return; const s = cur();
+  s.G0 = +lastMax.G0.toPrecision(4); s.tauR = +lastMax.tau.toPrecision(4); s.eta0 = +lastMax.eta0.toPrecision(4); save(); toast('حُفظت G₀ و τR و η₀ في ' + sampleName(s));
+});
+
+/* ---------- flow + settling ---------- */
+let lastFlow = null;
+function readFlow() {
+  const rows = C.parseTable($('#flowText').value), f = $('#flowUnit').value === 'mPa·s' ? 1e-3 : 1;
+  return { r: rows.map(x => x[0]), eta: rows.map(x => x[1] * f) };
+}
+function renderFlow() {
+  const s = cur();
+  if (document.activeElement !== $('#flowText')) $('#flowText').value = s.flow || '';
+  $('#flowUnit').value = s.flowUnit || 'Pa·s';
+  $('#pD').value = S.settle.d; $('#pRho').value = S.settle.rhoP; $('#fRho').value = S.settle.rhoF;
+  analyseFlow(false); renderSettle();
+}
+function analyseFlow(announce) {
+  const { r, eta } = readFlow(), rMin = num($('#rMin').value), rMax = num($('#rMax').value);
+  const p = r.length ? C.fitPowerLaw(r, eta, rMin, rMax) : null;
+  const e170 = r.length ? C.interpLogLog(r, eta, 170) : NaN;
+  lastFlow = p ? { ...p, e170 } : (Number.isFinite(e170) ? { e170 } : null);
+  const series = [{ x: r, y: eta, color: tok('--accent'), label: 'η measured' }];
+  if (p) { const a = rMin || Math.min(...r), b = rMax || Math.max(...r); series.push({ x: [a, b], y: [p.K * a ** (p.n - 1), p.K * b ** (p.n - 1)], color: tok('--micelle'), mode: 'line', label: `power law, n = ${p.n.toFixed(2)}` }); }
+  plotLog($('#plotFlow'), series, { xlabel: 'γ̇ (1/s)', ylabel: 'η (Pa·s)', empty: 'Paste a flow curve' });
+  const out = [];
+  if (p) out.push(['n', fmt(p.n), ''], ['K', fmt(p.K), 'Pa·sⁿ'], ['R² (log)', p.r2.toFixed(3), `${p.pts} نقاط`], ['η(170) من النموذج', fmt(p.K * 170 ** (p.n - 1) * 1e3), 'mPa·s']);
+  out.push(['η(170) من القياس', fmt(e170 * 1e3), 'mPa·s']);
+  if (r.length) out.push(['أعلى η مقاسة (≈ η₀ إن ظهر plateau)', fmt(Math.max(...eta)), 'Pa·s']);
+  $('#flowOut').innerHTML = out.map(o => `<div><dt>${o[0]}</dt><dd>${o[1]} <small>${o[2]}</small></dd></div>`).join('');
+  $('#btnSaveNK').disabled = !p; $('#btnSave170').disabled = !Number.isFinite(e170);
+  if (announce && !p) toast('أحتاج نقطتين على الأقل داخل مدى γ̇ المحدد');
+  renderSettle();
+}
+function renderSettle() {
+  const s = cur(), d = (num($('#pD').value) || 0) * 1e-3, rp = (num($('#pRho').value) || 0) * 1000, rf = (num($('#fRho').value) || 0) * 1000;
+  const out = [], toMmMin = v => v * 1000 * 60;
+  const eta0 = num(s.eta0), K = num(s.K), n = num(s.n);
+  if (d > 0 && rp > rf) {
+    if (eta0) { const v = C.stokesNewtonian(d, rp, rf, eta0); out.push(['Stokes بـ η₀', fmt(toMmMin(v)), 'mm/min'], ['γ̇ حول الحبة ≈ v/d', fmt(v / d), '1/s']); }
+    if (K && n) { const v = C.stokesPowerLaw(d, rp, rf, K, n); out.push(['Power-law Stokes', fmt(toMmMin(v)), 'mm/min'], ['Re (power law)', fmt(C.reynoldsPowerLaw(rf, v, d, K, n)), 'Stokes صالح إذا < 0.1']); }
+    out.push(['ماء (1 mPa·s) للمقارنة', fmt(toMmMin(C.stokesNewtonian(d, rp, rf, 1e-3))), 'mm/min']);
+    if (num(s.settle) !== null) out.push(['المقاس لهذه العينة', fmt(num(s.settle)), 'mm/min']);
+  }
+  if (!eta0 && !(K && n)) out.unshift(['هذه العينة', 'بلا η₀ أو n, K', 'احفظها أولاً']);
+  $('#settleOut').innerHTML = out.map(o => `<div><dt>${o[0]}</dt><dd>${o[1]} <small>${o[2]}</small></dd></div>`).join('');
+}
+$('#flowText').addEventListener('input', () => { cur().flow = $('#flowText').value; save(); });
+$('#flowUnit').addEventListener('change', () => { cur().flowUnit = $('#flowUnit').value; save(); analyseFlow(false); });
+$('#btnFitFlow').addEventListener('click', () => analyseFlow(true));
+['#pD', '#pRho', '#fRho'].forEach(id => $(id).addEventListener('input', () => { S.settle = { d: num($('#pD').value), rhoP: num($('#pRho').value), rhoF: num($('#fRho').value) }; save(); renderSettle(); }));
+$('#btnSaveNK').addEventListener('click', () => { if (!lastFlow?.n) return; const s = cur(); s.n = +lastFlow.n.toPrecision(3); s.K = +lastFlow.K.toPrecision(4); save(); renderSettle(); toast('حُفظت n و K'); });
+$('#btnSave170').addEventListener('click', () => { if (!lastFlow) return; const s = cur(); s.eta170_25 = +(lastFlow.e170 * 1e3).toPrecision(4); save(); toast('حُفظت η(170) = ' + fmt(s.eta170_25) + ' mPa·s'); });
+
+/* ---------- optimum ---------- */
+const SPEC_METRICS = ['eta170_25', 'eta170_T', 'ret', 'G0', 'tauR', 'eta0', 'settle', 'breakTime', 'brokenVisc', 'residue', 'loading', 'SI'];
+function renderOptimum() {
+  $('#specTable').innerHTML = `<tr><th>مفعّل</th><th>المعيار</th><th>الهدف</th><th>d = 0 عند</th><th>d = 1 عند</th><th>الوزن</th></tr>` +
+    S.specs.map((sp, i) => `<tr>
+      <td><input type="checkbox" data-i="${i}" data-p="on" ${sp.on ? 'checked' : ''} aria-label="تفعيل"></td>
+      <td><select data-i="${i}" data-p="m">${SPEC_METRICS.map(id => `<option value="${id}" ${id === sp.m ? 'selected' : ''}>${MET[id].label} (${MET[id].unit})</option>`).join('')}</select></td>
+      <td><select data-i="${i}" data-p="goal"><option value="max" ${sp.goal === 'max' ? 'selected' : ''}>أكبر أفضل</option><option value="min" ${sp.goal === 'min' ? 'selected' : ''}>أصغر أفضل</option></select></td>
+      <td class="num"><input type="number" step="any" data-i="${i}" data-p="${sp.goal === 'max' ? 'lo' : 'hi'}" value="${sp.goal === 'max' ? sp.lo : sp.hi}"></td>
+      <td class="num"><input type="number" step="any" data-i="${i}" data-p="${sp.goal === 'max' ? 'hi' : 'lo'}" value="${sp.goal === 'max' ? sp.hi : sp.lo}"></td>
+      <td class="num"><input type="number" step="1" min="0" data-i="${i}" data-p="w" value="${sp.w}"></td></tr>`).join('');
+  renderRank();
+  $('#rsmResp').innerHTML = ['eta170_25', 'eta170_T', 'ret', 'eta0', 'G0', 'tauR', 'settle', 'D'].map(id => `<option value="${id}">${MET[id].label}</option>`).join('');
+  $('#rsmResp').value = S.rsm.resp; $('#rsmGoal').value = S.rsm.goal;
+  runRsm(false);
+}
+$('#specTable').addEventListener('change', e => {
+  const el = e.target, i = +el.dataset.i, p = el.dataset.p; if (!p) return;
+  const sp = S.specs[i];
+  if (p === 'on') sp.on = el.checked; else if (p === 'm' || p === 'goal') sp[p] = el.value; else sp[p] = num(el.value) ?? 0;
+  if (sp.lo > sp.hi) [sp.lo, sp.hi] = [sp.hi, sp.lo];
+  save(); renderOptimum();
+});
+function renderRank() {
+  const on = S.specs.filter(s => s.on);
+  const rows = Object.entries(S.samples).filter(([, s]) => s.naoa || s.guar).map(([k, s]) => ({ k, s, sc: scoreOf(s) }))
+    .sort((a, b) => (Number.isFinite(b.sc.D) ? b.sc.D : -1) - (Number.isFinite(a.sc.D) ? a.sc.D : -1));
+  $('#rankTable').innerHTML = `<tr><th>#</th><th>العينة</th><th>D</th>${on.map(sp => `<th>${MET[sp.m].label}</th>`).join('')}<th>الحالة</th></tr>` +
+    rows.map((r, i) => {
+      const fails = r.sc.parts.filter(p => p.d === 0).map(p => MET[p.sp.m].label);
+      const pill = !Number.isFinite(r.sc.D) ? '<span class="pill mut">لا بيانات</span>' : fails.length ? `<span class="pill bad" title="${esc(fails.join('، '))}">فشل: ${esc(fails[0])}${fails.length > 1 ? ' +' + (fails.length - 1) : ''}</span>` : r.sc.complete ? '<span class="pill good">مكتمل</span>' : '<span class="pill warn">ناقص</span>';
+      return `<tr><td class="num">${i + 1}</td><td><button class="ghost rankname" data-k="${r.k}">${esc(sampleName(r.s))}</button></td>
+        <td class="num"><b>${fmt(r.sc.D)}</b> <span class="dbar"><i style="width:${Number.isFinite(r.sc.D) ? r.sc.D * 100 : 0}%"></i></span></td>
+        ${r.sc.parts.map(p => `<td class="num">${fmt(p.y)} <small class="muted">d=${Number.isFinite(p.d) ? p.d.toFixed(2) : '—'}</small></td>`).join('')}<td>${pill}</td></tr>`;
+    }).join('');
+  $$('#rankTable button[data-k]').forEach(b => b.addEventListener('click', () => { S.sel = b.dataset.k; save(); showTab('sample'); }));
+}
+let lastOpt = null;
+function runRsm(announce) {
+  S.rsm = { resp: $('#rsmResp').value || S.rsm.resp, goal: $('#rsmGoal').value || S.rsm.goal }; save();
+  const resp = S.rsm.resp, logT = !!MET[resp].log;
+  const pts = Object.values(S.samples).filter(s => s.naoa >= BOX.x1[0] && s.naoa <= BOX.x1[1] && s.guar >= BOX.x2[0] && s.guar <= BOX.x2[1])
+    .map(s => ({ x1: s.naoa, x2: s.guar, y: val(s, resp) })).filter(p => Number.isFinite(p.y) && (!logT || p.y > 0))
+    .map(p => ({ ...p, y: logT ? Math.log10(p.y) : p.y }));
+  const q = C.quadFit(pts, BOX), cv = $('#plotRsm');
+  lastOpt = null; $('#btnAddVerify').disabled = true;
+  if (!q) {
+    $('#rsmOut').innerHTML = `<div><dt>نقاط صالحة</dt><dd>${pts.length} <small>من 6 على الأقل</small></dd></div>`;
+    drawRsm(cv, null, pts, null, logT); if (announce) toast('أحتاج 6 خلائط مقاسة على الأقل داخل المربع'); return;
+  }
+  const f = resp === 'D' ? (a, b) => Math.min(1, Math.max(0, q.predict(a, b))) : q.predict;
+  const o = C.gridOptimum(f, BOX, S.rsm.goal, 80); lastOpt = o;
+  const back = y => logT ? 10 ** y : y;
+  $('#rsmOut').innerHTML = [
+    ['أفضل نقطة متوقعة', `<bdi dir="ltr">NaOA ${o.x1.toFixed(1)} · guar ${o.x2.toFixed(2)}</bdi>`, 'g/100 mL'],
+    ['القيمة المتوقعة', fmt(back(o.y)), MET[resp].unit],
+    ['R²', q.r2.toFixed(3), logT ? 'على log10' : ''],
+    ['Adjusted R²', Number.isFinite(q.adjR2) ? q.adjR2.toFixed(3) : '—', `dof = ${q.dof}`],
+  ].map(r => `<div><dt>${r[0]}</dt><dd>${r[1]} <small>${r[2]}</small></dd></div>`).join('');
+  $('#btnAddVerify').disabled = false;
+  const edge = [o.x1 <= BOX.x1[0], o.x1 >= BOX.x1[1], o.x2 <= BOX.x2[0], o.x2 >= BOX.x2[1]].some(Boolean);
+  $('#rsmWarn').innerHTML = (edge ? '<b>النقطة على حافة المدى المقاس</b>، فالأمثل الحقيقي قد يقع خارجه، والنموذج لا يصح هناك. الخطوة المنطقية تمديد المدى في ذلك الاتجاه بعينة أو اثنتين، لا اعتماد الحافة. ' : '') +
+    'نموذج من 6 معاملات على 9 نقاط يترك 3 درجات حرية فقط، فالنقطة المقترحة <b>مرشّح للاختبار</b> وليست نتيجة. أكّدها بعينة تحقق مكررة قبل اعتمادها.';
+  drawRsm(cv, f, pts, o, logT);
+}
+function drawRsm(cv, f, pts, o, logT) {
+  const dpr = window.devicePixelRatio || 1, W = cv.clientWidth, H = cv.clientHeight;
+  cv.width = W * dpr; cv.height = H * dpr; const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
+  const L = 50, R = 70, T = 12, B = 40, pw = W - L - R, ph = H - T - B;
+  const X = v => L + (v - BOX.x1[0]) / (BOX.x1[1] - BOX.x1[0]) * pw, Y = v => T + ph - (v - BOX.x2[0]) / (BOX.x2[1] - BOX.x2[0]) * ph;
+  const ink = tok('--ink'), muted = tok('--muted'), s0 = tok('--seq0'), s1 = tok('--seq1');
+  g.font = '12px ' + tok('--font-data'); g.direction = 'ltr';
+  let lo = 0, hi = 1;
+  if (f) {
+    const N = 48, vals = [];
+    for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) vals.push(f(BOX.x1[0] + (BOX.x1[1] - BOX.x1[0]) * (i + .5) / N, BOX.x2[0] + (BOX.x2[1] - BOX.x2[0]) * (j + .5) / N));
+    lo = Math.min(...vals); hi = Math.max(...vals);
+    for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) {
+      const v = vals[i * N + j]; g.fillStyle = mixHex(s0, s1, hi > lo ? (v - lo) / (hi - lo) : .5);
+      g.fillRect(L + pw * i / N, T + ph - ph * (j + 1) / N, pw / N + 1, ph / N + 1);
+    }
+    for (let k = 0; k <= 10; k++) { g.fillStyle = mixHex(s0, s1, k / 10); g.fillRect(W - R + 18, T + ph - ph * (k + 1) / 11, 12, ph / 11 + 1); }
+    g.fillStyle = muted; g.textAlign = 'left';
+    g.fillText(fmt(logT ? 10 ** hi : hi), W - R + 34, T + 10); g.fillText(fmt(logT ? 10 ** lo : lo), W - R + 34, T + ph);
+  } else { g.fillStyle = tok('--panel2'); g.fillRect(L, T, pw, ph); g.fillStyle = muted; g.textAlign = 'center'; g.fillText('Need ≥ 6 measured mixtures', L + pw / 2, T + ph / 2); }
+  g.strokeStyle = tok('--line'); g.strokeRect(L, T, pw, ph);
+  g.fillStyle = muted; g.textAlign = 'center';
+  const ticks = b => [0, 1, 2, 3, 4].map(i => +(b[0] + (b[1] - b[0]) * i / 4).toFixed(2));
+  for (const v of ticks(BOX.x1)) g.fillText(v, X(v), T + ph + 15);
+  g.textAlign = 'right'; for (const v of ticks(BOX.x2)) g.fillText(v, L - 6, Y(v) + 4);
+  g.fillStyle = ink; g.textAlign = 'center'; g.fillText('NaOA (g/100 mL)', L + pw / 2, H - 6);
+  g.save(); g.translate(12, T + ph / 2); g.rotate(-Math.PI / 2); g.fillText('guar (g/100 mL)', 0, 0); g.restore();
+  for (const p of pts) { g.beginPath(); g.arc(X(p.x1), Y(p.x2), 4.5, 0, 7); g.fillStyle = tok('--panel'); g.fill(); g.lineWidth = 2; g.strokeStyle = ink; g.stroke(); }
+  if (o) {
+    const cx = X(o.x1), cy = Y(o.x2); g.beginPath();
+    for (let k = 0; k < 10; k++) { const r = k % 2 ? 4 : 10, a = -Math.PI / 2 + k * Math.PI / 5; g.lineTo(cx + r * Math.cos(a), cy + r * Math.sin(a)); }
+    g.closePath(); g.fillStyle = tok('--guar'); g.fill(); g.strokeStyle = ink; g.lineWidth = 1.2; g.stroke();
+  }
+}
+$('#btnRsm').addEventListener('click', () => runRsm(true));
+$('#rsmResp').addEventListener('change', () => runRsm(false));
+$('#rsmGoal').addEventListener('change', () => runRsm(false));
+$('#btnAddVerify').addEventListener('click', () => {
+  if (!lastOpt) return;
+  const n = +lastOpt.x1.toFixed(1), g = +lastOpt.x2.toFixed(2), k = key(n, g);
+  if (!S.samples[k]) S.samples[k] = Object.assign(blankSample(n, g), { notes: `نقطة تحقق من RSM (${MET[S.rsm.resp].label}). المتوقع: ${fmt(MET[S.rsm.resp].log ? 10 ** lastOpt.y : lastOpt.y)} ${MET[S.rsm.resp].unit}` });
+  S.sel = k; save(); toast('أُضيفت عينة التحقق'); showTab('sample');
+});
+
+/* ---------- network schematic ---------- */
+const net = { breaker: 'none', chains: [], sig: '', t: 0, raf: 0 };
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+function syncNetwork() {
+  const s = cur();
+  $("#nNaoa").value = Math.min(10, s.naoa); $("#nGuar").value = Math.min(0.7, s.guar);
+  buildNet(); if (!net.raf) loopNet();
+}
+function rng(seed) { return () => (seed = (seed * 16807) % 2147483647) / 2147483647; }
+function buildNet() {
+  const n = +$('#nNaoa').value, gu = +$('#nGuar').value, T = +$('#nTemp').value;
+  $('#nvN').textContent = n + ' g'; $('#nvG').textContent = gu + ' g'; $('#nvT').textContent = T + ' °C';
+  const cv = $('#net'), W = cv.clientWidth || 600, H = cv.clientHeight || 380, r = rng(11), chains = [];
+  const lenF = Math.max(0.15, 1 - (T - 25) / 110);  // micelles shorten with temperature (qualitative)
+  const hc = net.breaker === 'hc' || net.breaker === 'both', ox = net.breaker === 'ox' || net.breaker === 'both';
+  const walk = (segs, step, stiff, kind) => {
+    let x = r() * W, y = r() * H, a = r() * 6.283; const pts = [];
+    for (let i = 0; i < segs; i++) { pts.push([x, y, r() * 6.283]); a += (r() - .5) * stiff; x += Math.cos(a) * step; y += Math.sin(a) * step; if (x < 0 || x > W) a = Math.PI - a; if (y < 0 || y > H) a = -a; }
+    chains.push({ kind, pts });
+  };
+  if (n > 0) {
+    const count = Math.round(4 + n * 1.8);
+    if (hc) for (let i = 0; i < count * 6; i++) chains.push({ kind: 'sphere', pts: [[r() * W, r() * H, r() * 6.283]] });
+    else for (let i = 0; i < count; i++) walk(Math.round((8 + n * 4) * lenF), 9, 1.1, 'wlm');
+  }
+  if (gu > 0) {
+    const count = Math.round(2 + gu * 13);
+    for (let i = 0; i < count; i++) {
+      if (ox) { for (let j = 0; j < 4; j++) walk(4, 11, 0.5, 'guar'); }
+      else walk(48, 11, 0.5, 'guar');
+    }
+  }
+  net.chains = chains;
+  const cap = [];
+  if (n > 0 && !hc) cap.push('أيونات K⁺ تحجب شحنة رؤوس الـ oleate فتنمو الـ micelles إلى سلاسل طويلة متشابكة (ثابت في أدبيات الـ WLM).');
+  if (T > 40 && n > 0 && !hc) cap.push('ارتفاع الحرارة يقصّر الـ micelles ويخفض τR و η₀ (ثابت). الرسم يقصّر السلاسل نوعياً فقط.');
+  if (gu > 0 && n > 0 && !hc && !ox) cap.push('سلاسل الـ guar تتداخل مع شبكة الـ micelles فتتكوّن شبكة pseudo-interpenetrating. هذا افتراض البحث المنقول عن نظام CNF، ويثبته أو ينفيه مؤشر التآزر وقيم G₀ و τR عندك.');
+  if (hc) cap.push('الـ hydrocarbon يذوب في قلب الـ micelles فتتحول إلى micelles كروية صغيرة وتنهار المرونة (آلية كسر الـ VES المعروفة).');
+  if (ox) cap.push('الـ oxidizer (مثل APS) يقطع سلسلة الـ guar فتنخفض لزوجته. الـ micelles لا تتأثر به وحده، ولذلك قد تحتاج الآليتين معاً.');
+  if (!n && !gu) cap.push('ماء + KCl فقط: لا شبكة.');
+  $('#netCaption').textContent = cap.join(' ');
+  drawNet();
+}
+function drawNet() {
+  const cv = $('#net'), dpr = window.devicePixelRatio || 1, W = cv.clientWidth, H = cv.clientHeight;
+  if (cv.width !== W * dpr) { cv.width = W * dpr; cv.height = H * dpr; }
+  const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
+  const mic = tok('--micelle'), gua = tok('--guar'), t = net.t, A = reduceMotion ? 0 : 2.2;
+  g.lineCap = g.lineJoin = 'round';
+  for (const c of net.chains) {
+    if (c.kind === 'sphere') { const [x, y, ph] = c.pts[0]; g.beginPath(); g.arc(x + A * Math.sin(t + ph), y + A * Math.cos(t * 1.3 + ph), 3, 0, 7); g.fillStyle = mic; g.fill(); continue; }
+    g.beginPath(); g.strokeStyle = c.kind === 'wlm' ? mic : gua; g.lineWidth = c.kind === 'wlm' ? 4 : 2.2; g.globalAlpha = c.kind === 'wlm' ? .85 : .95;
+    c.pts.forEach(([x, y, ph], i) => { const px = x + A * Math.sin(t + ph), py = y + A * Math.cos(t * 1.1 + ph); i ? g.lineTo(px, py) : g.moveTo(px, py); });
+    g.stroke(); g.globalAlpha = 1;
+  }
+}
+function loopNet() {
+  if ($('#tab-network').hidden || reduceMotion) { net.raf = 0; drawNet(); return; }
+  net.t += 0.03; drawNet(); net.raf = requestAnimationFrame(loopNet);
+}
+['#nNaoa', '#nGuar', '#nTemp'].forEach(id => $(id).addEventListener('input', buildNet));
+$$('#nBreak button').forEach(b => b.addEventListener('click', () => { net.breaker = b.dataset.b; $$('#nBreak button').forEach(x => x.setAttribute('aria-pressed', x === b)); buildNet(); }));
+
+/* ---------- protocol ---------- */
+const PROTOCOL = [
+  ['ماء مقطّر أو deionized. أي Ca²⁺ أو Mg²⁺ يرسّب الـ oleate كصابون غير ذائب، فسجّل الـ hardness إن استخدمت brine.', 'good', 'ثابت'],
+  ['قِس الـ pH وسجّله لكل عينة. الـ oleate يحتاج وسطاً قلوياً، وعند انخفاض الـ pH يتكوّن oleic acid وتتغير البنية (vesicles أو ترسّب). الحد الدقيق يحتاج مرجعاً، وأتوقع حوالي 9 أو أعلى.', 'warn', 'استنتاج'],
+  ['ثبّت ترتيب الخلط في كل العينات واذكره في الرسالة (مثلاً: hydration للـ guar أولاً، ثم NaOA، ثم KCl). الترتيب قد يغيّر النتيجة.', 'warn', 'استنتاج'],
+  ['اترك العينة لتتوازن (مثلاً 24 h) وأزل الفقاعات بالـ centrifuge قبل القياس، فالفقاعات تشوّه G′ و η.', 'mut', 'ممارسة'],
+  ['Amplitude sweep عند تردد ثابت لتحديد الـ LVR، ثم frequency sweep داخل الـ LVR (مثلاً 0.01–100 rad/s).', 'good', 'ثابت'],
+  ['Steady-shear flow curve من 0.01 إلى 1000 s⁻¹ للحصول على η₀ ومنطقة الـ shear thinning.', 'good', 'ثابت'],
+  ['اختبار القص الحراري عند 170 s⁻¹ مع رفع الحرارة ثم الثبات عند حرارة الهدف. استخدم solvent trap أو زيتاً لمنع التبخر. الـ concentric cylinder أنسب من cone-plate عند الحرارة العالية.', 'mut', 'ممارسة'],
+  ['الترسيب الساكن للـ proppant في مخبار مدرّج عند حرارة الاختبار (سجّل mm/min أو زمن نزول مسافة ثابتة).', 'mut', 'ممارسة'],
+  ['الكسر: الـ WLM ينكسر بالتلامس مع hydrocarbon، والـ guar يحتاج oxidizer مثل APS أو enzyme. قِس لزوجة المكسور عند 170 s⁻¹ والـ residue (ترشيح، تجفيف، وزن، بوحدة mg/L).', 'good', 'ثابت'],
+  ['كرّر كل قياس 3 مرات على الأقل من دفعات مستقلة، وأدخل المتوسط هنا وسجّل الـ SD في الملاحظات.', 'mut', 'ممارسة'],
+];
+function renderProtocol() {
+  $('#protocol').innerHTML = PROTOCOL.map((p, i) => `<li><input type="checkbox" id="chk${i}" ${S.checks[i] ? 'checked' : ''}><label for="chk${i}">${p[0]} <span class="pill ${p[1]} conf">${p[2]}</span></label></li>`).join('');
+  $$('#protocol input').forEach((c, i) => c.addEventListener('change', () => { S.checks[i] = c.checked; save(); }));
+}
+
+/* ---------- import / export ---------- */
+function download(name, text, type) {
+  const url = URL.createObjectURL(new Blob([text], { type })); const a = document.createElement('a');
+  a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+const stamp = () => new Date().toISOString().slice(0, 10);
+$('#btnExport').addEventListener('click', () => download(`fracgel-${S.demo ? 'DEMO-' : ''}${stamp()}.json`, JSON.stringify(S, null, 1), 'application/json'));
+$('#btnCsv').addEventListener('click', () => {
+  const cols = ['naoa', 'guar', 'kcl', 'pH', 'eta170_25', 'testT', 'shearMin', 'eta170_T', 'G0', 'tauR', 'eta0', 'n', 'K', 'settle', 'breaker', 'breakTime', 'brokenVisc', 'residue', 'notes'];
+  const der = ['ret', 'SI', 'SI0', 'D'];
+  const q = v => { const s = v === null || v === undefined || (typeof v === 'number' && !Number.isFinite(v)) ? '' : String(v); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+  const lines = [(S.demo ? ['DEMO_DATA_NOT_REAL'] : []).concat(cols, der).join(',')];
+  for (const k of sortedKeys()) { const s = S.samples[k]; lines.push((S.demo ? ['DEMO'] : []).concat(cols.map(c => q(s[c])), der.map(d => q(+val(s, d).toPrecision(4)))).join(',')); }
+  download(`fracgel-${S.demo ? 'DEMO-' : ''}${stamp()}.csv`, '﻿' + lines.join('\n'), 'text/csv');
+});
+$('#fileImport').addEventListener('change', async e => {
+  const f = e.target.files[0]; if (!f) return;
+  try { const st = JSON.parse(await f.text()); if (!st.samples) throw 0; S = Object.assign(emptyState(), st); save(); toast('اُستورد الملف'); render(); }
+  catch { toast('الملف ليس نسخة احتياطية صالحة من FracGel Lab'); }
+  e.target.value = '';
+});
+$('#btnClearDemo').addEventListener('click', () => { S = emptyState(); save(); toast('بدأت مصفوفة فارغة'); render(); });
+$('#btnLoadDemo').addEventListener('click', () => {
+  const btn = $('#btnLoadDemo');
+  if (!S.demo && Object.values(S.samples).some(s => num(s.eta170_25) !== null) && btn.dataset.armed !== '1') { btn.dataset.armed = '1'; btn.textContent = 'اضغط مجدداً: سيستبدل بياناتك (صدّرها أولاً)'; setTimeout(() => { btn.dataset.armed = ''; btn.textContent = 'حمّل بيانات المثال'; }, 4000); return; }
+  btn.dataset.armed = ''; btn.textContent = 'حمّل بيانات المثال'; S = demoState(); save(); render();
+});
+$('#btnTheme').addEventListener('click', () => {
+  const r = document.documentElement, dark = r.dataset.theme ? r.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  r.dataset.theme = dark ? 'light' : 'dark'; try { localStorage.setItem('fracgel.theme', r.dataset.theme); } catch {} render();
+});
+try { const th = localStorage.getItem('fracgel.theme'); if (th) document.documentElement.dataset.theme = th; } catch {}
+let rz = 0; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => render(), 150); });
+
+showTab(location.hash.slice(1) || 'matrix');
+</script>
+</body>
+</html>

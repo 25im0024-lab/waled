@@ -25,6 +25,8 @@ jobs:
         run: node fpso/tests/pvt-dca-test.js
       - name: UHS Pore Lab engine (browser MD)
         run: node uhs-md/web/tests/sim-test.js
+      - name: FracGel Lab core (rheology, desirability, RSM)
+        run: node fracgel/tests/core-test.js
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
