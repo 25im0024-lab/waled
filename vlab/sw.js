@@ -1,7 +1,7 @@
 /* Virtual Lab service worker: offline cache (stale-while-revalidate) for this folder.
    Bump CACHE when the app shell changes to drop old copies. */
 const CACHE = 'vlab-v1';
-const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icon.svg', 'css/style.css', 'js/model.js', 'js/app.js', 'js/flame.js', 'js/gel.js',
+const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icon.svg', 'css/style.css', 'js/model.js', 'js/app.js', 'js/gel.js',
   'vendor/three.min.js', 'vendor/OrbitControls.js'];
 const SCOPE_PATH = new URL('./', self.location).pathname;
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });

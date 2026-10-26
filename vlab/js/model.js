@@ -1,12 +1,10 @@
-/* Virtual Lab — science core (no DOM, no THREE). Loaded by index.html as a classic script
+/* Frac Gel Lab 3D — science core (no DOM, no THREE). Loaded by index.html as a classic script
    (global VLabModel) and by the Node tests through module.exports.
 
-   Two parts:
-   1. Flame tests: emission lines, flame colours, cobalt-glass filter, carry-over on the wire loop.
-   2. NaOA / KCl / guar gel: an ILLUSTRATIVE model that reproduces established trends
-      (Cates scaling, salt screening, Arrhenius, hydrocarbon and oxidative breaking, Stokes/drag settling).
-      Its reference numbers are placeholders, not measurements: the app labels every number it shows
-      from here as illustrative, and uses the user's own FracGel Lab data when it exists. */
+   NaOA / KCl / guar gel: an ILLUSTRATIVE model that reproduces established trends
+   (Cates scaling, salt screening, Arrhenius, hydrocarbon and oxidative breaking, Stokes/drag settling).
+   Its reference numbers are placeholders, not measurements: the app labels every number it shows
+   from here as illustrative, and uses the user's own FracGel Lab data when it exists. */
 (function (root, factory) {
   const api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api; else root.VLabModel = api;
@@ -15,98 +13,6 @@
   const R = 8.314462618;   // J/(mol·K)
   const G = 9.80665;       // m/s²
   const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
-
-  /* ------------------------------------------------------------------ colour */
-  /* Visible wavelength → linear-ish RGB (0..1). Dan Bruton's approximation; good enough for display. */
-  function wavelengthToRGB(nm) {
-    let r = 0, g = 0, b = 0;
-    if (nm >= 380 && nm < 440) { r = -(nm - 440) / 60; b = 1; }
-    else if (nm >= 440 && nm < 490) { g = (nm - 440) / 50; b = 1; }
-    else if (nm >= 490 && nm < 510) { g = 1; b = -(nm - 510) / 20; }
-    else if (nm >= 510 && nm < 580) { r = (nm - 510) / 70; g = 1; }
-    else if (nm >= 580 && nm < 645) { r = 1; g = -(nm - 645) / 65; }
-    else if (nm >= 645 && nm <= 780) { r = 1; }
-    const f = nm < 380 || nm > 780 ? 0 : nm < 420 ? 0.3 + 0.7 * (nm - 380) / 40 : nm > 700 ? 0.3 + 0.7 * (780 - nm) / 80 : 1;
-    return [r * f, g * f, b * f];
-  }
-  const hexToRGB = h => { const n = parseInt(h.slice(1), 16); return [(n >> 16 & 255) / 255, (n >> 8 & 255) / 255, (n & 255) / 255]; };
-  const rgbToHex = c => '#' + c.map(v => Math.round(clamp(v, 0, 1) * 255).toString(16).padStart(2, '0')).join('');
-
-  /* ------------------------------------------------------------------ flame tests */
-  /* Lines in nm. kind 'atomic' = sharp atomic line (positions are textbook values, high confidence);
-     kind 'band' = molecular emission band (MOH, CuCl…): position approximate, width w in nm (medium confidence).
-     flame = colour the eye reports; bright = relative emission strength used when salts mix on the loop
-     (Na is by far the most intense, which is why traces of Na mask other colours). */
-  const SALTS = {
-    LiCl:  { cation: 'Li', powder: '#f4f4f0', flame: '#ff2a4a', bright: 0.7,
-      lines: [{ nm: 670.8, I: 1 }, { nm: 610.4, I: 0.12 }] },
-    NaCl:  { cation: 'Na', powder: '#f7f7f4', flame: '#ffb000', bright: 3,
-      lines: [{ nm: 589.0, I: 1 }, { nm: 589.6, I: 0.55 }] },
-    KCl:   { cation: 'K', powder: '#f5f5f2', flame: '#c890ff', bright: 0.3,
-      lines: [{ nm: 766.5, I: 1 }, { nm: 769.9, I: 0.7 }, { nm: 404.4, I: 0.35 }, { nm: 404.7, I: 0.2 }] },
-    CaCl2: { cation: 'Ca', powder: '#f2f2ee', flame: '#ff6a1c', bright: 0.6,
-      lines: [{ nm: 622, I: 1, kind: 'band', w: 10 }, { nm: 554, I: 0.55, kind: 'band', w: 8 }, { nm: 422.7, I: 0.25 }] },
-    SrCl2: { cation: 'Sr', powder: '#f3f3ef', flame: '#ff1236', bright: 0.7,
-      lines: [{ nm: 682, I: 1, kind: 'band', w: 12 }, { nm: 606, I: 0.7, kind: 'band', w: 8 }, { nm: 460.7, I: 0.3 }] },
-    CuCl2: { cation: 'Cu', powder: '#3fb8a0', flame: '#2fd7b4', bright: 0.6,
-      lines: [{ nm: 435, I: 0.9, kind: 'band', w: 22 }, { nm: 510.6, I: 0.6 }, { nm: 515.3, I: 0.5 }, { nm: 521.8, I: 0.7 }] },
-    BaCl2: { cation: 'Ba', powder: '#f4f4f0', flame: '#a6ff5a', bright: 0.55,
-      lines: [{ nm: 553.5, I: 1 }, { nm: 513, I: 0.7, kind: 'band', w: 8 }, { nm: 524, I: 0.6, kind: 'band', w: 8 }] },
-  };
-
-  /* Cobalt-blue glass: passes blue/violet and deep red, blocks the yellow Na D lines. Approximate curve. */
-  function cobaltT(nm) {
-    if (nm < 480) return 0.75;
-    if (nm < 520) return 0.75 - 0.73 * (nm - 480) / 40;
-    if (nm < 660) return 0.02;
-    if (nm < 720) return 0.02 + 0.58 * (nm - 660) / 60;
-    return 0.7;
-  }
-
-  /* Emission from what is on the loop. load = { NaCl: 1, KCl: 0.6, ... } (relative amounts).
-     Returns the line list (scaled), the colour the eye sees, and the dominant cation. */
-  function flameEmission(load, opts) {
-    const cobalt = !!(opts && opts.cobalt);
-    const lines = [];
-    let rgb = [0, 0, 0], wsum = 0, best = null, bestW = 0;
-    for (const [salt, amt] of Object.entries(load || {})) {
-      const s = SALTS[salt]; if (!s || !(amt > 0)) continue;
-      const w = amt * s.bright;
-      for (const l of s.lines) lines.push({ salt, nm: l.nm, I: l.I * w * (cobalt ? cobaltT(l.nm) : 1), kind: l.kind || 'atomic', w: l.w || 0 });
-      let c;
-      if (cobalt) { // what passes the glass, from the lines themselves
-        c = [0, 0, 0]; let tot = 0;
-        for (const l of s.lines) { const t = cobaltT(l.nm) * l.I, lc = wavelengthToRGB(l.nm); c = c.map((v, i) => v + lc[i] * t); tot += l.I; }
-        c = c.map(v => v / tot);
-      } else c = hexToRGB(s.flame);
-      const cw = cobalt ? w * 2.2 : w;
-      rgb = rgb.map((v, i) => v + c[i] * cw); wsum += cw;
-      if (w > bestW) { bestW = w; best = s.cation; }
-    }
-    if (!wsum) return { lines: [], color: null, strength: 0, dominant: null };
-    const mx = Math.max(...lines.map(l => l.I), 1e-9);
-    lines.forEach(l => { l.I /= mx; });
-    const col = rgb.map(v => v / wsum);
-    const strength = clamp(wsum / (cobalt ? 1.2 : 0.9), 0, 1);
-    return { lines, color: rgbToHex(col.map(v => v / Math.max(...col, 1e-6))), strength, dominant: best };
-  }
-
-  /* Wire-loop state machine: dipping adds salt, heating burns it off slowly, HCl + flame cleans. */
-  function newLoop() { return { load: {}, wet: false }; }
-  function dipLoop(loop, salt, naTrace) {
-    for (const k of Object.keys(loop.load)) loop.load[k] *= 0.7; // some old salt dissolves into the new dish
-    loop.load[salt] = (loop.load[salt] || 0) + 1;
-    if (naTrace) loop.load.NaCl = (loop.load.NaCl || 0) + 0.1; // real salts and fingers carry traces of Na
-    loop.wet = false;
-    return loop;
-  }
-  function dipHCl(loop) { for (const k of Object.keys(loop.load)) loop.load[k] *= 0.35; loop.wet = true; return loop; }
-  function heatLoop(loop, dt) {
-    const k = loop.wet ? 1.2 : 0.18; // chlorides formed by HCl are volatile: wet loop cleans fast
-    for (const s of Object.keys(loop.load)) { loop.load[s] *= Math.exp(-k * dt); if (loop.load[s] < 0.01) delete loop.load[s]; }
-    return loop;
-  }
-  const loopClean = loop => Object.values(loop.load).every(v => v < 0.03);
 
   /* ------------------------------------------------------------------ gel: properties of the liquid */
   const MW = { NaOA: 304.44, KCl: 74.55 };
@@ -255,7 +161,6 @@
   }
 
   return {
-    wavelengthToRGB, hexToRGB, rgbToHex, SALTS, cobaltT, flameEmission, newLoop, dipLoop, dipHCl, heatLoop, loopClean,
     MW, CMC_NAOA_mM, toMM, waterVisc, REF, saltFactor, wlmParams, etaSp, guarParams, viscosity, moduli, stepGel, settling, microState, measuredFor,
   };
 });

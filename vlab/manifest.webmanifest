@@ -1,8 +1,8 @@
 {
   "id": "./",
-  "name": "Virtual Lab — flame tests & WLM frac gel",
-  "short_name": "Virtual Lab",
-  "description": "3D virtual chemistry lab: flame tests with a live spectroscope, and a NaOA/KCl/guar wormlike-micelle fracturing-gel bench.",
+  "name": "Frac Gel Lab 3D",
+  "short_name": "Frac Gel 3D",
+  "description": "3D virtual lab for a NaOA/KCl/guar wormlike-micelle fracturing gel: preparation, nano view, rheometer, proppant, heating and breakers.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

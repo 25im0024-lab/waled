@@ -27,7 +27,7 @@ jobs:
         run: node uhs-md/web/tests/sim-test.js
       - name: FracGel Lab core (rheology, desirability, RSM)
         run: node fracgel/tests/core-test.js
-      - name: Virtual Lab science core (flame tests, WLM gel model)
+      - name: Frac Gel Lab 3D science core (WLM gel model)
         run: node vlab/tests/model-test.js
       - uses: actions/setup-python@v5
         with:

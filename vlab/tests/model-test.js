@@ -1,25 +1,8 @@
-// Virtual Lab science core: closed-form and literature-order checks. Run: node vlab/tests/model-test.js
+// Frac Gel Lab 3D science core: closed-form and literature-order checks. Run: node vlab/tests/model-test.js
 const m = require('../js/model.js');
 let fails = 0;
 const check = (name, ok, got) => { console.log(`${ok ? 'ok  ' : 'FAIL'} ${name}${got !== undefined ? `: ${got}` : ''}`); if (!ok) fails++; };
 const near = (name, got, want, rel = 1e-3) => check(name, Number.isFinite(got) && Math.abs(got - want) <= rel * Math.abs(want), `${got} (want ${want})`);
-
-/* ---------- flame tests */
-const y = m.wavelengthToRGB(589);
-check('589 nm renders yellow-orange', y[0] > 0.9 && y[1] > 0.6 && y[2] === 0, y.map(v => v.toFixed(2)).join(','));
-check('cobalt glass blocks the Na D lines', m.cobaltT(589.0) < 0.05);
-check('cobalt glass passes K violet and deep red', m.cobaltT(404.4) > 0.5 && m.cobaltT(766.5) > 0.5);
-check('NaCl flame is dominated by Na', m.flameEmission({ NaCl: 1 }).dominant === 'Na');
-const mix = m.flameEmission({ NaCl: 0.1, KCl: 1 }, { cobalt: true });
-const peak = s => Math.max(...mix.lines.filter(l => l.salt === s).map(l => l.I));
-check('through cobalt glass, K lines outshine Na traces', peak('KCl') > 5 * peak('NaCl'));
-check('every salt has its textbook strongest atomic line',
-  [['LiCl', 670.8], ['NaCl', 589.0], ['KCl', 766.5], ['BaCl2', 553.5]].every(([s, nm]) => m.SALTS[s].lines.some(l => l.nm === nm && l.I === 1)));
-const loop = m.dipLoop(m.newLoop(), 'CuCl2', false);
-m.dipHCl(loop); for (let i = 0; i < 40; i++) m.heatLoop(loop, 0.1);
-check('HCl + flame cleans the loop within 4 s', m.loopClean(loop));
-const dirty = m.dipLoop(m.newLoop(), 'CuCl2', false); for (let i = 0; i < 40; i++) m.heatLoop(dirty, 0.1);
-check('flame alone (no HCl) leaves residue after 4 s', !m.loopClean(dirty));
 
 /* ---------- gel */
 near('water viscosity 25 °C (0.890 mPa·s)', m.waterVisc(25), 0.890e-3, 0.02);
@@ -69,4 +52,4 @@ check('FracGel import: η0 from G0·τR and η170 from mPa·s', r && r.eta0 === 
 check('FracGel import: missing sample → null', m.measuredFor(fg, 6, 0.3) === null);
 
 if (fails) { console.error(`${fails} check(s) failed`); process.exit(1); }
-console.log('all Virtual Lab model checks passed');
+console.log('all Frac Gel Lab 3D model checks passed');

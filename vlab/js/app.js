@@ -1,5 +1,5 @@
 /* Virtual Lab — shell: renderer, camera, picking, tweens, labels, step cards, instrument panel, i18n,
-   presentation mode. Lessons (flame.js, gel.js) register themselves in VL.lessons and build into VL.root. */
+   presentation mode. The lesson (gel.js) registers itself in VL.lessons and builds into VL.root. */
 (function () {
   'use strict';
   const M = window.VLabModel;
@@ -7,13 +7,13 @@
 
   const UI = {
     ar: {
-      brand: 'المختبر الافتراضي', home: 'كل الأدوات', lessonFlame: 'اختبارات اللهب', lessonGel: 'جل التكسير WLM', lessonFlameS: 'اللهب', lessonGelS: 'الجل', present: '▶ عرض', exitPresent: '■ إنهاء العرض',
+      brand: 'مختبر جل التكسير WLM', home: 'كل الأدوات', present: '▶ عرض', exitPresent: '■ إنهاء العرض',
       reset: '↺ إعادة', doit: 'نفّذ الخطوة', next: 'التالي ›', stepOf: (i, n) => `الخطوة ${i} من ${n}`, finished: 'اكتملت كل الخطوات. جرّب بحرية أو أعد البدء.',
       fact: 'ثابت', inf: 'استنتاج', illu: 'توضيحي', spec: 'تخمين', nano: 'Nano view', busy: 'انتظر انتهاء الحركة الحالية',
       noWebGL: 'المتصفح لا يدعم WebGL، والمختبر يحتاجه.', stepDone: 'تمت الخطوة ✓', keys: 'العرض: → أو PageDown للتالي، ← أو PageUp للسابق، Esc للخروج.',
     },
     en: {
-      brand: 'Virtual Lab', home: 'All tools', lessonFlame: 'Flame Tests', lessonGel: 'WLM Frac Gel', lessonFlameS: 'Flame', lessonGelS: 'Gel', present: '▶ Present', exitPresent: '■ Exit',
+      brand: 'WLM Frac Gel Lab', home: 'All tools', present: '▶ Present', exitPresent: '■ Exit',
       reset: '↺ Reset', doit: 'Do this step', next: 'Next ›', stepOf: (i, n) => `STEP ${i} OF ${n}`, finished: 'All steps done. Explore freely or reset.',
       fact: 'Established', inf: 'Inference', illu: 'Illustrative', spec: 'Speculation', nano: 'Nano view', busy: 'Wait for the current motion to finish',
       noWebGL: 'This browser has no WebGL, which the lab needs.', stepDone: 'Step done ✓', keys: 'Presenting: → or PageDown = next, ← or PageUp = back, Esc = exit.',
@@ -261,17 +261,13 @@
   let lesson = null, stepI = 0, lastDone = false;
   const CONF = { fact: 'good', inf: 'warn', spec: 'warn', illu: '' };
   function setLesson(id) {
-    if (!VL.lessons[id]) id = 'flame';
     if (lesson && lesson.dispose) lesson.dispose();
     // clear previous lesson objects
     for (const o of [...VL.root.children]) { VL.root.remove(o); o.traverse(n => { if (n.geometry) n.geometry.dispose(); if (n.material) [].concat(n.material).forEach(m => { if (m.map) m.map.dispose(); m.dispose(); }); }); }
     picks.length = 0; VL.labels.length = 0; VL.hint(null); tweens.length = 0; VL.busy = 0;
     lesson = VL.lessons[id]; stepI = 0; lastDone = false;
-    $$('.lessons button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.lesson === id)));
     $('#nanoBox').hidden = !lesson.nano;
     lesson.build();
-    store.set('vlab.lesson', id);
-    const u = new URL(location.href); u.searchParams.set('lesson', id); history.replaceState(null, '', u);
     renderControls(); renderStep(); refreshInstrument();
   }
   VL.lesson = () => lesson;
@@ -384,7 +380,6 @@
   VL.start = () => {
     if (!initThree()) return;
     applyLang();
-    $$('.lessons button').forEach(b => b.onclick = () => setLesson(b.dataset.lesson));
     $('#btnLang').onclick = () => { lang = lang === 'ar' ? 'en' : 'ar'; store.set('vlab.lang', lang); const u = new URL(location.href); u.searchParams.set('lang', lang); history.replaceState(null, '', u); applyLang(); };
     $('#btnPresent').onclick = () => setPresent(!document.body.classList.contains('present'));
     $('#btnReset').onclick = () => setLesson(lesson.id);
@@ -394,7 +389,7 @@
     $('#btnCollapse').onclick = () => $('#stepcard').classList.toggle('min');
     $('#instTitle').onclick = () => { if (innerWidth <= 860) $('#instrument').classList.toggle('min'); };
     if (innerWidth <= 860) $('#instrument').classList.add('min');
-    setLesson(qs.get('lesson') || store.get('vlab.lesson') || 'flame');
+    setLesson('gel');
     requestAnimationFrame(frame);
     if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
   };

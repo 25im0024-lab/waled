@@ -1,4 +1,4 @@
-/* Virtual Lab — Lesson 2: NaOA / KCl / guar wormlike-micelle fracturing gel.
+/* Frac Gel Lab 3D — NaOA / KCl / guar wormlike-micelle fracturing gel.
    Bench: hotplate stirrer + beaker, reagents, rheometer, proppant, breakers. A nano view shows the
    micro-structure the model predicts (monomers → micelles → worms → microemulsion droplets; guar chains).
    Numbers come from the illustrative model in model.js unless the user's FracGel Lab data is available. */
@@ -8,15 +8,16 @@
   const L = (ar, en) => ({ ar, en });
   const BEAKER = { x: 0, z: 0.15, base: 0.245, r: 0.38, h: 0.9 };
   const UNIT = 10;              // scene units per metre (1 unit = 10 cm)
-  const LEVEL_PER_ML = 0.0034;  // liquid height per mL in this beaker
-  const PLAN = [[0, 0], [0, 0.3], [0, 0.5], [0, 0.7], ...[6, 8, 10].flatMap(n => [0, 0.3, 0.5, 0.7].map(g => [n, g]))];
+  const LEVEL_PER_ML = 0.00165; // liquid height per mL in this 500 mL beaker (room for a 3:1 dilution)
+  // Waleid's 13 samples: NaOA 6/8/10 g × guar 0/0.3/0.5/0.7 g, plus G0.7-K; KCl 1 g; all per 100 mL water
+  const PLAN = [...[6, 8, 10].flatMap(n => [0, 0.3, 0.5, 0.7].map(g => [n, g])), [0, 0.7]];
   const sampleName = (n, g) => n ? `S${n}-${g}` : g ? `G${g}-K` : 'K (blank)';
 
   let G, O, nano;
 
   function freshState() {
-    return { water: 0, naoa: 0, kcl: 0, guar: 0, T: 25, heat: false, stir: false, hydr: 0, hcB: 0, hc: 0, aps: 0, guarM: 1, simT: 0, speed: 60,
-      set: { naoa: 8, guar: 0.5, kcl: 1, T: 90, hc: 5, aps: 0.05 }, meas: [], prop: false, source: 'model', fg: loadFG(), plotTab: 'osc' };
+    return { water: 0, naoa: 0, kcl: 0, guar: 0, T: 25, heat: false, stir: false, hydr: 0, hcB: 0, hc: 0, aps: 0, guarM: 1, dil: 1, simT: 0, speed: 60,
+      set: { naoa: 8, guar: 0.5, kcl: 1, T: 90, aps: 0.05, dil: 2 }, meas: [], prop: false, source: 'model', fg: loadFG(), plotTab: 'osc' };
   }
   function loadFG() { try { const s = JSON.parse(VL.store.get('fracgel.v2') || 'null'); return s && s.samples ? s : null; } catch { return null; } }
 
@@ -24,7 +25,7 @@
   function props() {
     const st = { naoa: G.naoa, kcl: G.kcl, guar: G.guar, T: G.T, hydr: G.hydr, hcB: G.hcB, guarM: G.guarM };
     const mu = M.waterVisc(G.T);
-    const fresh = Math.abs(G.T - 25) < 1.5 && G.hcB < 0.02 && G.guarM > 0.98 && Math.abs(G.kcl - 1) < 0.01 && (G.guar === 0 || G.hydr > 0.9) && G.water > 0;
+    const fresh = Math.abs(G.T - 25) < 1.5 && G.dil === 1 && G.guarM > 0.98 && Math.abs(G.kcl - 1) < 0.01 && (G.guar === 0 || G.hydr > 0.9) && G.water > 0;
     const meas = G.source === 'data' && fresh ? M.measuredFor(G.fg, G.naoa, G.guar) : null;
     if (meas && meas.G0 !== null && meas.tau !== null) {
       const eta0 = meas.eta0 ?? meas.G0 * meas.tau;
@@ -68,18 +69,16 @@
     const glass = new THREE.Mesh(new THREE.CylinderGeometry(BEAKER.r, BEAKER.r * 0.97, BEAKER.h, 48, 1, true), VL.glass({ opacity: 0.18 })); glass.position.y = BEAKER.h / 2; glass.renderOrder = 3;
     const rim = new THREE.Mesh(new THREE.TorusGeometry(BEAKER.r, 0.01, 8, 64), VL.glass({ opacity: 0.5 })); rim.rotation.x = Math.PI / 2; rim.position.y = BEAKER.h;
     const bottom = new THREE.Mesh(new THREE.CircleGeometry(BEAKER.r * 0.97, 48), VL.glass({ opacity: 0.25 })); bottom.rotation.x = -Math.PI / 2; bottom.position.y = 0.004;
-    for (let i = 1; i <= 4; i++) { // graduation marks every 50 mL
+    for (let i = 1; i <= 5; i++) { // graduation marks every 100 mL
       const m = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.006, 0.004), new THREE.MeshBasicMaterial({ color: 0x5a6672, transparent: true, opacity: 0.6 }));
-      m.position.set(-0.12, 0.012 + i * 50 * LEVEL_PER_ML, BEAKER.r + 0.002); bk.add(m);
+      m.position.set(-0.12, 0.012 + i * 100 * LEVEL_PER_ML, BEAKER.r + 0.002); bk.add(m);
     }
     O.liquidMat = new THREE.MeshPhysicalMaterial({ color: 0xcfe6ff, transparent: true, opacity: 0.35, roughness: 0.15, clearcoat: 0.6, depthWrite: false, side: THREE.DoubleSide });
     O.liquid = new THREE.Mesh(new THREE.CylinderGeometry(BEAKER.r * 0.955, BEAKER.r * 0.94, 1, 48, 1, true), O.liquidMat); O.liquid.visible = false; O.liquid.renderOrder = 1;
     O.surface = new THREE.Mesh(surfaceGeometry(BEAKER.r * 0.955), O.liquidMat); O.surface.visible = false; O.surface.renderOrder = 2;
-    O.oil = new THREE.Mesh(new THREE.CircleGeometry(BEAKER.r * 0.95, 48), new THREE.MeshStandardMaterial({ color: 0xf2c94c, transparent: true, opacity: 0, depthWrite: false }));
-    O.oil.rotation.x = -Math.PI / 2; O.oil.renderOrder = 2;
     O.bar = new THREE.Mesh(new THREE.CapsuleGeometry(0.03, 0.16, 6, 12), VL.std(0xffffff, { roughness: 0.3 })); O.bar.rotation.z = Math.PI / 2; O.bar.position.y = 0.035;
     O.barPivot = new THREE.Group(); O.barPivot.add(O.bar);
-    bk.add(O.liquid, O.surface, O.oil, O.barPivot, glass, rim, bottom);
+    bk.add(O.liquid, O.surface, O.barPivot, glass, rim, bottom);
     // bubbles and proppant (instanced)
     O.bub = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 10, 8), new THREE.MeshPhysicalMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, roughness: 0.05, clearcoat: 1, depthWrite: false }), 40);
     O.bub.renderOrder = 2; O.bubs = Array.from({ length: 40 }, () => ({ on: false })); bk.add(O.bub);
@@ -89,7 +88,7 @@
     root.add(bk); O.beaker = bk;
     VL.pick(bk, () => { G.stir = !G.stir; VL.renderControls(); });
     bk.userData.hintAt = new THREE.Vector3(0, BEAKER.h + 0.05, 0);
-    const bl = VL.label(L('كأس 250 mL على hotplate stirrer', '250 mL beaker on hotplate stirrer'), L('أزرق: تحريك · أحمر: تسخين', 'blue knob: stir · red knob: heat'), { w: 0.95 });
+    const bl = VL.label(L('كأس 500 mL على hotplate stirrer', '500 mL beaker on hotplate stirrer'), L('أزرق: تحريك · أحمر: تسخين', 'blue knob: stir · red knob: heat'), { w: 0.95 });
     bl.position.set(0, 0.08, 1.0); root.add(bl);
 
     // reagents
@@ -100,12 +99,11 @@
       const lab = VL.label(title, sub, { w: 0.62 }); lab.position.set(x, kind === 'bottle' ? 0.82 : 0.66, z + 0.05); root.add(lab); j.userData.labelObj = lab;
       return j;
     };
-    VL.pick(J('water', -2.0, -0.3, 'bottle', 0xbfe0ff, L('ماء مقطّر', 'DI water'), L('100 mL', '100 mL')), () => VL.run(addWater));
+    VL.pick(J('water', -2.0, -0.3, 'bottle', 0xbfe0ff, L('ماء مقطّر', 'DI water'), L('100 mL · وللتخفيف', '100 mL · and dilution')), () => VL.run(() => G.water ? dilute() : addWater()));
     VL.pick(J('guar', -1.28, -0.85, 'jar', 0xefe4c2, L('Guar gum', 'Guar gum'), L('بوليمر طبيعي', 'natural polymer')), () => VL.run(() => addSolid('guar')));
     VL.pick(J('naoa', -0.43, -1.05, 'jar', 0xf3ead0, L('Sodium oleate', 'Sodium oleate'), L('NaOA · surfactant', 'NaOA · surfactant')), () => VL.run(() => addSolid('naoa')));
     VL.pick(J('kcl', 0.43, -1.05, 'jar', 0xfafafa, L('KCl', 'KCl'), L('ملح · K⁺', 'salt · K⁺')), () => VL.run(() => addSolid('kcl')));
-    VL.pick(J('hc', 1.28, -0.85, 'bottle', 0xf2d36b, L('Kerosene', 'Kerosene'), L('breaker: hydrocarbon', 'breaker: hydrocarbon')), () => VL.run(() => addBreaker('hc')));
-    VL.pick(J('aps', 2.0, -0.3, 'jar', 0xffffff, L('APS', 'APS'), L('breaker: oxidizer', 'breaker: oxidizer')), () => VL.run(() => addBreaker('aps')));
+    VL.pick(J('aps', 1.3, -0.85, 'jar', 0xffffff, L('APS', 'APS'), L('breaker: oxidizer', 'breaker: oxidizer')), () => VL.run(() => addBreaker('aps')));
     VL.pick(J('sand', 1.75, 0.95, 'jar', 0xc9a56b, L('Proppant', 'Proppant'), L('رمل 20/40', '20/40 sand')), () => VL.run(dropProppant));
 
     // rheometer
@@ -206,7 +204,7 @@
   }
 
   /* ------------------------------------------------------------------ actions */
-  const level = () => (G.water + G.hc) * LEVEL_PER_ML;
+  const level = () => G.water * LEVEL_PER_ML;
   async function pour(id, apply, dur = 1.4) {
     const j = O.jars[id], home = j.userData.home, side = home[0] < 0 ? -1 : 1, a = side * 2.0, h = j.userData.mouthY;
     const mouthY = BEAKER.base + BEAKER.h + 0.35;
@@ -214,7 +212,7 @@
     await VL.move(j, [home[0], 0.5, home[2]], [0, 0, 0], 0.35);
     j.userData.labelObj.visible = false; if (j.userData.lid) j.userData.lid.visible = false;
     await VL.move(j, p, [0, 0, a], 0.75);
-    const s = O.stream.userData; s.on = true; s.color = j.userData.color; s.liquid = id === 'water' || id === 'hc';
+    const s = O.stream.userData; s.on = true; s.color = j.userData.color; s.liquid = id === 'water';
     s.from.set(BEAKER.x, mouthY + 0.02, BEAKER.z);
     let done = 0;
     await VL.tween(dur, k => { apply(k - done); done = k; }, k => k);
@@ -223,6 +221,22 @@
     await VL.move(j, [home[0], 0.5, home[2]], [0, 0, 0], 0.75);
     await VL.move(j, home, [0, 0, 0], 0.3);
     j.userData.labelObj.visible = true; if (j.userData.lid) j.userData.lid.visible = true;
+  }
+  /* Polymer-free samples are broken by dilution with DI water (r parts water : 1 part gel).
+     Every concentration falls by 1/(1+r); the cold water also cools a heated sample. */
+  async function dilute() {
+    if (!needWater()) return;
+    if (G.dil > 1) { VL.toast(VL.t(L('العينة مخففة مسبقاً', 'The sample is already diluted'))); return; }
+    const r = G.set.dil, w0 = G.water, T0 = G.T, c0 = { naoa: G.naoa, kcl: G.kcl, guar: G.guar, aps: G.aps };
+    let k = 0;
+    await pour('water', dk => {
+      k = Math.min(1, k + dk);
+      const d = 1 + r * k;
+      for (const id of Object.keys(c0)) G[id] = c0[id] / d;
+      G.water = w0 * d; G.T = (T0 + 25 * r * k) / d;
+    }, 1.6);
+    G.dil = 1 + r;
+    if (!G.stir) { G.stir = true; VL.renderControls(); }
   }
   async function addWater() {
     if (G.water >= 100) { VL.toast(VL.t(L('في الكأس 100 mL ماء. التراكيز محسوبة لكل 100 mL ماء.', 'The beaker already holds 100 mL water; amounts are per 100 mL water.'))); return; }
@@ -254,7 +268,7 @@
     const P = props(), ws = [], rs = [];
     for (let e = -2; e <= 2.0001; e += 0.1) ws.push(10 ** e);
     for (let e = -2; e <= 3.0001; e += 0.1) rs.push(10 ** e);
-    const tag = `${G.T.toFixed(0)} °C${G.hcB > 0.3 || G.guarM < 0.5 ? ' · broken' : ''}`;
+    const tag = `${G.T.toFixed(0)} °C${G.dil > 1 ? ` · diluted ${G.dil - 1}:1` : ''}${G.guarM < 0.5 ? ' · APS' : ''}`;
     G.meas.push({ tag, T: G.T, src: P.src, Gp: ws.map(w => [w, P.mod(w).Gp]), Gpp: ws.map(w => [w, P.mod(w).Gpp]), eta: rs.map(r => [r, P.visc(r)]), eta0: P.eta0, eta170: P.eta170, G0: P.G0, tau: P.tau });
     if (G.meas.length > 4) G.meas.shift();
     O.rhLed.material.color.set(0x334033);
@@ -298,7 +312,6 @@
       O.liquid.scale.y = lv; O.liquid.position.y = lv / 2 + 0.004;
       const haze = Math.min(1, G.naoa / 10 * 0.6 + G.guar * 0.5);
       col.set(0xcfe6ff).lerp(col2.set(0xf1ead2), haze * 0.8);
-      if (G.hcB > 0.5 && G.naoa > 0) col.lerp(col2.set(0xf6f0dc), 0.3);
       O.liquidMat.color.lerp(col, Math.min(1, dt * 3));
       O.liquidMat.opacity += ((0.33 + haze * 0.35 + gel * 0.12) - O.liquidMat.opacity) * Math.min(1, dt * 3);
       // surface: vortex + ripples, damped by viscosity
@@ -311,9 +324,7 @@
       }
       pa.needsUpdate = true; O.surface.geometry.computeVertexNormals();
       O.surface.position.y = lv + 0.004;
-      O.oil.position.y = lv + 0.008; O.oil.material.opacity = G.hc > 0 && G.naoa > 0 ? (1 - G.hcB) * 0.7 : G.hc > 0 ? 0.6 : 0;
-      O.oil.visible = O.oil.material.opacity > 0.01;
-    } else O.oil.visible = false;
+    }
     // stir bar (decouples in a thick gel)
     O.barPivot.rotation.y += (G.stir ? (gel > 0.85 ? 6 : 26) : 0) * dt;
     const swirl = G.stir ? 2.5 * (1 - gel) : 0;
@@ -497,7 +508,7 @@
     };
     const vs = G.water ? M.settling(0.6, 2.65, 1.01, P.visc).v : null;
     const comp = G.water ? `NaOA ${fmt(G.naoa)} · guar ${fmt(G.guar)} · KCl ${fmt(G.kcl)}` : '—';
-    const brk = G.hc || G.aps ? `WLM ${Math.round(G.hcB * 100)}% · guar M/M₀ ${fmt(G.guarM)}` : '—';
+    const brk = [G.dil > 1 ? `${VL.t(L('تخفيف', 'diluted'))} ${G.dil - 1}:1` : '', G.aps ? `APS · guar M/M₀ ${fmt(G.guarM)}` : ''].filter(Boolean).join(' · ') || '—';
     const badge = P.src === 'data' ? { cls: 'good', text: P.demo ? L('بيانات المثال في FracGel', 'FracGel demo data') : L('بياناتك المقاسة', 'your measured data') }
       : { cls: 'warn', text: L('نموذج توضيحي', 'illustrative model') };
     return {
@@ -537,7 +548,7 @@
         <select id="gPreset"><option value="">${VL.t(L('مخصّصة', 'custom'))}</option>${PLAN.map(([n, g]) => `<option value="${n}|${g}" ${presetVal && presetVal[0] === n && presetVal[1] === g ? 'selected' : ''}>${sampleName(n, g)} · NaOA ${n} g · guar ${g} g · KCl 1 g</option>`).join('')}</select></label>
       <div class="grid2">${slider('naoa', L('NaOA', 'NaOA'), 0, 10, 0.5, 'g')}${slider('guar', L('guar', 'guar'), 0, 1, 0.05, 'g')}</div>
       <div class="grid2">${slider('kcl', L('KCl', 'KCl'), 0, 3, 0.25, 'g')}${slider('T', L('حرارة الهدف', 'Target T'), 25, 120, 5, '°C')}</div>
-      <div class="grid2">${slider('hc', L('Kerosene', 'Kerosene'), 0, 10, 0.5, 'mL')}${slider('aps', L('APS', 'APS'), 0, 0.2, 0.01, 'g')}</div>
+      <div class="grid2">${slider('aps', L('APS', 'APS'), 0, 0.2, 0.01, 'g')}<label>${VL.t(L('تخفيف (ماء : جل)', 'Dilution (water : gel)'))}<select id="gDil">${[1, 2, 3].map(r => `<option value="${r}" ${s.dil === r ? 'selected' : ''}>${r}:1</option>`).join('')}</select></label></div>
       <p class="note" style="margin:0">${VL.t(L('الكميات لكل 100 mL ماء، وتُضاف بالضغط على الجرّة.', 'Amounts per 100 mL water; added when you click the jar.'))}</p>
       <div class="row">
         <button id="gStir" class="${G.stir ? 'pri' : ''}">${VL.t(G.stir ? L('إيقاف التحريك', 'Stop stirring') : L('تحريك', 'Stir'))}</button>
@@ -554,9 +565,10 @@
       <div class="row"><span class="note" style="margin:0">${G.fg ? VL.t(L(`FracGel: ${nFG} عينة فيها G₀${G.fg.demo ? ' (بيانات مثال)' : ''}`, `FracGel: ${nFG} samples with G₀${G.fg.demo ? ' (demo data)' : ''}`)) : VL.t(L('لا توجد بيانات FracGel في هذا المتصفح', 'No FracGel data in this browser'))}</span>
         <button id="gImport" class="ghost">${VL.t(L('استورد JSON', 'Import JSON'))}</button><input type="file" id="gFile" accept="application/json,.json" hidden></div>`;
     const $ = q => el.querySelector(q);
-    for (const id of ['naoa', 'guar', 'kcl', 'T', 'hc', 'aps']) {
-      $(`#s_${id}`).oninput = e => { s[id] = +e.target.value; $(`#v_${id}`).textContent = `${s[id]} ${{ T: '°C', hc: 'mL', aps: 'g' }[id] || 'g'}`; if (['naoa', 'guar', 'kcl'].includes(id)) $('#gPreset').value = PLAN.some(([n, g]) => n === s.naoa && g === s.guar) && s.kcl === 1 ? `${s.naoa}|${s.guar}` : ''; };
+    for (const id of ['naoa', 'guar', 'kcl', 'T', 'aps']) {
+      $(`#s_${id}`).oninput = e => { s[id] = +e.target.value; $(`#v_${id}`).textContent = `${s[id]} ${id === 'T' ? '°C' : 'g'}`; if (['naoa', 'guar', 'kcl'].includes(id)) $('#gPreset').value = PLAN.some(([n, g]) => n === s.naoa && g === s.guar) && s.kcl === 1 ? `${s.naoa}|${s.guar}` : ''; };
     }
+    $('#gDil').onchange = e => { s.dil = +e.target.value; };
     $('#gPreset').onchange = e => { if (!e.target.value) return; const [n, g] = e.target.value.split('|').map(Number); Object.assign(s, { naoa: n, guar: g, kcl: 1 }); VL.renderControls(); };
     $('#gStir').onclick = () => { G.stir = !G.stir; VL.renderControls(); };
     $('#gHeat').onclick = () => { G.heat = !G.heat; VL.renderControls(); };
@@ -621,11 +633,15 @@
       conf: ['fact', 'illu'], target: () => O.knobHeat, done: () => G.heat && G.set.T > 40 && Math.abs(G.T - G.set.T) < 1.5,
       auto: async () => { G.heat = true; VL.renderControls(); await waitFor(() => Math.abs(G.T - G.set.T) < 1.5, 15); await measure(); } },
     { title: L('اكسر الجل', 'Break the gel'),
-      text: L('الـ kerosene يذوب في قلب الـ micelles فتتحول إلى قطيرات microemulsion كروية وتنهار المرونة. الـ APS يولّد جذور sulfate تقطع سلسلة الـ guar، وهو بطيء جداً عند حرارة الغرفة ويتسارع بالحرارة. الـ WLM وحده لا يترك بوليمراً، فالـ residue مصدره الـ guar.',
-        'Kerosene dissolves into the micelle cores, turning them into spherical microemulsion droplets, and the elasticity collapses. APS makes sulfate radicals that cut the guar chain; it is very slow at room temperature and speeds up with heat. WLM alone leaves no polymer, so the residue comes from guar.'),
-      conf: ['fact', 'inf'], target: () => G.hc ? O.jars.aps : O.jars.hc,
-      done: () => (G.hc > 0 || G.aps > 0) && (G.naoa === 0 || G.hcB > 0.8) && (G.guar === 0 || G.guarM < 0.2) && props().eta170 < 0.01,
-      auto: async () => { if (G.naoa > 0 && !G.hc) await addBreaker('hc'); if (G.guar > 0 && !G.aps) await addBreaker('aps'); await waitFor(() => (G.naoa === 0 || G.hcB > 0.8) && (G.guar === 0 || G.guarM < 0.2), 15); await measure(); } },
+      text: L('العينات التي فيها guar (ومنها G0.7-K): أضف APS، فجذور الـ sulfate تقطع سلسلة الـ guar. الـ APS بطيء جداً عند حرارة الغرفة ويتسارع بالحرارة. العينات الخالية من البوليمر (S6-0 و S8-0 و S10-0): خفّفها بالماء المقطّر بالنسبة المختارة، فينخفض تركيز الـ NaOA والـ KCl معاً وتقصر الـ micelles. في الخلائط يبقى جزء الـ WLM، فلا يُعرف أن الـ APS يكسره، ولزوجته تنخفض بالحرارة وتعود عند التبريد: أطفئ التسخين وقِس مرة أخرى.',
+        'Samples with guar (including G0.7-K): add APS; sulfate radicals cut the guar chain. APS is very slow at room temperature and speeds up with heat. Polymer-free samples (S6-0, S8-0, S10-0): dilute with DI water at the chosen ratio, so NaOA and KCl drop together and the micelles shorten. In the mixtures the WLM part remains, since APS is not known to break it; its viscosity falls with heat and returns on cooling: switch the heater off and measure again.'),
+      conf: ['fact', 'inf'], target: () => G.guar > 0 ? O.jars.aps : O.jars.water,
+      done: () => G.water > 0 && (G.guar > 0 ? G.aps > 0 && G.guarM < 0.2 : G.dil > 1),
+      auto: async () => {
+        if (G.guar > 0) { if (!G.aps) await addBreaker('aps'); await waitFor(() => G.guarM < 0.2, 15); }
+        else if (G.dil === 1) { await dilute(); await VL.wait(0.8); }
+        await measure();
+      } },
   ];
 
   VL.lessons.gel = {

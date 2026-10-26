@@ -3,23 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Virtual Lab — المختبر الافتراضي</title>
-<meta name="description" content="3D virtual chemistry lab: flame tests with a live spectroscope, and a NaOA/KCl/guar wormlike-micelle fracturing-gel bench with nano view, rheometer, proppant settling, heating and breakers.">
+<title>Frac Gel Lab 3D — مختبر جل التكسير</title>
+<meta name="description" content="3D virtual lab for a NaOA/KCl/guar wormlike-micelle fracturing gel: preparation, nano view, rheometer, proppant settling, heating and breakers.">
 <meta name="theme-color" content="#0f9d76">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-<canvas id="c" aria-label="3D lab bench"></canvas>
+<canvas id="c" aria-label="3D gel bench"></canvas>
 
 <header class="top">
   <a class="home" href="../" data-i="home" title="">⌂</a>
   <b class="brand" data-i="brand"></b>
-  <nav class="lessons" role="tablist">
-    <button role="tab" data-lesson="flame"><span class="n">1</span><span class="full" data-i="lessonFlame"></span><span class="short" data-i="lessonFlameS"></span></button>
-    <button role="tab" data-lesson="gel"><span class="n">2</span><span class="full" data-i="lessonGel"></span><span class="short" data-i="lessonGelS"></span></button>
-  </nav>
   <div class="tools">
     <button id="btnLang" class="ghost">EN</button>
     <button id="btnPresent" class="ghost" data-i="present"></button>
@@ -61,7 +57,6 @@
 <script src="vendor/OrbitControls.js"></script>
 <script src="js/model.js"></script>
 <script src="js/app.js"></script>
-<script src="js/flame.js"></script>
 <script src="js/gel.js"></script>
 <script>VL.start();</script>
 </body>
