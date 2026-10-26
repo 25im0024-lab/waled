@@ -24,6 +24,12 @@ https://github.com/25im0024-lab/waled/commit/be429ce5f3b571389ec05952bc00c307bfe
 
 Live 3D molecular dynamics of H2 with a cushion gas (CO2, CH4 or N2) in a calcite nanopore, with brine and methanogenic bacteria, and a 3D player for the full atomistic LAMMPS model: [`uhs-md/`](uhs-md/README.md).
 
+## FracGel Lab — NaOA/KCl/guar fracturing gel
+
+### ▶ [افتح FracGel Lab](https://25im0024-lab.github.io/waled/fracgel/)
+
+منضدة عمل بحثية لجل التكسير المكوّن من sodium oleate و 1 wt% KCl و guar: مصفوفة العينات (NaOA 0/2/4/6 × guar 0/0.4/0.7/1 wt%) مع عينات الضبط ومؤشر التآزر، وتحليل Maxwell للـ frequency sweep، و power law للـ flow curve، وحاسبة ترسيب الـ proppant، وترتيب التركيبات بالـ desirability (Derringer–Suich)، وسطح استجابة quadratic يقترح نقطة تحقق. البيانات تبقى في المتصفح مع تصدير JSON و CSV. اختبار الحسابات: `node fracgel/tests/core-test.js`.
+
 ## IELTS Coach
 
 تدريب على اختبار IELTS Academic (Reading / Listening / Writing / Speaking) بنمط الاختبار الحقيقي: [`ielts/`](ielts/README.md).
