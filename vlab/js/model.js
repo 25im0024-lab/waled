@@ -30,7 +30,7 @@
     guarIV: 14, MHa: 0.73,                 // dL/g intrinsic viscosity, Mark–Houwink exponent
     EaGuar: 10e3,                          // J/mol on top of the solvent
     hydrTau: 600,                          // s, guar hydration time constant (grade-dependent)
-    apsK80: 0.0231, EaAPS: 140e3,          // per (g/100 mL)·s at 80 °C; Ea of persulfate decomposition order
+    apsK80: 0.00156, EaAPS: 140e3,         // per (g/100 mL)·s at 80 °C (0.05 g halves guar M in ~40 min at 90 °C); Ea of persulfate decomposition order
     hcTau: 240,                            // s, contact/mixing time for hydrocarbon uptake
   };
 
@@ -150,6 +150,23 @@
   function surfaceTension(st) { const dT = GAMMA.dT * ((st.T ?? 25) - 25); return tensionCurve(st, GAMMA.w25 + dT, GAMMA.cmc + dT, GAMMA.cmcSalt + dT); }
   function interfacialTension(st) { return tensionCurve(st, GAMMA.ow, GAMMA.owCmc, GAMMA.owCmcSalt); }
 
+  /* Cannon-Fenske routine viscometers (ASTM D446): nominal constant C (mm²/s²) and kinematic range (mm²/s).
+     Every tube has its own certified C; these nominal values are for choosing a size. ASTM D445/D446 ask for
+     an efflux time of at least 200 s. */
+  const CANNON = { 25: { C: 0.002, lo: 0.5, hi: 2 }, 50: { C: 0.004, lo: 0.8, hi: 4 }, 75: { C: 0.008, lo: 1.6, hi: 8 }, 100: { C: 0.015, lo: 3, hi: 15 },
+    150: { C: 0.035, lo: 7, hi: 35 }, 200: { C: 0.1, lo: 20, hi: 100 }, 300: { C: 0.25, lo: 50, hi: 250 } };
+  const effluxTime = (nu, size) => nu / CANNON[size].C;                       // s
+  function recommendSize(nu) {                                              // smallest-constant tube with t ≥ 200 s
+    const ok = Object.keys(CANNON).map(Number).filter(k => effluxTime(nu, k) >= 200);
+    return ok.length ? ok[ok.length - 1] : 25; // the largest such tube gives the shortest valid run
+  }
+  /* Density of the (broken) fluid, g/cm³: water plus small solute terms. Approximate:
+     measure it with a pycnometer or density meter at the viscometer temperature. */
+  function fluidDensity(st) {
+    const T = st.T ?? 25, w = 1 - (T + 288.9414) / (508929.2 * (T + 68.12963)) * (T - 3.9863) ** 2; // Thiesen equation
+    return w + 0.0063 * (st.kcl || 0) + 0.0008 * (st.naoa || 0) + 0.0004 * (st.guar || 0);
+  }
+
   /* What the nano view should draw. Counts are for the schematic only. */
   function microState(st) {
     const out = { monomers: 0, spheres: 0, worms: 0, wormLen: 0, droplets: 0, guar: 0, guarLen: 0, guarPieces: 1, guarCoil: 1, phase: 'water' };
@@ -190,6 +207,7 @@
   }
 
   return {
+    CANNON, effluxTime, recommendSize, fluidDensity,
     PPG_G_PER_L, ppgToPhi, rzExponent, hinderedSettling, GAMMA, surfaceTension, interfacialTension,
     MW, CMC_NAOA_mM, toMM, waterVisc, REF, saltFactor, wlmParams, etaSp, guarParams, viscosity, moduli, stepGel, settling, microState, measuredFor,
   };

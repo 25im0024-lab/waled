@@ -1,5 +1,5 @@
 /* Virtual Lab — shell: renderer, camera, picking, tweens, labels, step cards, instrument panel, i18n,
-   presentation mode. The lesson (gel.js) registers itself in VL.lessons and builds into VL.root. */
+   presentation mode. Lessons (gel.js, break.js) register themselves in VL.lessons and build into VL.root. */
 (function () {
   'use strict';
   const M = window.VLabModel;
@@ -7,13 +7,13 @@
 
   const UI = {
     ar: {
-      brand: 'مختبر جل التكسير WLM', home: 'كل الأدوات', present: '▶ عرض', exitPresent: '■ إنهاء العرض',
+      brand: 'مختبر جل التكسير WLM', home: 'كل الأدوات', lessonGel: 'تحضير الجل', lessonBreak: 'اختبار الكسر (حمام مائي)', lessonGelS: 'التحضير', lessonBreakS: 'الكسر', present: '▶ عرض', exitPresent: '■ إنهاء العرض',
       reset: '↺ إعادة', doit: 'نفّذ الخطوة', next: 'التالي ›', stepOf: (i, n) => `الخطوة ${i} من ${n}`, finished: 'اكتملت كل الخطوات. جرّب بحرية أو أعد البدء.',
       fact: 'ثابت', inf: 'استنتاج', illu: 'توضيحي', spec: 'تخمين', nano: 'Nano view', busy: 'انتظر انتهاء الحركة الحالية',
       noWebGL: 'المتصفح لا يدعم WebGL، والمختبر يحتاجه.', stepDone: 'تمت الخطوة ✓', keys: 'العرض: → أو PageDown للتالي، ← أو PageUp للسابق، Esc للخروج.',
     },
     en: {
-      brand: 'WLM Frac Gel Lab', home: 'All tools', present: '▶ Present', exitPresent: '■ Exit',
+      brand: 'WLM Frac Gel Lab', home: 'All tools', lessonGel: 'Gel preparation', lessonBreak: 'Break test (water bath)', lessonGelS: 'Prepare', lessonBreakS: 'Break', present: '▶ Present', exitPresent: '■ Exit',
       reset: '↺ Reset', doit: 'Do this step', next: 'Next ›', stepOf: (i, n) => `STEP ${i} OF ${n}`, finished: 'All steps done. Explore freely or reset.',
       fact: 'Established', inf: 'Inference', illu: 'Illustrative', spec: 'Speculation', nano: 'Nano view', busy: 'Wait for the current motion to finish',
       noWebGL: 'This browser has no WebGL, which the lab needs.', stepDone: 'Step done ✓', keys: 'Presenting: → or PageDown = next, ← or PageUp = back, Esc = exit.',
@@ -266,6 +266,8 @@
     for (const o of [...VL.root.children]) { VL.root.remove(o); o.traverse(n => { if (n.geometry) n.geometry.dispose(); if (n.material) [].concat(n.material).forEach(m => { if (m.map) m.map.dispose(); m.dispose(); }); }); }
     picks.length = 0; VL.labels.length = 0; VL.hint(null); tweens.length = 0; VL.busy = 0;
     lesson = VL.lessons[id]; stepI = 0; lastDone = false;
+    $$('.lessons button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.lesson === id)));
+    store.set('vlab.lesson', id);
     $('#nanoBox').hidden = !lesson.nano;
     lesson.build();
     renderControls(); renderStep(); refreshInstrument();
@@ -390,7 +392,9 @@
     $('#btnCollapse').onclick = () => $('#stepcard').classList.toggle('min');
     $('#instTitle').onclick = () => { if (innerWidth <= 860) $('#instrument').classList.toggle('min'); };
     if (innerWidth <= 860) $('#instrument').classList.add('min');
-    setLesson('gel');
+    $$('.lessons button').forEach(b => b.onclick = () => setLesson(b.dataset.lesson));
+    const first = qs.get('lesson') || store.get('vlab.lesson');
+    setLesson(VL.lessons[first] ? first : 'gel');
     requestAnimationFrame(frame);
     if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
   };
