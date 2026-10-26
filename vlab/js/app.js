@@ -27,7 +27,7 @@
   const VL = window.VL = { M, $, $$, lessons: {}, labels: [], busy: 0, store };
   VL.lang = () => lang;
   // In Arabic text, keep "100 mL", "589.0 nm", "25 °C" in reading order by isolating them as LTR runs.
-  const UNIT_RUN = /(\d[\d.,]*(?:\s?[–-]\s?\d[\d.,]*)?\s?(?:g\/100 mL|mPa·s|Pa·s|kJ\/mol|mN\/m|m\/s|mm\/s|g\/L|ppg|mL|mM|nm|°C|rpm|min|Pa|g|h|s)(?![A-Za-z]))/g;
+  const UNIT_RUN = /(\d[\d.,]*(?:\s?[–-]\s?\d[\d.,]*)?\s?(?:g\/100 mL|mPa·s|Pa·s|kJ\/mol|mN\/m|mg\/L|µm|m\/s|mm\/s|g\/L|ppg|mL|mM|nm|°C|rpm|min|Pa|g|h|s)(?![A-Za-z]))/g;
   const bidi = s => lang === 'ar' && typeof s === 'string' ? s.replace(UNIT_RUN, '\u2066$1\u2069') : s;
   VL.t = o => typeof o === 'string' ? (UI[lang][o] ?? UI.en[o] ?? o) : o && typeof o === 'object' ? bidi(o[lang] ?? o.en) : '';
   VL.fmt = (v, unit) => {

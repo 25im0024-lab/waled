@@ -19,7 +19,8 @@
 
   function freshState() {
     return { set: { naoa: 0, guar: 0.7, kcl: 1, aps: 0.05, dil: 2, T: 90, Tm: 30, crit: 5 }, filled: false, heat: false, Tb: 25, running: false, t: 0, speed: 60,
-      vials: [], sel: -1, size: 75, sizeTouched: false, runs: [], stopwatch: 0, tab: 'curve' };
+      vials: [], sel: -1, size: 75, sizeTouched: false, runs: [], stopwatch: 0, tab: 'curve',
+      res: { V: 50, grade: 42, vial: -1, m1: null, b1: null, filtered: false, blocked: false, dried: 0, m2: [], b2: [], oven: false } };
   }
 
   /* ------------------------------------------------------------------ physics per vial */
@@ -41,6 +42,13 @@
     const nu = etaCap * 1000 / rho, C = M.CANNON[size].C, t = nu / C;
     return { ok: true, nu, t, rho, eta: nu * rho, C, newtonian: etaLow / etaCap < 1.15, tooFast: t < 200, tooSlow: t > 1000 };
   }
+
+  /* Residue retained on the filter, mg per litre of broken fluid. ILLUSTRATIVE: water-insoluble part of the
+     guar (assumed 8 %) plus a share of polymer still large enough to be held, falling with chain scission. */
+  const INSOL = 0.08, PAPER_G = 0.196;              // Whatman grade 42, 50 mm: ~100 g/m² × 19.6 cm²
+  function residueMgL(st) { const gL = st.guar * 10; return gL * 1000 * (INSOL + 0.4 * Math.max(0, Math.min(1, st.guarM ?? 1))); }
+  const noise = mg => (Math.random() - 0.5) * 2 * mg / 1000;   // balance repeatability, g
+  const isConst = a => a.length >= 2 && Math.abs(a[a.length - 1] - a[a.length - 2]) <= 0.0003;
 
   /* ------------------------------------------------------------------ build */
   function build() {
@@ -107,6 +115,48 @@
     const swd = new THREE.Mesh(new THREE.PlaneGeometry(0.38, 0.19), new THREE.MeshBasicMaterial({ map: O.swTex })); swd.position.set(0, 0, 0.061); sw.add(swd);
     VL.shadow(sw); root.add(sw);
     const sl = VL.label(L('ساعة إيقاف', 'Stopwatch'), null, { w: 0.4 }); sl.position.set(2.1, 0.42, 0.55); root.add(sl);
+
+    // residue: analytical balance, vacuum filtration, drying oven, desiccator
+    const bal = new THREE.Group(); bal.position.set(-2.5, 0, -0.55);
+    const bb = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.12, 0.6), VL.std(0xe9ecef, { roughness: 0.35 })); bb.position.y = 0.06;
+    const shield = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.42, 0.42), VL.glass({ opacity: 0.18 })); shield.position.set(0, 0.33, -0.04);
+    const pan = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.01, 32), VL.std(0xbfc4c9, { metalness: 0.8, roughness: 0.3 })); pan.position.set(0, 0.14, -0.04);
+    O.paper = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.085, 0.004, 32), VL.std(0xffffff, { roughness: 0.9 })); O.paper.position.set(0, 0.148, -0.04); O.paper.visible = false;
+    O.balTex = VL.canvasTexture(512, 128, drawBalance);
+    const bd = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.1), new THREE.MeshBasicMaterial({ map: O.balTex })); bd.position.set(0, 0.07, 0.301);
+    bal.add(bb, pan, O.paper, shield, bd); VL.shadow(bal); root.add(bal); O.bal = bal;
+    VL.pick(bal, () => VL.run(weighPapers));
+    const bll = VL.label(L('ميزان تحليلي 0.1 mg', 'Analytical balance 0.1 mg'), null, { w: 0.62 }); bll.position.set(-2.5, 0.75, -0.55); root.add(bll);
+
+    const fil = new THREE.Group(); fil.position.set(2.35, 0, -0.75);
+    const flaskProf = [[0, 0], [0.2, 0], [0.21, 0.02], [0.2, 0.12], [0.07, 0.42], [0.05, 0.5], [0.05, 0.56]].map(p => new THREE.Vector2(...p));
+    const flask = new THREE.Mesh(new THREE.LatheGeometry(flaskProf, 40), VL.glass({ opacity: 0.25 }));
+    O.filtrate = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.2, 1, 32), new THREE.MeshStandardMaterial({ color: 0xf2efe0, transparent: true, opacity: 0.6, depthWrite: false })); O.filtrate.visible = false;
+    const funnel = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.11, 0.14, 32, 1, true), VL.std(0xf7f7f4, { roughness: 0.4, side: THREE.DoubleSide })); funnel.position.y = 0.66;
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.1, 12), VL.std(0xf7f7f4)); stem.position.y = 0.56;
+    O.fPaper = new THREE.Mesh(new THREE.CircleGeometry(0.105, 32), VL.std(0xffffff, { roughness: 0.9, side: THREE.DoubleSide })); O.fPaper.rotation.x = -Math.PI / 2; O.fPaper.position.y = 0.6; O.fPaper.visible = false;
+    O.fLiq = new THREE.Mesh(new THREE.CylinderGeometry(0.105, 0.105, 1, 32), new THREE.MeshStandardMaterial({ color: 0xf1ead2, transparent: true, opacity: 0.7, depthWrite: false })); O.fLiq.visible = false;
+    const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.14, 10), VL.glass({ opacity: 0.4 })); arm.rotation.z = Math.PI / 2; arm.position.set(0.11, 0.46, 0);
+    const hoseV = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new THREE.Vector3(0.18, 0.46, 0), new THREE.Vector3(0.4, 0.3, 0), new THREE.Vector3(0.55, 0.12, -0.1)]), 20, 0.018, 8), VL.std(0xd2452f));
+    const pump = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.2, 0.25), VL.std(0x3a4350)); pump.position.set(0.62, 0.1, -0.12);
+    fil.add(flask, O.filtrate, stem, funnel, O.fPaper, O.fLiq, arm, hoseV, pump); VL.shadow(fil); root.add(fil); O.fil = fil;
+    fil.userData.hintAt = new THREE.Vector3(0, 0.75, 0);
+    VL.pick(fil, () => VL.run(filterSample));
+    const fl = VL.label(L('ترشيح تحت التفريغ', 'Vacuum filtration'), L('Whatman ashless · 50 mm', 'Whatman ashless · 50 mm'), { w: 0.72 }); fl.position.set(2.35, 1.0, -0.75); root.add(fl);
+
+    const ov = new THREE.Group(); ov.position.set(-2.55, 0, 0.35);
+    const ob = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.55, 0.5), VL.std(0xdfe3e7, { roughness: 0.4, metalness: 0.2 })); ob.position.y = 0.275;
+    O.ovenWin = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.26), new THREE.MeshStandardMaterial({ color: 0x222831, emissive: 0x000000 })); O.ovenWin.position.set(-0.05, 0.3, 0.251);
+    O.ovenTex = VL.canvasTexture(256, 96, drawOven);
+    const od = new THREE.Mesh(new THREE.PlaneGeometry(0.16, 0.06), new THREE.MeshBasicMaterial({ map: O.ovenTex })); od.position.set(0.2, 0.42, 0.251);
+    ov.add(ob, O.ovenWin, od); VL.shadow(ov); root.add(ov); O.oven = ov;
+    VL.pick(ov, () => VL.run(dryAndWeigh));
+    const ol = VL.label(L('فرن تجفيف 105 °C + مجفّف', 'Drying oven 105 °C + desiccator'), null, { w: 0.72 }); ol.position.set(-2.55, 0.85, 0.35); root.add(ol);
+    const des = new THREE.Group(); des.position.set(-1.95, 0, -1.0);
+    const dBody = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.16, 0.24, 32, 1, true), VL.glass({ opacity: 0.3 })); dBody.position.y = 0.12;
+    const dLid = new THREE.Mesh(new THREE.SphereGeometry(0.21, 32, 12, 0, Math.PI * 2, 0, Math.PI / 2), VL.glass({ opacity: 0.3 })); dLid.scale.y = 0.45; dLid.position.y = 0.24;
+    const gel = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.04, 32), VL.std(0x4a7bd1, { roughness: 0.8 })); gel.position.y = 0.03;
+    des.add(gel, dBody, dLid); root.add(des);
   }
 
   /* Cannon-Fenske routine: wide arm with the lower reservoir, narrow arm with the timing bulb between
@@ -161,6 +211,14 @@
   function drawStopwatch(g, W, H) {
     g.fillStyle = '#0c1a14'; g.fillRect(0, 0, W, H); g.textBaseline = 'middle'; g.textAlign = 'center';
     g.fillStyle = '#ffd66b'; g.font = '700 96px ui-monospace, Consolas, monospace'; g.fillText(`${(B ? B.stopwatch : 0).toFixed(1)} s`, W / 2, H / 2);
+  }
+  function drawBalance(g, W, H) {
+    g.fillStyle = '#0c1a14'; g.fillRect(0, 0, W, H); g.textBaseline = 'middle'; g.textAlign = 'right';
+    g.fillStyle = '#5dffb1'; g.font = '700 70px ui-monospace, Consolas, monospace'; g.fillText(`${(O && O.balRead || 0).toFixed(4)} g`, W - 24, H / 2);
+  }
+  function drawOven(g, W, H) {
+    g.fillStyle = '#0c1a14'; g.fillRect(0, 0, W, H); g.textBaseline = 'middle'; g.textAlign = 'center';
+    g.fillStyle = B && B.res.oven ? '#ff8a70' : '#3f6b57'; g.font = '700 54px ui-monospace, Consolas, monospace'; g.fillText('105°C', W / 2, H / 2);
   }
   function redraw(tex, fn) { fn(tex.userData.cv.getContext('2d'), tex.userData.cv.width, tex.userData.cv.height); tex.needsUpdate = true; }
 
@@ -247,6 +305,69 @@
     VL.showTab('curve');
   }
 
+  /* ------------------------------------------------------------------ residue */
+  const resVial = () => { const r = B.res; if (r.vial >= 0) return B.vials[r.vial]; const outs = B.vials.filter(v => v.where === 'out'); return outs[outs.length - 1]; };
+  async function showMass(m) { O.paper.visible = true; const t0 = O.balRead || 0; await VL.tween(0.8, k => { O.balRead = t0 + (m - t0) * k; redraw(O.balTex, drawBalance); }); }
+  async function weighPapers() {
+    const r = B.res;
+    if (r.m1 !== null && !r.filtered) { VL.toast(VL.t(L('الورقتان موزونتان: انتقل إلى الترشيح', 'Both papers are weighed: go on to filtration'))); return; }
+    if (r.filtered) return dryAndWeigh();
+    // papers were pre-washed with DI water, dried at 105 °C and cooled in the desiccator
+    r.m1 = PAPER_G + noise(4); await showMass(r.m1); await VL.wait(0.5);
+    O.balRead = 0; r.b1 = PAPER_G + noise(4); await showMass(r.b1);
+    VL.toast(VL.t(L(`m₁ = ${r.m1.toFixed(4)} g (العيّنة) · b₁ = ${r.b1.toFixed(4)} g (blank)`, `m₁ = ${r.m1.toFixed(4)} g (sample) · b₁ = ${r.b1.toFixed(4)} g (blank)`)));
+    VL.showTab('res'); VL.renderControls();
+  }
+  async function filterSample() {
+    const r = B.res, v = resVial();
+    if (r.m1 === null) { VL.toast(VL.t(L('جفّف ورقتي الترشيح وزِنهما أولاً (اضغط على الميزان)', 'Dry and weigh the two filter papers first (click the balance)'))); return; }
+    if (!v) { VL.toast(VL.t(L('أخرج قارورة مكسورة من الحمام أولاً', 'Take a broken vial out of the bath first'))); return; }
+    if (r.filtered) { VL.toast(VL.t(L('تم الترشيح: جفّف وزِن (اضغط على الفرن)', 'Filtered: dry and weigh (click the oven)'))); return; }
+    r.vial = B.vials.indexOf(v);
+    const etaLow = M.viscosity({ ...v.st, T: B.set.Tm }, 10);
+    r.blocked = etaLow > 0.2;
+    O.fPaper.visible = true; O.fPaper.material.color.set(0xffffff); O.fLiq.visible = true; O.filtrate.visible = true;
+    const pass = async (vol, dur) => {
+      await VL.tween(0.4, k => { const h = 0.12 * k; O.fLiq.scale.y = Math.max(0.001, h); O.fLiq.position.y = 0.6 + h / 2; });
+      await VL.tween(dur, k => { const h = 0.12 * (1 - k); O.fLiq.scale.y = Math.max(0.001, h); O.fLiq.position.y = 0.6 + h / 2;
+        const f = O.filtrate.userData.h = (O.filtrate.userData.h0 || 0) + vol * k; O.filtrate.scale.y = Math.max(0.001, f); O.filtrate.position.y = f / 2 + 0.005; }, k => k);
+      O.filtrate.userData.h0 = O.filtrate.userData.h;
+    };
+    O.filtrate.userData.h0 = 0;
+    await pass(0.06, r.blocked ? 4 : 1.6);                                      // sample, 50 mL
+    const tint = Math.min(1, residueMgL(v.st) / 2000);
+    O.fPaper.material.color.lerpColors(new THREE.Color(0xffffff), new THREE.Color(0xc9b27a), 0.25 + 0.6 * tint);
+    for (let w = 0; w < 3; w++) await pass(0.015, 0.6);                         // 3 DI-water washes
+    r.filtered = true; r.massSample = residueMgL(v.st) * r.V / 1e6;             // g on the sample filter
+    if (r.blocked) VL.toast(VL.t(L('الترشيح بطيء جداً: السائل لم ينكسر تماماً، فالنتيجة تشمل جلاً غير مكسور', 'Filtration is very slow: the fluid is not fully broken, so the result includes unbroken gel')));
+    else VL.toast(VL.t(L('رُشّحت 50 mL وغُسلت الكعكة 3 مرات؛ وعولجت ورقة الـ blank بالماء المقطّر بنفس الطريقة', 'Filtered 50 mL and washed the cake 3 times; the blank paper got DI water the same way')));
+    VL.showTab('res'); VL.renderControls();
+  }
+  async function dryAndWeigh() {
+    const r = B.res;
+    if (!r.filtered) { VL.toast(VL.t(L('رشّح العيّنة أولاً', 'Filter the sample first'))); return; }
+    if (isConst(r.m2) && isConst(r.b2)) { VL.toast(VL.t(L('وصلت الكتلة إلى الثبات', 'Constant mass reached'))); return; }
+    r.oven = true; redraw(O.ovenTex, drawOven); O.ovenWin.material.emissive.set(0x5a1d08);
+    await VL.tween(1.4, () => {});                                               // 105 °C, ~2 h (time-lapse)
+    r.oven = false; redraw(O.ovenTex, drawOven); O.ovenWin.material.emissive.set(0x000000);
+    await VL.wait(0.6);                                                          // desiccator, ~30 min
+    r.dried++;
+    const water = r.dried === 1 ? 0.0012 : r.dried === 2 ? 0.0002 : 0;           // the first drying leaves some moisture
+    const m2 = r.m1 + r.massSample + water + noise(0.15), b2 = r.b1 - 0.0002 + water * 0.8 + noise(0.15);
+    r.m2.push(m2); r.b2.push(b2);
+    O.balRead = 0; await showMass(m2); await VL.wait(0.4); O.balRead = 0; await showMass(b2);
+    VL.toast(VL.t(isConst(r.m2) && isConst(r.b2) ? L('كتلة ثابتة (فرق ≤ 0.3 mg): احسب الـ residue', 'Constant mass (≤ 0.3 mg change): compute the residue')
+      : L('جفّف ووزن مرة أخرى حتى تثبت الكتلة', 'Dry and weigh again until the mass is constant')));
+    VL.showTab('res'); VL.renderControls();
+  }
+  function residueResult() {
+    const r = B.res;
+    if (!isConst(r.m2) || !isConst(r.b2)) return null;
+    const dm = (r.m2[r.m2.length - 1] - r.m1) - (r.b2[r.b2.length - 1] - r.b1);   // g, blank-corrected
+    const v = B.vials[r.vial], guarG = v.st.guar * r.V / 100;
+    return { dm, mgL: dm * 1e6 / r.V, pctGuar: guarG > 0 ? dm / guarG * 100 : null };
+  }
+
   /* ------------------------------------------------------------------ per-frame */
   let dispAcc = 0, last = '';
   function update(dt) {
@@ -279,6 +400,7 @@
     const ok = B.runs.filter(r => r.ok);
     const draw = (cv, tb) => {
       if (tb === 'log') return drawLog(cv);
+      if (tb === 'res') return drawRes(cv);
       const pts = ok.map(r => [r.tp, r.eta]).sort((a, b) => a[0] - b[0]);
       const ys = pts.map(p => p[1]).concat([B.set.crit]);
       const c = VL.plot(cv, { x: [0, 500], y: [Math.min(0.5, ...ys) / 1.5, Math.max(50, ...ys) * 1.5], ylog: true, xlabel: VL.t(L('الزمن في الحمام (min)', 'time in bath (min)')), ylabel: 'η (mPa·s)',
@@ -292,7 +414,7 @@
     return {
       title: L('اختبار الكسر و Cannon-Fenske', 'Break test & Cannon-Fenske'),
       badge: { cls: 'warn', text: L('نموذج توضيحي', 'illustrative model') },
-      tabs: [{ id: 'curve', label: L('منحنى الكسر', 'Break curve') }, { id: 'log', label: L('السجل', 'Log') }],
+      tabs: [{ id: 'curve', label: L('منحنى الكسر', 'Break curve') }, { id: 'log', label: L('السجل', 'Log') }, { id: 'res', label: L('Residue', 'Residue') }],
       draw,
       readouts: [
         [L('الحمام · الزمن', 'Bath · time'), `${B.Tb.toFixed(1)} °C · ${hms(B.t)}`],
@@ -302,10 +424,30 @@
         [L('آخر قياس: t̄ · ν', 'Last run: t̄ · ν'), r && r.ok ? `${fmt(r.tm, 's')} · ${fmt(r.nu, 'mm²/s')}` : '—'],
         [L('ρ · η', 'ρ · η'), r && r.ok ? `${r.rho.toFixed(4)} g/cm³ · ${fmt(r.eta, 'mPa·s')}` : '—'],
         [L('زمن الكسر (أول نقطة ≤ المعيار)', 'Break time (first point ≤ criterion)'), broken ? `≤ ${broken.tp} min` : '—', true],
+        [L('Residue (مصحَّح بالـ blank)', 'Residue (blank-corrected)'), (() => { const x = residueResult(); return x ? `${fmt(x.mgL, 'mg/L')}${x.pctGuar !== null ? ` · ${fmt(x.pctGuar)}% ${VL.t(L('من الـ guar', 'of guar'))}` : ''}` : '—'; })(), true],
       ],
       note: r && r.ok && !r.newtonian ? L('تنبيه: السائل ما زال shear-thinning عند حرارة القياس، فنتيجة الـ capillary غير موثوقة: قِسه بالـ rheometer.', 'Warning: the fluid is still shear-thinning at the measuring temperature, so the capillary result is unreliable: use the rheometer.')
         : L('زمن الحركية والقيم من النموذج التوضيحي. الثوابت C اسمية (ASTM D446)؛ استخدم الثابت المكتوب في شهادة أنبوبك.', 'Kinetics and values come from the illustrative model. C values are nominal (ASTM D446); use the constant on your tube certificate.'),
     };
+  }
+  function drawRes(cv) {
+    const dpr = window.devicePixelRatio || 1, W = cv.clientWidth, H = cv.clientHeight;
+    if (!W || !H) return;
+    if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
+    const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
+    const r = B.res, ink = VL.css('--ink'), mut = VL.css('--muted'), acc = VL.css('--acc');
+    g.font = '12.5px ui-monospace, Consolas, monospace'; g.direction = 'ltr'; g.textAlign = 'left';
+    const f = x => x === null || x === undefined ? '—' : x.toFixed(4);
+    const v = r.vial >= 0 ? B.vials[r.vial] : null, res = residueResult();
+    const lines = [
+      [`sample: ${v ? `${v.tp} min vial` : '—'} · V = ${r.V} mL · Whatman ${r.grade} ashless 50 mm`, mut],
+      [`paper  m1 = ${f(r.m1)} g    blank b1 = ${f(r.b1)} g`, ink],
+      ...r.m2.map((m, i) => [`dry #${i + 1}  m2 = ${f(m)} g    b2 = ${f(r.b2[i])} g`, ink]),
+      [res ? `Δ = (m2−m1) − (b2−b1) = ${(res.dm * 1000).toFixed(1)} mg` : 'Δ = (m2−m1) − (b2−b1)', res ? ink : mut],
+      [res ? `residue = Δ / V = ${res.mgL.toFixed(0)} mg/L` : 'residue (mg/L) = Δ(mg) / V(L)', res ? acc : mut],
+    ];
+    if (r.blocked) lines.push(['! slow filtration: not fully broken', VL.css('--warn')]);
+    lines.forEach(([t, c], i) => { g.fillStyle = c; g.fillText(t, 8, 20 + i * 21, W - 12); });
   }
   function drawLog(cv) {
     const dpr = window.devicePixelRatio || 1, W = cv.clientWidth, H = cv.clientHeight;
@@ -353,7 +495,13 @@
         <label>${VL.t(L('القارورة للقياس', 'Vial to measure'))}<select id="bSel">${outs.length ? outs.map(([v, i]) => `<option value="${i}" ${B.sel === i ? 'selected' : ''}>${v.tp} min${v.cooled ? '' : ' *'}</option>`).join('') : '<option>—</option>'}</select></label>
         <label>${VL.t(L('أنبوب Cannon-Fenske', 'Cannon-Fenske size'))}<select id="bSize">${Object.entries(M.CANNON).map(([k, c]) => `<option value="${k}" ${B.size === +k ? 'selected' : ''}>${k} · ${c.lo}–${c.hi} mm²/s</option>`).join('')}</select></label>
       </div>
-      <div class="row"><button id="bRun" class="pri">${VL.t(L('قِس زمن الجريان ×3', 'Time the efflux ×3'))}</button></div>`;
+      <div class="row"><button id="bRun" class="pri">${VL.t(L('قِس زمن الجريان ×3', 'Time the efflux ×3'))}</button></div>
+      <p class="note" style="margin:0">${VL.t(L('الـ residue: ورق Whatman ashless قطر 50 mm، و 50 mL من السائل المكسور، وورقة blank.', 'Residue: Whatman ashless 50 mm paper, 50 mL of broken fluid, and a blank paper.'))}</p>
+      <div class="grid2">
+        <label>${VL.t(L('درجة الورق', 'Paper grade'))}<select id="bGrade" ${B.res.m1 !== null ? 'disabled' : ''}>${[[40, '8 µm'], [41, '20 µm'], [42, '2.5 µm'], [44, '3 µm']].map(([k, p]) => `<option value="${k}" ${B.res.grade === k ? 'selected' : ''}>Grade ${k} · ${p}</option>`).join('')}</select></label>
+        <label>${VL.t(L('القارورة للـ residue', 'Vial for residue'))}<select id="bResV" ${B.res.filtered ? 'disabled' : ''}>${outs.length ? outs.map(([v, i]) => `<option value="${i}" ${(B.res.vial === i || (B.res.vial < 0 && i === outs[outs.length - 1][1])) ? 'selected' : ''}>${v.tp} min</option>`).join('') : '<option>—</option>'}</select></label>
+      </div>
+      <div class="row"><button id="bW">${VL.t(L('زِن الورق', 'Weigh papers'))}</button><button id="bF">${VL.t(L('رشّح واغسل', 'Filter & wash'))}</button><button id="bD">${VL.t(L('جفّف وزِن', 'Dry & weigh'))}</button></div>`;
     const $ = q => el.querySelector(q);
     $('#bPreset').onchange = e => { const [n, g] = e.target.value.split('|').map(Number); Object.assign(s, { naoa: n, guar: g, kcl: 1 }); VL.renderControls(); };
     if ($('#bAps')) $('#bAps').oninput = e => { s.aps = +e.target.value; $('#bApsV').textContent = `${s.aps} g`; };
@@ -369,6 +517,11 @@
     $('#bSel').onchange = e => { B.sel = +e.target.value; };
     $('#bSize').onchange = e => { B.size = +e.target.value; B.sizeTouched = true; };
     $('#bRun').onclick = () => VL.run(() => runViscometer(B.sel));
+    $('#bGrade').onchange = e => { B.res.grade = +e.target.value; };
+    $('#bResV').onchange = e => { B.res.vial = +e.target.value; };
+    $('#bW').onclick = () => VL.run(weighPapers);
+    $('#bF').onclick = () => VL.run(filterSample);
+    $('#bD').onclick = () => VL.run(dryAndWeigh);
   }
 
   /* ------------------------------------------------------------------ steps */
@@ -423,6 +576,20 @@
         for (const [i, v] of B.vials.entries()) if (v.where === 'out' && !B.runs.some(r => r.i === i)) { B.sel = i; await runViscometer(i, true); }
         VL.renderControls();
       } },
+    { title: L('الـ residue (1): جهّز ورقتي الترشيح وزِنهما', 'Residue (1): prepare and weigh the filter papers'),
+      text: L('للعينات التي فيها guar. خذ ورقتي Whatman ashless قطر 50 mm من نفس الدرجة، واحدة للعيّنة وواحدة blank. اغسل كلاً منهما بالماء المقطّر تحت التفريغ، وجفّفهما عند 105 °C، ثم برّدهما في المجفّف (desiccator) وزِنهما بميزان 0.1 mg: m₁ و b₁. أمسك الورق بملقط دائماً.',
+        'For samples with guar. Take two Whatman ashless 50 mm papers of the same grade, one for the sample and one blank. Wash each with DI water under vacuum, dry at 105 °C, cool in the desiccator and weigh on a 0.1 mg balance: m₁ and b₁. Always handle the paper with forceps.'),
+      conf: ['fact'], target: () => O.bal, done: () => B.res.m1 !== null, auto: weighPapers },
+    { title: L('الـ residue (2): رشّح تحت التفريغ واغسل', 'Residue (2): vacuum-filter and wash'),
+      text: L('بعد تبريد العيّنة إلى حرارة القياس، رشّح حجماً معلوماً من السائل المكسور (مثلاً 50 mL بماصة) تحت التفريغ. اشطف القارورة بالماء المقطّر ومرّره على الورقة، ثم اغسل الكعكة 3 مرات (مثلاً 10 mL) لإزالة الأملاح الذائبة (KCl، الـ oleate، بقايا الـ APS). مرّر على ورقة الـ blank نفس ماء الغسيل. إذا كان الترشيح بطيئاً جداً فالسائل لم ينكسر بعد. قِس الـ pH قبل الترشيح: الـ APS يحمّض الوسط، وقد يترسّب oleic acid فيُحسب خطأً كـ residue.',
+        'After cooling the sample to the measuring temperature, filter a known volume of broken fluid (e.g. 50 mL by pipette) under vacuum. Rinse the vial with DI water onto the paper, then wash the cake 3 times (e.g. 10 mL) to remove dissolved salts (KCl, oleate, APS remnants). Pass the same wash water through the blank paper. Very slow filtration means the fluid is not broken yet. Measure the pH before filtering: APS acidifies the fluid, and oleic acid may precipitate and be counted as residue by mistake.'),
+      conf: ['fact', 'inf'], target: () => O.fil, done: () => B.res.filtered,
+      auto: async () => { if (B.res.m1 === null) await weighPapers(); if (!resVial()) { const i = nextVial(); if (i >= 0) { await waitFor(() => B.t >= B.vials[i].tp * 60, 20); await takeVial(i); } } await filterSample(); } },
+    { title: L('الـ residue (3): جفّف حتى ثبات الكتلة واحسب', 'Residue (3): dry to constant mass and calculate'),
+      text: L('جفّف الورقتين عند 105 °C (نحو 2 h)، وبرّدهما في المجفّف 30 min، ثم زِن: m₂ و b₂. كرّر التجفيف والوزن حتى يختلف الوزنان المتتاليان بأقل من 0.3 mg. الـ residue (mg/L) = [(m₂ − m₁) − (b₂ − b₁)] / V، بالـ mg على الـ L. كرّر على 3 عينات مستقلة. نسبة الـ residue إلى الـ guar المضاف تساعد في مقارنة العينات.',
+        'Dry both papers at 105 °C (about 2 h), cool in the desiccator for 30 min, then weigh: m₂ and b₂. Repeat drying and weighing until two successive weighings differ by less than 0.3 mg. Residue (mg/L) = [(m₂ − m₁) − (b₂ − b₁)] / V, in mg per L. Repeat on 3 independent samples. Residue as a share of the guar added helps compare samples.'),
+      conf: ['fact', 'illu'], target: () => O.oven, done: () => residueResult() !== null,
+      auto: async () => { if (!B.res.filtered) return; for (let k = 0; k < 4 && !residueResult(); k++) await dryAndWeigh(); } },
   ];
 
   VL.lessons.break = { id: 'break', steps, build, update, instrument, controls, relabel() {}, dispose() {} };
