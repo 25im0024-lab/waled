@@ -121,6 +121,35 @@
     return { v: Math.sign(dr) * v, Re, eta };
   }
 
+  /* Proppant loading in ppg = lb of proppant added per gallon of fluid (1 lb/gal = 119.826 g/L).
+     Returns the solids volume fraction of the slurry. */
+  const PPG_G_PER_L = 119.826;
+  function ppgToPhi(ppg, sg = 2.65) { const vs = ppg * PPG_G_PER_L / (sg * 1000); return vs / (1 + vs); }
+  /* Richardson & Zaki (1954) exponent, wall effect neglected (d/D → 0). */
+  function rzExponent(Re) { return Re < 0.2 ? 4.65 : Re < 1 ? 4.35 * Math.pow(Re, -0.03) : Re < 500 ? 4.45 * Math.pow(Re, -0.1) : 2.39; }
+  /* Hindered settling of a proppant pack: single-grain terminal velocity × (1 − φ)^n. */
+  function hinderedSettling(dmm, sg, rhoF, etaAt, ppg) {
+    const s = settling(dmm, sg, rhoF, etaAt), phi = ppgToPhi(ppg, sg), n = rzExponent(s.Re);
+    return { v0: s.v, v: s.v * Math.pow(1 - phi, n), phi, n, Re: s.Re, gPerL: ppg * PPG_G_PER_L };
+  }
+
+  /* Surface tension (vs air) and IFT (vs a light oil), mN/m. Above the CMC both stay near a plateau, so
+     dilution changes them only once the surfactant falls below the CMC. Plateau values are ILLUSTRATIVE
+     placeholders; the water values and the slope dγ/dT ≈ −0.155 mN/(m·K) are reference values. */
+  const GAMMA = { w25: 72.0, dT: -0.155, cmc: 28, cmcSalt: 26, guar: 6, ow: 48, owCmc: 5, owCmcSalt: 2 };
+  function tensionCurve(st, clean, plateauNoSalt, plateauSalt) {
+    const mm = toMM(st.naoa || 0, MW.NaOA);
+    let g = clean;
+    if (mm > 0) {
+      const pl = (st.kcl || 0) > 0 ? plateauSalt : plateauNoSalt, c0 = CMC_NAOA_mM / 100;
+      if (mm >= CMC_NAOA_mM) g = pl; else if (mm > c0) g = clean - (clean - pl) * Math.log10(mm / c0) / 2;
+    }
+    if ((st.guar || 0) > 0 && mm < CMC_NAOA_mM) g -= GAMMA.guar * Math.min(1, st.guar / 0.7) * (clean / GAMMA.w25);
+    return g;
+  }
+  function surfaceTension(st) { const dT = GAMMA.dT * ((st.T ?? 25) - 25); return tensionCurve(st, GAMMA.w25 + dT, GAMMA.cmc + dT, GAMMA.cmcSalt + dT); }
+  function interfacialTension(st) { return tensionCurve(st, GAMMA.ow, GAMMA.owCmc, GAMMA.owCmcSalt); }
+
   /* What the nano view should draw. Counts are for the schematic only. */
   function microState(st) {
     const out = { monomers: 0, spheres: 0, worms: 0, wormLen: 0, droplets: 0, guar: 0, guarLen: 0, guarPieces: 1, guarCoil: 1, phase: 'water' };
@@ -161,6 +190,7 @@
   }
 
   return {
+    PPG_G_PER_L, ppgToPhi, rzExponent, hinderedSettling, GAMMA, surfaceTension, interfacialTension,
     MW, CMC_NAOA_mM, toMM, waterVisc, REF, saltFactor, wlmParams, etaSp, guarParams, viscosity, moduli, stepGel, settling, microState, measuredFor,
   };
 });

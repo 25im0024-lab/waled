@@ -330,6 +330,7 @@
     $('#instNote').textContent = I.note ? VL.t(I.note) : '';
   }
   VL.refreshInstrument = refreshInstrument;
+  VL.showTab = id => { instTab = id; refreshInstrument(); };
 
   /* ------------------------------------------------------------------ i18n */
   function applyLang() {

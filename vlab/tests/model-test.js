@@ -40,6 +40,20 @@ near('Stokes limit (η = 10 Pa·s)', m.settling(0.6, 2.65, 1.0, () => 10).v, 165
 check('a bubble rises (negative velocity)', m.settling(1, 0.0012, 1.0, () => 1e-3).v < 0);
 check('sand is held by the entangled gel (< 0.01 mm/s)', m.settling(0.6, 2.65, 1.01, r => m.viscosity({ ...base }, r)).v < 1e-5);
 
+// proppant loading and hindered settling
+near('4 ppg sand → φ = 0.153', m.ppgToPhi(4), 0.153, 5e-3);
+near('6 ppg sand → φ = 0.213', m.ppgToPhi(6), 0.213, 5e-3);
+near('Richardson–Zaki n at low Re', m.rzExponent(0.01), 4.65, 1e-9);
+near('Richardson–Zaki n at high Re', m.rzExponent(1000), 2.39, 1e-9);
+const h4 = m.hinderedSettling(0.6, 2.65, 1.01, r => m.viscosity({ ...base }, r), 4), h6 = m.hinderedSettling(0.6, 2.65, 1.01, r => m.viscosity({ ...base }, r), 6);
+check('6 ppg settles slower than 4 ppg (hindered)', h6.v < h4.v && h4.v < h4.v0);
+
+// surface and interfacial tension
+near('surface tension of water at 25 °C', m.surfaceTension({}), 72.0, 1e-9);
+check('NaOA above the CMC lowers surface tension to the plateau', m.surfaceTension(base) < 30);
+near('3:1 dilution keeps NaOA above the CMC, so γ is unchanged', m.surfaceTension({ ...base, naoa: 2, kcl: 0.25 }), m.surfaceTension(base), 1e-9);
+check('surfactant lowers IFT against oil', m.interfacialTension(base) < m.interfacialTension({}) / 5);
+
 // micro-structure
 check('no salt → short micelles', ['spheres', 'rods'].includes(m.microState({ naoa: 8, kcl: 0 }).phase));
 check('with KCl → entangled worms', m.microState(base).phase === 'entangled');

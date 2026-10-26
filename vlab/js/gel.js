@@ -17,7 +17,7 @@
 
   function freshState() {
     return { water: 0, naoa: 0, kcl: 0, guar: 0, T: 25, heat: false, stir: false, hydr: 0, hcB: 0, hc: 0, aps: 0, guarM: 1, dil: 1, simT: 0, speed: 60,
-      set: { naoa: 8, guar: 0.5, kcl: 1, T: 90, aps: 0.05, dil: 2 }, meas: [], prop: false, source: 'model', fg: loadFG(), plotTab: 'osc' };
+      set: { naoa: 8, guar: 0.5, kcl: 1, T: 90, aps: 0.05, dil: 2, ppg: 4 }, meas: [], prop: false, ppg: 0, propRes: [], tens: [], source: 'model', fg: loadFG(), plotTab: 'osc' };
   }
   function loadFG() { try { const s = JSON.parse(VL.store.get('fracgel.v2') || 'null'); return s && s.samples ? s : null; } catch { return null; } }
 
@@ -82,8 +82,8 @@
     // bubbles and proppant (instanced)
     O.bub = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 10, 8), new THREE.MeshPhysicalMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, roughness: 0.05, clearcoat: 1, depthWrite: false }), 40);
     O.bub.renderOrder = 2; O.bubs = Array.from({ length: 40 }, () => ({ on: false })); bk.add(O.bub);
-    O.sand = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 0), VL.std(0xc9a56b, { roughness: 0.9 }), 260);
-    O.grains = Array.from({ length: 260 }, () => ({ on: false })); bk.add(O.sand);
+    O.sand = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 0), VL.std(0xc9a56b, { roughness: 0.9 }), 300);
+    O.grains = Array.from({ length: 300 }, () => ({ on: false })); bk.add(O.sand);
     hideAll(O.bub, O.bubs); hideAll(O.sand, O.grains);
     root.add(bk); O.beaker = bk;
     VL.pick(bk, () => { G.stir = !G.stir; VL.renderControls(); });
@@ -104,7 +104,7 @@
     VL.pick(J('naoa', -0.43, -1.05, 'jar', 0xf3ead0, L('Sodium oleate', 'Sodium oleate'), L('NaOA · surfactant', 'NaOA · surfactant')), () => VL.run(() => addSolid('naoa')));
     VL.pick(J('kcl', 0.43, -1.05, 'jar', 0xfafafa, L('KCl', 'KCl'), L('ملح · K⁺', 'salt · K⁺')), () => VL.run(() => addSolid('kcl')));
     VL.pick(J('aps', 1.3, -0.85, 'jar', 0xffffff, L('APS', 'APS'), L('breaker: oxidizer', 'breaker: oxidizer')), () => VL.run(() => addBreaker('aps')));
-    VL.pick(J('sand', 1.75, 0.95, 'jar', 0xc9a56b, L('Proppant', 'Proppant'), L('رمل 20/40', '20/40 sand')), () => VL.run(dropProppant));
+    VL.pick(J('sand', 1.75, 0.95, 'jar', 0xc9a56b, L('Proppant', 'Proppant'), L('رمل 20/40 · 4 أو 6 ppg', '20/40 sand · 4 or 6 ppg')), () => VL.run(() => dropProppant()));
 
     // rheometer
     const rh = new THREE.Group();
@@ -121,6 +121,26 @@
     rh.add(rb, col, head, O.rhLed, O.spindle, cup, O.cupFill); rh.position.set(-1.75, 0, 0.85); rh.rotation.y = 0.35; VL.shadow(rh); root.add(rh); O.rheo = rh;
     VL.pick(rh, () => VL.run(measure));
     const rl = VL.label(L('Rheometer', 'Rheometer'), L('اضغط للقياس', 'click: measure'), { w: 0.62 }); rl.position.set(-1.75, 1.45, 0.85); root.add(rl);
+
+    // tensiometer (Du Noüy ring): the stage lifts the dish to the ring, then lowers it to pull the lamella
+    const tn = new THREE.Group();
+    const tb = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.1, 0.42), VL.std(0x3a4350, { roughness: 0.5 })); tb.position.y = 0.05;
+    const tc = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.95, 0.08), VL.std(0x59636f, { roughness: 0.4, metalness: 0.3 })); tc.position.set(0, 0.57, -0.16);
+    const th = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.16, 0.26), VL.std(0xe9ecef, { roughness: 0.35 })); th.position.set(0, 0.98, -0.06);
+    const wireT = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, 0.3, 6), VL.std(0x9aa0a6, { metalness: 0.9 })); wireT.position.set(0, 0.75, 0);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.045, 0.004, 8, 32), VL.std(0xd9dde2, { metalness: 0.95, roughness: 0.2 })); ring.rotation.x = Math.PI / 2; ring.position.set(0, 0.6, 0);
+    O.tStage = new THREE.Group(); O.tStage.position.y = 0.1;
+    const lift = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.12, 0.2), VL.std(0x8a949e, { roughness: 0.5 })); lift.position.y = 0.06;
+    const dishT = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.085, 0.07, 32, 1, true), VL.glass({ opacity: 0.35 })); dishT.position.y = 0.155;
+    O.tLiq = new THREE.Mesh(new THREE.CylinderGeometry(0.082, 0.082, 0.045, 32), O.liquidMat.clone()); O.tLiq.position.y = 0.145; O.tLiq.visible = false;
+    O.tOil = new THREE.Mesh(new THREE.CylinderGeometry(0.082, 0.082, 0.02, 32), new THREE.MeshStandardMaterial({ color: 0xf2c94c, transparent: true, opacity: 0.75 })); O.tOil.position.y = 0.178; O.tOil.visible = false;
+    O.tStage.add(lift, dishT, O.tLiq, O.tOil);
+    O.lamella = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.06, 1, 32, 1, true), new THREE.MeshPhysicalMaterial({ color: 0xffffff, transparent: true, opacity: 0.35, side: THREE.DoubleSide, depthWrite: false }));
+    O.lamella.visible = false;
+    O.tLed = new THREE.Mesh(new THREE.SphereGeometry(0.015, 12, 8), new THREE.MeshBasicMaterial({ color: 0x334033 })); O.tLed.position.set(0.09, 0.98, 0.075);
+    tn.add(tb, tc, th, wireT, ring, O.tStage, O.lamella, O.tLed); tn.position.set(2.35, 0, 0.0); tn.rotation.y = -0.45; VL.shadow(tn); root.add(tn); O.tens = tn;
+    VL.pick(tn, () => VL.run(measureTension));
+    const tl = VL.label(L('Tensiometer', 'Tensiometer'), L('Du Noüy ring · ST و IFT', 'Du Noüy ring · ST & IFT'), { w: 0.66 }); tl.position.set(2.35, 1.3, 0.0); root.add(tl);
 
     // pour stream particles
     const N = 90, pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(N * 3), 3));
@@ -276,15 +296,45 @@
     O.cupFill.visible = false;
     VL.refreshInstrument();
   }
-  async function dropProppant() {
+  /* Proppant at a chosen loading (ppg): earlier sand is removed so each loading is a fresh test. */
+  async function dropProppant(ppg = G.set.ppg) {
     if (!needWater()) return;
-    G.prop = true;
+    for (const gr of O.grains) gr.on = false; hideAll(O.sand, O.grains);
+    G.prop = true; G.ppg = ppg;
+    const total = Math.round(O.grains.length * ppg / 6);
     await pour('sand', f => {
-      const n = Math.round(f * O.grains.length * 1.0);
+      const n = Math.round(f * total);
       let k = 0;
       for (const gr of O.grains) { if (k >= n) break; if (gr.on) continue; const a = Math.random() * 6.283, r = Math.random() * 0.13;
-        Object.assign(gr, { on: true, x: Math.cos(a) * r, z: Math.sin(a) * r, y: level() - 0.01, rest: 0.035 + 0.012 + Math.random() * 0.03, s: 0.01 + Math.random() * 0.006 }); k++; }
+        Object.assign(gr, { on: true, x: Math.cos(a) * r, z: Math.sin(a) * r, y: level() - 0.01, rest: 0.035 + 0.012 + Math.random() * 0.03 * ppg / 4, s: 0.01 + Math.random() * 0.006 }); k++; }
     }, 1.2);
+    const P = props(), h = M.hinderedSettling(0.6, 2.65, 1.01, P.visc, ppg);
+    G.propRes.push({ ppg, tag: stateTag(), v: h.v, v0: h.v0, phi: h.phi, n: h.n, src: P.src });
+    if (G.propRes.length > 6) G.propRes.shift();
+    VL.showTab('prop');
+  }
+  const stateTag = () => `${G.T.toFixed(0)} °C${G.dil > 1 ? ` · diluted ${G.dil - 1}:1` : ''}${G.guarM < 0.5 ? ' · APS' : ''}`;
+  const isBroken = () => G.dil > 1 || (G.aps > 0 && G.guarM < 0.2);
+
+  /* Surface tension vs air, then IFT vs a light oil, on the same dish. */
+  async function measureTension() {
+    if (!needWater()) return;
+    O.tLiq.visible = true; O.tLiq.material.color.copy(O.liquidMat.color);
+    const st = { naoa: G.naoa, kcl: G.kcl, guar: G.guar, T: G.T };
+    const pull = async () => {
+      await VL.tween(0.6, k => { O.tStage.position.y = 0.1 + 0.4 * k; });
+      O.tLed.material.color.set(0x29ff8a); O.lamella.visible = true;
+      await VL.tween(1.6, k => { O.tStage.position.y = 0.5 - 0.12 * k; const top = 0.6, bot = O.tStage.position.y + 0.17; O.lamella.position.y = (top + bot) / 2; O.lamella.scale.y = Math.max(0.001, top - bot); }, k => k);
+      O.lamella.visible = false; O.tLed.material.color.set(0x334033);
+      await VL.tween(0.5, k => { O.tStage.position.y = 0.38 - 0.28 * k; });
+    };
+    await pull();
+    O.tOil.visible = true;
+    await pull();
+    O.tOil.visible = false; O.tLiq.visible = false;
+    G.tens.push({ tag: stateTag(), T: G.T, st: M.surfaceTension(st), ift: M.interfacialTension(st), broken: isBroken() });
+    if (G.tens.length > 4) G.tens.shift();
+    VL.showTab('tens');
   }
   function spawnBubbles(n) {
     if (!G.water) return;
@@ -346,7 +396,7 @@
 
     // proppant settles at the drag-law terminal velocity (real time, not time-lapse)
     if (G.prop) {
-      const vs = M.settling(0.6, 2.65, 1.01, P.visc).v * UNIT;
+      const vs = M.hinderedSettling(0.6, 2.65, 1.01, P.visc, G.ppg || 4).v * UNIT;
       O.vSettle = vs / UNIT;
       for (let i = 0; i < O.grains.length; i++) {
         const gr = O.grains[i];
@@ -490,6 +540,8 @@
     const meas = G.meas, last = meas[meas.length - 1];
     const green = '#14a37a', orange = '#e8892b', grey = '#8a949e';
     const draw = (cv, tb) => {
+      if (tb === 'prop') return drawProp(cv);
+      if (tb === 'tens') return drawTens(cv);
       if (!last) { const c = VL.plot(cv, { x: [0.01, 100], y: [0.01, 1000], xlog: true, ylog: true, xlabel: 'ω (rad/s)', ylabel: 'G′, G″ (Pa)', series: [] });
         if (c) { c.g.fillStyle = VL.css('--muted'); c.g.textAlign = 'center'; c.g.font = '13px system-ui, sans-serif'; c.g.direction = VL.lang() === 'ar' ? 'rtl' : 'ltr';
           c.g.fillText(VL.t(L('اضغط على الـ rheometer للقياس', 'Click the rheometer to measure')), c.L + c.pw / 2, c.T + c.ph / 2); }
@@ -506,14 +558,14 @@
         VL.plot(cv, { x: [0.01, 100], y: rangeLog(ys), xlog: true, ylog: true, xlabel: 'ω (rad/s)', ylabel: 'G′, G″ (Pa)', series, vlines: last.tau > 0.01 && last.tau < 100 ? [{ x: 1 / last.tau, color: grey }] : [] });
       }
     };
-    const vs = G.water ? M.settling(0.6, 2.65, 1.01, P.visc).v : null;
+    const vs = G.water ? M.hinderedSettling(0.6, 2.65, 1.01, P.visc, G.set.ppg).v : null;
     const comp = G.water ? `NaOA ${fmt(G.naoa)} · guar ${fmt(G.guar)} · KCl ${fmt(G.kcl)}` : '—';
     const brk = [G.dil > 1 ? `${VL.t(L('تخفيف', 'diluted'))} ${G.dil - 1}:1` : '', G.aps ? `APS · guar M/M₀ ${fmt(G.guarM)}` : ''].filter(Boolean).join(' · ') || '—';
     const badge = P.src === 'data' ? { cls: 'good', text: P.demo ? L('بيانات المثال في FracGel', 'FracGel demo data') : L('بياناتك المقاسة', 'your measured data') }
       : { cls: 'warn', text: L('نموذج توضيحي', 'illustrative model') };
     return {
       title: L('Rheometer وقراءات الجل', 'Rheometer & gel readouts'), badge,
-      tabs: [{ id: 'osc', label: L('G′ / G″', 'G′ / G″') }, { id: 'flow', label: L('η(γ̇)', 'η(γ̇)') }],
+      tabs: [{ id: 'osc', label: L('G′ / G″', 'G′ / G″') }, { id: 'flow', label: L('η(γ̇)', 'η(γ̇)') }, { id: 'prop', label: L('Proppant', 'Proppant') }, { id: 'tens', label: L('ST / IFT', 'ST / IFT') }],
       draw,
       readouts: [
         [L('η₀ (zero-shear)', 'η₀ (zero-shear)'), G.water ? fmt(P.eta0, 'Pa·s') : '—'],
@@ -521,7 +573,7 @@
         [L('G₀ (WLM)', 'G₀ (WLM)'), P.G0 > 0 ? fmt(P.G0, 'Pa') : '—'],
         [L('τR (WLM)', 'τR (WLM)'), P.tau > 0 ? fmt(P.tau, 's') : '—'],
         [L('الحرارة · الزمن', 'T · time'), `${G.T.toFixed(0)} °C · ${fmtTime(G.simT)}`],
-        [L('ترسيب proppant 20/40', '20/40 proppant settling'), vs === null ? '—' : fmt(vs * 1000, 'mm/s')],
+        [L(`ترسيب 20/40 عند ${G.set.ppg} ppg`, `20/40 settling at ${G.set.ppg} ppg`), vs === null ? '—' : fmt(vs * 1000, 'mm/s')],
         [L('التركيب (g/100 mL ماء)', 'Recipe (g/100 mL water)'), comp, true],
         [L('الكسر', 'Breaking'), brk, true],
       ],
@@ -529,6 +581,43 @@
         : P.missing ? L('لا توجد قياسات في FracGel لهذه العينة وهذه الظروف، فالقيم من النموذج التوضيحي.', 'No FracGel measurements for this sample and condition, so values come from the illustrative model.')
           : L('نموذج توضيحي: Cates scaling و Arrhenius ومنحنى Morris للـ guar، دون حد تآزر. القيم المرجعية افتراضية، فلا تعرضها كنتائج.', 'Illustrative model: Cates scaling, Arrhenius and the Morris guar curve, no synergy term. Reference values are placeholders: do not present them as results.'),
     };
+  }
+  /* horizontal bar chart: rows = [{ label, v, color }] on a log or linear axis */
+  function bars(cv, rows, o) {
+    const dpr = window.devicePixelRatio || 1, W = cv.clientWidth, H = cv.clientHeight;
+    if (!W || !H) return;
+    if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
+    const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
+    const ink = VL.css('--ink'), mut = VL.css('--muted'), line = VL.css('--line');
+    g.font = '11.5px system-ui, sans-serif'; g.direction = 'ltr';
+    if (!rows.length) { g.fillStyle = mut; g.textAlign = 'center'; g.direction = VL.lang() === 'ar' ? 'rtl' : 'ltr'; g.font = '13px system-ui, sans-serif'; g.fillText(VL.t(o.empty), W / 2, H / 2); return; }
+    const L0 = 8, R0 = 8, top = 6, bottom = 30, rh = Math.min(30, (H - top - bottom) / rows.length), pw = W - L0 - R0;
+    const tx = v => o.log ? Math.log10(Math.max(v, o.min)) : v, x0 = tx(o.min), x1 = tx(o.max);
+    const X = v => L0 + (tx(v) - x0) / (x1 - x0) * pw;
+    const sup = s => s.replace(/[-0-9]/g, c => '⁻⁰¹²³⁴⁵⁶⁷⁸⁹'['-0123456789'.indexOf(c)]);
+    g.strokeStyle = line; g.fillStyle = mut; g.textAlign = 'center';
+    const ticks = o.log ? Array.from({ length: Math.round((x1 - x0) / 3) + 1 }, (_, i) => 10 ** (x0 + 3 * i)) : Array.from({ length: 6 }, (_, i) => o.min + (o.max - o.min) * i / 5);
+    for (const t of ticks) { const x = X(t); g.beginPath(); g.moveTo(x, top); g.lineTo(x, H - bottom); g.stroke(); g.fillText(o.log ? (t >= 1 && t < 1e4 ? String(t) : '10' + sup(String(Math.round(Math.log10(t))))) : String(Math.round(t)), x, H - bottom + 13); }
+    g.fillText(o.unit, W / 2, H - 3);
+    rows.forEach((r, i) => {
+      const y = top + i * rh, bh = rh * 0.62;
+      g.fillStyle = r.color; g.globalAlpha = 0.85; g.fillRect(L0, y + (rh - bh) / 2, Math.max(2, X(r.v) - L0), bh); g.globalAlpha = 1;
+      g.fillStyle = ink; g.textAlign = 'left';
+      const txt = `${r.label}  ${fmt(r.v)}`, tw = g.measureText(txt).width, xEnd = X(r.v) + 6;
+      g.fillText(txt, xEnd + tw < W - R0 ? xEnd : L0 + 6, y + rh / 2 + 4);
+    });
+  }
+  function drawProp(cv) {
+    const water = M.settling(0.6, 2.65, 1.0, () => M.waterVisc(25)).v;
+    const rows = G.propRes.map(r => ({ label: `${r.ppg} ppg · ${r.tag}`, v: r.v * 1000, color: r.ppg === 4 ? '#14a37a' : '#e8892b' }));
+    if (rows.length) rows.unshift({ label: VL.t(L('ماء، حبة واحدة', 'water, single grain')), v: water * 1000, color: '#8a949e' });
+    bars(cv, rows, { log: true, min: 1e-6, max: 1e3, unit: VL.t(L('سرعة الترسيب (mm/s)', 'settling velocity (mm/s)')), empty: L('اضغط على جرّة الـ proppant', 'Click the proppant jar') });
+  }
+  function drawTens(cv) {
+    const rows = [];
+    if (G.tens.length) rows.push({ label: VL.t(L('ماء نقي', 'pure water')), v: M.GAMMA.w25, color: '#8a949e' });
+    for (const t of G.tens) rows.push({ label: `ST · ${t.tag}`, v: t.st, color: '#14a37a' }, { label: `IFT · ${t.tag}`, v: t.ift, color: '#e8892b' });
+    bars(cv, rows.slice(-7), { log: false, min: 0, max: 75, unit: 'mN/m', empty: L('اضغط على الـ tensiometer', 'Click the tensiometer') });
   }
   function rangeLog(ys) {
     const v = ys.filter(y => y > 0); if (!v.length) return [0.001, 10];
@@ -558,7 +647,9 @@
       <div class="row">
         <button id="gPrep">${VL.t(L('حضّر العينة (الخطوات 1–4)', 'Prepare sample (steps 1–4)'))}</button>
         <button id="gMeas">${VL.t(L('قِس', 'Measure'))}</button>
-        <button id="gProp">${VL.t(L('proppant', 'Proppant'))}</button>
+        <label class="inline">proppant <select id="gPpg">${[4, 6].map(v => `<option value="${v}" ${s.ppg === v ? 'selected' : ''}>${v} ppg</option>`).join('')}</select></label>
+        <button id="gProp">${VL.t(L('ألقِ الـ proppant', 'Drop proppant'))}</button>
+        <button id="gTens">${VL.t(L('قِس ST و IFT', 'Measure ST & IFT'))}</button>
       </div>
       <label>${VL.t(L('مصدر القيم', 'Values from'))}
         <select id="gSrc"><option value="model">${VL.t(L('النموذج التوضيحي', 'Illustrative model'))}</option><option value="data" ${G.source === 'data' ? 'selected' : ''}>${VL.t(L('بياناتي في FracGel Lab', 'My FracGel Lab data'))}</option></select></label>
@@ -575,7 +666,9 @@
     $('#gSpeed').onchange = e => { G.speed = +e.target.value; };
     $('#gPrep').onclick = () => VL.run(prepare);
     $('#gMeas').onclick = () => VL.run(measure);
-    $('#gProp').onclick = () => VL.run(dropProppant);
+    $('#gProp').onclick = () => VL.run(() => dropProppant());
+    $('#gTens').onclick = () => VL.run(measureTension);
+    $('#gPpg').onchange = e => { s.ppg = +e.target.value; };
     $('#gSrc').onchange = e => { G.source = e.target.value; if (G.source === 'data' && !G.fg) VL.toast(VL.t(L('افتح FracGel Lab على نفس الموقع أو استورد ملف JSON المصدَّر منه', 'Open FracGel Lab on the same site, or import its exported JSON'))); VL.refreshInstrument(); };
     $('#gImport').onclick = () => $('#gFile').click();
     $('#gFile').onchange = async e => {
@@ -623,10 +716,11 @@
       text: L('الـ frequency sweep لـ WLM يتبع Maxwell تقريباً: G″ أعلى عند الترددات المنخفضة، ويتقاطعان عند ω ≈ 1/τR، ثم يستقر G′ عند G₀. القيم توضيحية ما لم تحمّل بياناتك من FracGel Lab.',
         'A WLM frequency sweep is close to Maxwell: G″ dominates at low frequency, the curves cross near ω ≈ 1/τR, then G′ levels at G₀. Values are illustrative unless you load your FracGel Lab data.'),
       conf: ['fact', 'illu'], target: () => O.rheo, done: () => G.meas.some(m => m.T < 30), auto: measure },
-    { title: L('اختبار تعليق الـ proppant', 'Proppant suspension test'),
-      text: L('اضغط على جرّة الرمل 20/40. سرعة الهبوط من قانون السحب (Schiller–Naumann) باللزوجة عند معدل القص حول الحبة. في الماء تهبط الحبة 0.6 mm بنحو 0.1 m/s، وفي الجل المتشابك تكاد تتوقف. حجم الحبات في الرسم مكبّر.',
-        'Click the 20/40 sand jar. Fall speed uses a drag law (Schiller–Naumann) with the viscosity at the shear rate around the grain. In water a 0.6 mm grain falls at about 0.1 m/s; in the entangled gel it nearly stops. Grains are drawn enlarged.'),
-      conf: ['fact', 'illu'], target: () => O.jars.sand, done: () => G.prop, auto: dropProppant },
+    { title: L('اختبار تعليق الـ proppant عند 4 و 6 ppg', 'Proppant suspension at 4 and 6 ppg'),
+      text: L('اختر 4 ppg ثم 6 ppg واضغط على جرّة الرمل 20/40 في كل مرة. الـ ppg هو رطل proppant لكل gallon سائل: 4 ppg ≈ 479 g/L (حجم الرمل 15% من الخليط) و 6 ppg ≈ 719 g/L (21%). سرعة الحبة الواحدة من قانون السحب (Schiller–Naumann) باللزوجة حول الحبة، ثم تُخفَّض لتزاحم الحبات بمعادلة Richardson–Zaki. أي ترسيب بعد التسخين أو الكسر يظهر في الكأس.',
+        'Choose 4 ppg, then 6 ppg, and click the 20/40 sand jar each time. ppg is pounds of proppant per gallon of fluid: 4 ppg ≈ 479 g/L (sand is 15% of the slurry volume), 6 ppg ≈ 719 g/L (21%). Single-grain speed comes from a drag law (Schiller–Naumann) with the viscosity around the grain, then is reduced for crowding with Richardson–Zaki. Any settling after heating or breaking shows in the beaker.'),
+      conf: ['fact', 'illu'], target: () => O.jars.sand, done: () => [4, 6].every(p => G.propRes.some(r => r.ppg === p)),
+      auto: async () => { await dropProppant(4); await VL.wait(1.5); await dropProppant(6); } },
     { title: L('سخّن إلى حرارة الهدف', 'Heat to the target temperature'),
       text: L('شغّل التسخين (الزر الأحمر). الـ WLM يضعف بسرعة مع الحرارة لأن τR يتبع Arrhenius والـ micelles تقصر، والحبات العالقة تبدأ بالهبوط. الـ guar يفقد أقل، وهذا دافع الدمج. قِس مرة أخرى لترى المنحنيين معاً.',
         'Turn the heater on (red knob). The WLM weakens fast with temperature because τR follows Arrhenius and the micelles shorten, so suspended grains start to fall. Guar loses less, which is the reason to combine them. Measure again to compare the curves.'),
@@ -641,6 +735,14 @@
         if (G.guar > 0) { if (!G.aps) await addBreaker('aps'); await waitFor(() => G.guarM < 0.2, 15); }
         else if (G.dil === 1) { await dilute(); await VL.wait(0.8); }
         await measure();
+      } },
+    { title: L('قِس الـ surface tension والـ IFT', 'Measure surface tension and IFT'),
+      text: L('بعد الكسر والقياس: برّد العينة إلى حرارة الغرفة، ثم قِس بالـ tensiometer (Du Noüy ring) الـ surface tension مقابل الهواء، ثم الـ IFT مقابل طور زيتي. فوق الـ CMC يبقى الـ surface tension قرب قيمة ثابتة، فالتخفيف 2:1 أو 3:1 لا يرفعه ما دام الـ NaOA فوق الـ CMC. إذا نزل الـ IFT تحت ~1 mN/m فالـ spinning drop أدق من الـ ring. قيم الهضبة توضيحية.',
+        'After breaking and measuring: cool the sample to room temperature, then use the tensiometer (Du Noüy ring) for surface tension against air, then IFT against an oil phase. Above the CMC surface tension stays near a plateau, so a 2:1 or 3:1 dilution does not raise it while NaOA is still above the CMC. If IFT falls below ~1 mN/m, a spinning drop is more accurate than the ring. Plateau values are illustrative.'),
+      conf: ['fact', 'illu'], target: () => O.tens, done: () => G.tens.some(t => t.broken),
+      auto: async () => {
+        if (!isBroken()) { VL.toast(VL.t(L('اكسر الجل أولاً (الخطوة 8)', 'Break the gel first (step 8)'))); return; }
+        G.heat = false; VL.renderControls(); await waitFor(() => G.T < 30, 15); await measureTension();
       } },
   ];
 
