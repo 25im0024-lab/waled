@@ -548,7 +548,7 @@
         <select id="gPreset"><option value="">${VL.t(L('مخصّصة', 'custom'))}</option>${PLAN.map(([n, g]) => `<option value="${n}|${g}" ${presetVal && presetVal[0] === n && presetVal[1] === g ? 'selected' : ''}>${sampleName(n, g)} · NaOA ${n} g · guar ${g} g · KCl 1 g</option>`).join('')}</select></label>
       <div class="grid2">${slider('naoa', L('NaOA', 'NaOA'), 0, 10, 0.5, 'g')}${slider('guar', L('guar', 'guar'), 0, 1, 0.05, 'g')}</div>
       <div class="grid2">${slider('kcl', L('KCl', 'KCl'), 0, 3, 0.25, 'g')}${slider('T', L('حرارة الهدف', 'Target T'), 25, 120, 5, '°C')}</div>
-      <div class="grid2">${slider('aps', L('APS', 'APS'), 0, 0.2, 0.01, 'g')}<label>${VL.t(L('تخفيف (ماء : جل)', 'Dilution (water : gel)'))}<select id="gDil">${[1, 2, 3].map(r => `<option value="${r}" ${s.dil === r ? 'selected' : ''}>${r}:1</option>`).join('')}</select></label></div>
+      <div class="grid2">${slider('aps', L('APS', 'APS'), 0, 0.2, 0.01, 'g')}<label>${VL.t(L('تخفيف (ماء : جل)', 'Dilution (water : gel)'))}<select id="gDil">${[1, 2, 3].map(r => `<option value="${r}" ${s.dil === r ? 'selected' : ''}>${r}:1 (÷${r + 1})</option>`).join('')}</select></label></div>
       <p class="note" style="margin:0">${VL.t(L('الكميات لكل 100 mL ماء، وتُضاف بالضغط على الجرّة.', 'Amounts per 100 mL water; added when you click the jar.'))}</p>
       <div class="row">
         <button id="gStir" class="${G.stir ? 'pri' : ''}">${VL.t(G.stir ? L('إيقاف التحريك', 'Stop stirring') : L('تحريك', 'Stir'))}</button>
