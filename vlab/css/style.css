@@ -28,7 +28,14 @@ a { color: var(--acc); }
 .top { position: fixed; top: 0; inset-inline: 0; height: 54px; display: flex; align-items: center; gap: 12px; padding: 0 14px; padding-top: env(safe-area-inset-top);
   background: var(--panel); border-bottom: 1px solid var(--line); backdrop-filter: blur(10px); z-index: 5; }
 .top .home { text-decoration: none; font-size: 20px; color: var(--ink); }
-.brand { font-size: 15px; white-space: nowrap; margin-inline-end: auto; }
+.brand { font-size: 15px; white-space: nowrap; }
+.lessons { display: flex; gap: 6px; margin-inline: auto; }
+.lessons button { border-radius: 999px; display: flex; gap: 8px; align-items: center; padding: 5px 14px 5px 6px; background: transparent; }
+[dir="rtl"] .lessons button { padding: 5px 6px 5px 14px; }
+.lessons .short { display: none; }
+.lessons .n { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: var(--mut-bg); font-size: 12px; font-weight: 700; }
+.lessons button[aria-selected="true"] { background: var(--good-bg); border-color: var(--acc); }
+.lessons button[aria-selected="true"] .n { background: var(--acc); color: var(--acc-ink); }
 .tools { display: flex; gap: 6px; }
 
 .card { position: fixed; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); backdrop-filter: blur(10px); z-index: 4; }
@@ -89,7 +96,10 @@ body.present .instrument { top: 16px; }
 
 @media (max-width: 860px) {
   #btnPresent { display: none; }
-  .brand { font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; }
+  .brand, .lessons .full { display: none; }
+  .lessons .short { display: inline; }
+  .lessons button { padding: 4px 10px 4px 4px; font-size: 13px; }
+  [dir="rtl"] .lessons button { padding: 4px 4px 4px 10px; }
   .instrument.min { width: auto; max-width: calc(100vw - 180px); }
   .top { gap: 6px; padding: 0 8px; }
   .tools button { padding: 6px 8px; font-size: 12.5px; }

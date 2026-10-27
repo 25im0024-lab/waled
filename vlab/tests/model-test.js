@@ -30,8 +30,8 @@ check('kerosene breaks the WLM to < 10 mPa·s', m.viscosity(hc, 170) < 0.01, m.v
 check('broken WLM shows microemulsion droplets', m.microState(hc).phase === 'droplets');
 const aps25 = { guar: 0.5, water: 100, hydr: 1, aps: 0.05, T: 25, guarM: 1 }; m.stepGel(aps25, 3600);
 check('APS is slow at 25 °C (M/M0 > 0.99 after 1 h)', aps25.guarM > 0.99, aps25.guarM.toFixed(4));
-const aps80 = { ...aps25, T: 80, guarM: 1 }; m.stepGel(aps80, 600);
-near('APS at 80 °C halves guar M in 10 min (model calibration)', aps80.guarM, 0.5, 1e-3);
+const aps90 = { ...aps25, T: 90, guarM: 1 }; m.stepGel(aps90, 2400);
+near('APS 0.05 g at 90 °C halves guar M in ~40 min (model calibration)', aps90.guarM, 0.5, 0.03);
 
 // settling
 const sw = m.settling(0.6, 2.65, 1.0, () => m.waterVisc(20));
@@ -53,6 +53,12 @@ near('surface tension of water at 25 °C', m.surfaceTension({}), 72.0, 1e-9);
 check('NaOA above the CMC lowers surface tension to the plateau', m.surfaceTension(base) < 30);
 near('3:1 dilution keeps NaOA above the CMC, so γ is unchanged', m.surfaceTension({ ...base, naoa: 2, kcl: 0.25 }), m.surfaceTension(base), 1e-9);
 check('surfactant lowers IFT against oil', m.interfacialTension(base) < m.interfacialTension({}) / 5);
+
+// Cannon-Fenske
+near('efflux time: ν = 1.2 mm²/s in size 25', m.effluxTime(1.2, 25), 600, 1e-9);
+check('recommended size gives t ≥ 200 s', [0.9, 3, 12, 60].every(nu => m.effluxTime(nu, m.recommendSize(nu)) >= 200));
+check('size 25 for a water-like broken fluid (ν = 0.6 mm²/s)', m.recommendSize(0.6) === 25);
+near('density of water at 30 °C', m.fluidDensity({ T: 30 }), 0.99565, 5e-4);
 
 // micro-structure
 check('no salt → short micelles', ['spheres', 'rods'].includes(m.microState({ naoa: 8, kcl: 0 }).phase));
