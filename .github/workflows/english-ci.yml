@@ -1,0 +1,30 @@
+name: English Hub checks
+
+on:
+  push:
+    paths: ['english/**', '.github/workflows/english-ci.yml']
+  pull_request:
+    paths: ['english/**', '.github/workflows/english-ci.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: english/tools
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate content (answer keys, Arabic text, counts)
+        run: node validate-data.js
+      - name: Install Playwright
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
+      - name: Browser tests
+        run: node e2e/run.js

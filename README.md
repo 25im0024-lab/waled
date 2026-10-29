@@ -40,6 +40,10 @@ Live 3D molecular dynamics of H2 with a cushion gas (CO2, CH4 or N2) in a calcit
 
 تدريب على اختبار IELTS Academic (Reading / Listening / Writing / Speaking) بنمط الاختبار الحقيقي: [`ielts/`](ielts/README.md).
 
+## English Hub
+
+تعلّم الإنجليزية من المبتدئ إلى المتوسط (A1–B1) بالعربي والإنجليزي: كلمات بصور، مشاهد تفاعلية، قواعد برسوم، قراءة، استماع، كتابة، نطق، وتعابير، مع قسم **English for Work** للبالغين: [`english/`](english/README.md). مستقلة عن IELTS Coach.
+
 ## رحلة البرميل (Oilfield Guide)
 
 أداة تفاعلية تشرح مسار النفط من قاع البئر إلى التصدير، مع تبويب للتكسير الهيدروليكي وحاسبات هندسية: [`oilfield/`](oilfield/).

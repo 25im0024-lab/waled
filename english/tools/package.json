@@ -1,0 +1,10 @@
+{
+  "name": "english-hub-tools",
+  "private": true,
+  "description": "Content validation and browser tests for English Hub",
+  "scripts": {
+    "validate": "node validate-data.js",
+    "test": "node validate-data.js && node e2e/run.js"
+  },
+  "devDependencies": { "playwright": "^1.56.0" }
+}
