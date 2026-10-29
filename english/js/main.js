@@ -4,10 +4,6 @@
   const E = window.EL;
   const ORDER = ['home', 'words', 'scenes', 'grammar', 'reading', 'listening', 'writing', 'speaking', 'work', 'sounds', 'expressions', 'notebook', 'progress', 'placement'];
   E.tabs.sort((a, b) => ORDER.indexOf(a.id) - ORDER.indexOf(b.id));
-  /* Report link: opens a prefilled GitHub issue that says where the user was. */
-  E.reportUrl = (ctx = '') => 'https://github.com/25im0024-lab/waled/issues/new?title=' + encodeURIComponent('[English Hub] ' + (ctx || E.currentId || '')) + '&body=' + encodeURIComponent(`القسم / Section: ${E.currentId || ''}\nالمستوى / Level: ${E.S.level}\n${ctx ? 'العنصر / Item: ' + ctx + '\n' : ''}\nما المشكلة؟ / What is wrong?\n\n`);
-  const rep = E.$('#report'); if (rep) rep.addEventListener('click', () => { rep.href = E.reportUrl(); });
-
   /* First-visit welcome (3 short steps). */
   function intro() {
     const steps = [['👋', 'أهلًا بك في English Hub', 'تعلّم الإنجليزية من A1 إلى B1 بالعربية والإنجليزية: كلمات بصور، مشاهد تفاعلية، قواعد، قراءة، استماع، كتابة، تحدّث، وقسم للإنجليزية في العمل.'],

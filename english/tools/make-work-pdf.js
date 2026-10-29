@@ -46,7 +46,7 @@ td.en{width:55%;font-weight:600}.tip{font-weight:400;font-size:8.5pt;color:#667}
 .foot{margin-top:12pt;font-size:8.5pt;color:#667}
 </style></head><body>
 <div class="cover"><div class="logo">💼</div><h1>English for Work</h1><div class="sub ar">دليل الإنجليزية في العمل — للبالغين</div><div class="sub en">Speaking and writing guide · Levels A2–B1</div>
-<div class="box en">English Hub · github.com/25im0024-lab/waled/tree/main/english</div><p class="foot ar" style="margin-top:30pt">الترجمات العربية كُتبت بمساعدة الذكاء الاصطناعي ولم يراجعها مدرّس معتمد بعد.</p></div>
+<div class="box en">English Hub</div><p class="foot ar" style="margin-top:30pt">الترجمات العربية كُتبت بمساعدة الذكاء الاصطناعي ولم يراجعها مدرّس معتمد بعد.</p></div>
 
 <section class="how"><h2>كيف تستخدم هذا الدليل · How to use this guide</h2>
 <ol>
@@ -67,7 +67,7 @@ ${d.work.units.map((u, i) => unitHtml(u, i + 1)).join('')}
 <li>الجملة الكاملة أفضل من كلمة واحدة: «Yes.» وحدها تُنهي الحديث، أمّا «Yes, thanks. And you?» فتُبقيه.</li>
 <li>إن لم تفهم فاطلب الإعادة بأدب: <span class="en"><b>Sorry, could you repeat that, please?</b></span></li>
 </ul>
-<p class="foot ar">المحتوى والترجمة العربية كُتبا بمساعدة الذكاء الاصطناعي ولم يراجعهما مدرّس معتمد؛ إن وجدت خطأً فأبلغ عنه من التطبيق (زر «🚩 أبلغ عن خطأ»). الترخيص: MIT (مستودع waled). <span class="en">Provided "as is", without warranty.</span></p></div></section>
+<p class="foot ar">المحتوى والترجمة العربية كُتبا بمساعدة الذكاء الاصطناعي ولم يراجعهما مدرّس معتمد؛ <span class="en">Provided "as is", without warranty.</span></p></div></section>
 </body></html>`;
 
 (async () => {
