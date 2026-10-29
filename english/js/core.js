@@ -26,7 +26,7 @@
   const KEY = 'english_hub_v1';
   const defaults = () => ({
     level: 'A1', hints: 'show' /* show | tap */, accent: 'en-US', slow: false, sound: true, goal: 30,
-    xp: 0, today: { day: '', xp: 0 }, days: {}, vocab: {}, newToday: { day: 0, n: 0 }, done: {}, wrong: {},
+    xp: 0, today: { day: '', xp: 0 }, days: {}, vocab: {}, newToday: { day: 0, n: 0 }, done: {}, wrong: {}, cando: {}, intro: 0, speak: { n: 0 },
     placed: null, custom: [], writing: {}, work: {}, ai: { spend: 0, calls: 0 }, lastExport: 0
   });
   function load() { try { return Object.assign(defaults(), JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) { return defaults(); } }
@@ -190,6 +190,7 @@
     if (push && location.hash !== '#/' + tab.id) { E.silentHash = true; location.hash = '#/' + tab.id; }
     tab.render();
     window.scrollTo(0, 0);
+    if (push) { const v = $('#view'); if (v) v.focus({ preventScroll: true }); }
     return true;
   };
   window.addEventListener('hashchange', () => {

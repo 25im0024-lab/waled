@@ -41,6 +41,6 @@
     draw();
   }
 
-  E.mod.listening = {};
+  E.mod.listening = { open: dialogue, dialogues: data.dialogues };
   E.register('listening', 'الاستماع', '🎧', landing, 60);
 })();

@@ -71,6 +71,6 @@
   }
   document.addEventListener('click', e => { const pop = $('#wordpop'); if (pop && pop.style.display === 'block' && !e.target.closest('#wordpop') && !e.target.closest('.w')) pop.style.display = 'none'; });
 
-  E.mod.reading = { texts, lookup };
+  E.mod.reading = { texts, lookup, open: read };
   E.register('reading', 'القراءة', '📖', landing, 50);
 })();

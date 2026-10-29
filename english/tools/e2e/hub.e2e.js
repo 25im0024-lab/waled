@@ -7,6 +7,7 @@ const ok = (c, m) => { if (c) console.log('  ✓', m); else { failures++; consol
 // Speech: stub synthesis (records text); remove recognition so the "no microphone" paths are exercised.
 const STUBS = () => {
   window.__spoken = [];
+  try { if (!localStorage.getItem('english_hub_v1')) localStorage.setItem('english_hub_v1', JSON.stringify({ intro: 1 })); } catch (e) { }
   class U { constructor(t) { this.text = t; this.onend = null; this.onerror = null; } }
   window.SpeechSynthesisUtterance = U;
   Object.defineProperty(window, 'speechSynthesis', { value: { voices: [], getVoices() { return []; }, cancel() { }, speak(u) { window.__spoken.push(u.text); setTimeout(() => u.onend && u.onend(), 5); }, onvoiceschanged: null }, configurable: true });
@@ -14,8 +15,8 @@ const STUBS = () => {
 };
 
 (async () => {
-  const browser = await chromium.launch();
-  const ctx = await browser.newContext({ viewport: { width: 420, height: 900 }, serviceWorkers: 'block' });
+  const browser = await chromium.launch({ args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'] });
+  const ctx = await browser.newContext({ viewport: { width: 420, height: 900 }, serviceWorkers: 'block', permissions: ['microphone'] });
   await ctx.addInitScript(STUBS);
   const page = await ctx.newPage();
   const errs = [];
@@ -31,7 +32,7 @@ const STUBS = () => {
 
   console.log('Shell');
   const tabs = await page.$$eval('#nav button', b => b.map(x => x.dataset.t));
-  ok(['home', 'words', 'scenes', 'grammar', 'reading', 'listening', 'writing', 'work', 'sounds', 'expressions'].every(t => tabs.includes(t)), 'all 10 tabs present: ' + tabs.join(','));
+  ok(['home', 'words', 'scenes', 'grammar', 'reading', 'listening', 'writing', 'speaking', 'work', 'sounds', 'expressions', 'notebook', 'progress'].every(t => tabs.includes(t)), 'all 13 tabs present: ' + tabs.join(','));
   ok(!tabs.includes('placement'), 'placement tab is hidden from the nav');
   for (const t of tabs) { await go(t); const h = await html('#view'); ok(h.length > 200, `tab "${t}" renders`); ok(await noOverflow(), `tab "${t}" has no horizontal overflow at 420px`); }
 
@@ -64,6 +65,30 @@ const STUBS = () => {
     step();
   }));
   ok(quizRes.s === 5 && quizRes.n === 5, `engine scores 5/5 on mc, tf, fill, order, match (got ${quizRes.s}/${quizRes.n})`);
+
+  console.log('Mistakes notebook + Today');
+  await page.evaluate(() => { EL.S.wrong = {}; EL.save(); });
+  await go('home');
+  ok((await html('#view')).includes('خطة اليوم'), 'Home shows the Today plan');
+  await page.evaluate(() => {
+    EL.quiz.run({ root: document.querySelector('#view'), shuffle: false, title: 'NB test', items: [{ t: 'mc', q: 'NB question one', opts: ['x', 'y'], a: 'x', keep: true }, { t: 'tf', q: 'NB two', a: true }] });
+  });
+  await page.waitForSelector('.qbox .opt'); await page.evaluate(() => document.querySelector('.qbox .opt[data-o="y"]').click());
+  ok(await page.evaluate(() => EL.nb.count() === 1), 'a wrong answer is saved to the notebook automatically');
+  await page.evaluate(() => { document.querySelector('[data-next]').click(); });
+  await page.evaluate(() => document.querySelector('[data-v="1"]').click());
+  ok(await page.evaluate(() => EL.nb.count() === 1), 'a right answer is not saved');
+  await go('notebook'); await page.waitForSelector('[data-go]');
+  ok(await page.evaluate(() => !document.querySelector('[data-go]').disabled), 'notebook shows the item as due');
+  await click('[data-go]'); await page.waitForSelector('.qbox .opt');
+  for (let r = 0; r < 3; r++) {
+    // answer correctly three review rounds: each round the item moves up a box; make it due again between rounds
+    await page.evaluate(() => document.querySelector('.qbox .opt[data-o="x"]').click());
+    await page.evaluate(() => document.querySelector('[data-next]').click());
+    await page.waitForSelector('[data-again], [data-exit]');
+    if (r < 2) { await page.evaluate(() => { Object.values(EL.S.wrong).forEach(x => { x.due = EL.dayIdx(); }); }); await page.evaluate(() => document.querySelector('[data-again]').click()); await page.waitForSelector('.qbox .opt'); }
+  }
+  ok(await page.evaluate(() => EL.nb.count() === 0), 'three correct reviews retire the item from the notebook');
 
   console.log('Words');
   await go('words');
@@ -169,6 +194,34 @@ const STUBS = () => {
     ok(lv === (mode === 'correct' ? 'B1' : 'A1'), `placement with ${mode === 'correct' ? 'all correct' : 'all "don\'t know"'} → ${lv}`);
   }
   ok(await page.evaluate(() => [['A1', 1, 0], ['A2', 1, 0]].length && EL.mod.placement.decide({ A1: { ok: 8, n: 8 }, A2: { ok: 5, n: 8 }, B1: { ok: 1, n: 8 } }) === 'A2'), 'decide(): A1 100%, A2 62%, B1 12% → A2');
+
+  console.log('Speaking (fake microphone)');
+  await go('speaking'); await click('[data-lv="ALL"]'); await click('[data-id="introduce"]'); await page.waitForSelector('[data-rec]');
+  await click('[data-rec]'); await page.waitForSelector('[data-stop]', { timeout: 8000 });
+  await page.waitForTimeout(1200); await click('[data-stop]'); await page.waitForSelector('#after audio', { timeout: 8000 });
+  ok(await page.evaluate(() => /^blob:/.test(document.querySelector('#after audio').src)), 'recording is created and playable');
+  await click('[data-model]'); ok((await html('#model')).includes('Omar'), 'model answer can be revealed');
+  await page.evaluate(() => { document.querySelectorAll('[data-ck]').forEach(c => c.click()); }); await click('[data-save]');
+  ok(await page.evaluate(() => EL.S.done['sp:introduce'].best === 100 && EL.S.speak.n >= 1), 'self-check is saved (100%) and recording count increases');
+  await go('speaking'); await click('[data-drill]'); await page.waitForSelector('[data-rec]'); ok(true, 'listen-repeat-compare drill opens');
+
+  console.log('Progress + can-do');
+  await go('progress'); await page.waitForSelector('[data-c]');
+  await click('[data-c="0"]'); ok(await page.evaluate(() => Object.values(EL.S.cando).filter(Boolean).length === 1), 'ticking a can-do statement is saved');
+  ok((await html('#view')).includes('آخر 14 يومًا'), 'activity chart is shown');
+
+  console.log('Polish');
+  ok(await page.evaluate(() => /issues\/new/.test(EL.reportUrl('x')) && /English%20Hub/.test(EL.reportUrl('x'))), 'report-issue link is built with context');
+  const noName = await page.evaluate(() => { const out = []; for (const t of ['home', 'words', 'grammar', 'work', 'sounds', 'expressions', 'notebook', 'progress', 'speaking']) { EL.show(t); document.querySelectorAll('#view button, #view input, #view select, #view a').forEach(e => { const n = (e.textContent || '').trim() || e.getAttribute('aria-label') || e.getAttribute('title') || (e.labels && e.labels.length) || e.closest('label'); if (!n) out.push(t + ':' + e.outerHTML.slice(0, 70)); }); } return out; });
+  ok(noName.length === 0, 'every button/input/link on main tabs has an accessible name' + (noName.length ? ': ' + noName.slice(0, 3).join(' | ') : ''));
+  ok(await page.evaluate(() => !!document.querySelector('link[rel="apple-touch-icon"]') && !!document.querySelector('.skip')), 'apple-touch-icon and skip link present');
+  const ctx2 = await browser.newContext({ viewport: { width: 420, height: 900 }, serviceWorkers: 'block' });
+  const p2 = await ctx2.newPage(); await p2.goto(BASE); await p2.waitForSelector('.modal .box', { timeout: 3000 });
+  await p2.click('[data-next]'); await p2.click('[data-next]'); await p2.click('[data-next]');
+  ok(await p2.evaluate(() => !document.querySelector('.modal') && EL.S.intro === 1), 'first-visit welcome appears once and can be completed'); await ctx2.close();
+  await go('work');
+  const popupP = ctx.waitForEvent('page'); await click('[data-print]'); const pr = await popupP; await pr.waitForLoadState();
+  ok((await pr.content()).includes('Phrase cards') && (await pr.$$('tr')).length > 50, 'printable phrase cards page opens with all phrases'); await pr.close();
 
   console.log('Optional Claude features (SDK mocked)');
   await go('home');

@@ -52,9 +52,9 @@
       const showRight = n % 3 === 2;
       items.push({ t: 'tf', q: showRight ? e.right : e.wrong, a: showRight, why: { en: `${e.en} ✅ ${e.right}`, ar: e.ar }, say: e.right, review: e.wrong, shown: e.right });
     });
-    E.quiz.run({ root: $('#view'), items, shuffle: false, title: 'Is the sentence correct? هل الجملة صحيحة؟', id: 'wr:errors', onExit: landing, onDone: (p) => { if (p < 100) pick.forEach(e => remember(e)); } });
+    E.quiz.run({ root: $('#view'), items, shuffle: false, title: 'Is the sentence correct? هل الجملة صحيحة؟', id: 'wr:errors', onExit: landing });
   }
-  const remember = e => { const k = 'wr:' + e.wrong; if (!E.S.wrong[k]) { E.S.wrong[k] = { q: e.wrong, a: e.right, ar: e.ar, at: Date.now() }; E.save(); } };
+  const remember = e => E.nb.add({ t: 'tf', q: e.wrong, a: false, why: { en: `${e.en} ✅ ${e.right}`, ar: e.ar }, say: e.right, review: e.wrong, shown: e.right }, 'Writing');
 
   function task(t) {
     const saved = (E.S.writing || {})[t.id] || {};

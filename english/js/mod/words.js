@@ -4,7 +4,9 @@
   const E = window.EL, { $, $$, esc, shuffle } = E;
   const baseTopics = E.data.vocab.topics, all = [];
   /** Built-in topics plus a "My words" topic from words saved while reading. */
-  const allTopics = () => { const a = baseTopics.slice(); if (E.S.custom.length) a.push({ id: 'mine', level: 'A1', icon: '⭐', en: 'My words', ar: 'كلماتي', words: E.S.custom.map(c => [c.en, c.ar, '⭐', c.ex || '', '']) }); return a; };
+  const EXPR = [['idioms', 'B1', '🧠', 'Idioms', 'تعابير اصطلاحية'], ['phrasal', 'A2', '🧩', 'Phrasal verbs', 'أفعال مركّبة'], ['colloc', 'A2', '🔗', 'Collocations', 'متلازمات لفظية']];
+  const exprTopics = () => EXPR.map(([c, level, icon, en, ar]) => ({ id: 'expr-' + c, level, icon, en, ar, words: E.data.expressions[c].map(r => [r[0], r[1], r[2], r[3], r[4]]) }));
+  const allTopics = () => { const a = baseTopics.concat(exprTopics()); if (E.S.custom.length) a.push({ id: 'mine', level: 'A1', icon: '⭐', en: 'My words', ar: 'كلماتي', words: E.S.custom.map(c => [c.en, c.ar, '⭐', c.ex || '', '']) }); return a; };
   const rebuild = () => { all.length = 0; allTopics().forEach(t => t.words.forEach(w => all.push({ t, w, key: t.id + ':' + w[0] }))); };
   rebuild();
   let topics = allTopics();

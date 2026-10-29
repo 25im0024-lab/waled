@@ -171,3 +171,10 @@ table.t th{background:var(--soft)}
 @media(max-width:520px){#app{padding:8px 10px 40px}.flash .pic{font-size:5rem}.flash .word{font-size:1.8rem}nav button{min-width:58px;padding:5px 8px}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 @media print{nav,.foot,button{display:none!important}body{background:#fff;color:#000}}
+/* intro dialog + print */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:90;padding:16px}
+.modal .box{background:var(--card);color:var(--ink);border-radius:18px;max-width:460px;width:100%;padding:22px;box-shadow:var(--shadow);text-align:center}
+.modal .big-ic{font-size:3.2rem}
+.dots{display:flex;gap:6px;justify-content:center;margin:10px 0}.dots i{width:8px;height:8px;border-radius:50%;background:var(--line);display:block}.dots i.on{background:var(--primary)}
+
+#view:focus,#view:focus-visible{outline:none}

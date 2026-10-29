@@ -9,6 +9,38 @@
     return { words, learned, gl: gl.length, gd };
   }
 
+
+  /** Suggested next step per skill at the learner's level: first item not yet completed (>=70%). */
+  function nextUp() {
+    const S = E.S, lv = S.level, doneOk = id => ((S.done[id] || {}).best || 0) >= 70;
+    const first = (list, pre, f) => list.find(x => (x.level === lv || !x.level) && !doneOk(pre + x.id)) || null;
+    const day = E.dayIdx();
+    const g = first(E.mod.grammar.lessons, 'g:'), r = first(E.mod.reading.texts, 'r:'), l = first(E.mod.listening.dialogues, 'l:'), w = E.mod.work.units.find(u => (u.level === lv || lv === 'B1') && !doneOk('w:' + u.id));
+    return { g, r, l, w, wr: first(E.mod.writing.tasks, 'wr:'), skill: day % 2 ? 'r' : 'l' };
+  }
+
+  function todayCard() {
+    const S = E.S, dueW = E.srs.due(E.mod.words.all.map(x => x.key)).length, dueN = E.nb.due().length, n = nextUp();
+    const row = (done, label, btn, attr) => `<div class="ex-item"><span>${done ? '✅' : '⬜'} ${label}</span><button class="sm ${done ? '' : 'primary'}" ${attr}>${btn}</button></div>`;
+    const steps = [];
+    steps.push(row(!dueW, dueW ? `مراجعة ${dueW} كلمة مستحقّة` : 'لا كلمات مستحقّة للمراجعة', 'ابدأ', 'data-t="words"'));
+    steps.push(row(!dueN, dueN ? `مراجعة ${dueN} خطأ من دفتر الأخطاء` : 'دفتر الأخطاء نظيف', 'ابدأ', 'data-t="nb"'));
+    if (n.g) steps.push(row(false, `درس قواعد: <b class="en" dir="ltr">${esc(n.g.en)}</b>`, 'افتح', 'data-t="g"'));
+    const skill = n.skill === 'r' ? n.r : n.l; if (skill) steps.push(row(false, n.skill === 'r' ? `قراءة: <b class="en" dir="ltr">${esc(skill.title[0])}</b>` : `استماع: <b class="en" dir="ltr">${esc(skill.title[0])}</b>`, 'افتح', 'data-t="s"'));
+    if (n.w) steps.push(row(false, `للعمل: <b class="en" dir="ltr">${esc(n.w.title[0])}</b>`, 'افتح', 'data-t="w"'));
+    return `<div class="card"><h2>📅 خطة اليوم · Today</h2><p class="muted">حوالي 15–20 دقيقة. الاستمرار اليومي أهم من الطول.</p><div class="ex-list">${steps.join('')}</div></div>`;
+  }
+  function bindToday() {
+    const n = nextUp(), go = (tab, fn) => { E.show(tab); if (fn) fn(); };
+    const map = {
+      words: () => go('words'), nb: () => go('notebook'),
+      g: () => go('grammar', () => E.mod.grammar.lesson(n.g)),
+      s: () => n.skill === 'r' ? go('reading', () => E.mod.reading.open(n.r)) : go('listening', () => E.mod.listening.open(n.l)),
+      w: () => go('work', () => E.mod.work.open(n.w))
+    };
+    $$('#view [data-t]').forEach(b => b.onclick = map[b.dataset.t]);
+  }
+
   function render() {
     const S = E.S, due = E.srs.due(E.mod.words ? E.mod.words.all.map(x => x.key) : []).length, goalPct = Math.min(100, Math.round(100 * E.todayXp() / S.goal));
     const tiles = [
@@ -21,6 +53,7 @@
       <div class="levels">${E.LEVELS.map(l => { const p = levelProgress(l); return `<button data-lv="${l}" class="${l} ${S.level === l ? 'on' : ''}"><b>${l}</b> <small>${E.LEVEL_AR[l]}</small><div class="bar" style="margin-top:6px"><i style="width:${p.words ? 100 * p.learned / p.words : 0}%"></i></div><small>${p.learned}/${p.words} كلمة</small></button>`; }).join('')}</div>
       ${S.placed ? `<p class="muted">نتيجة اختبار تحديد المستوى: <b>${esc(S.placed.level)}</b> (${esc(S.placed.date)})</p>` : ''}
       <div class="row"><button class="primary" data-go="placement">🧪 اختبار تحديد المستوى (5 دقائق)</button>${due ? `<button class="good" data-go="words">🔁 لديك ${due} كلمات للمراجعة</button>` : ''}</div></div>
+    ${todayCard()}
     <div class="card"><h2>🎯 هدف اليوم · Daily goal</h2><div class="bar good"><i style="width:${goalPct}%"></i></div><p class="muted">${E.todayXp()} / ${S.goal} XP · 🔥 ${E.streak()} يوم متتالٍ</p></div>
     <div class="tiles">${tiles.map(([id, ic, en, ar]) => `<button class="tile ${id === 'work' ? 'work' : ''}" data-go="${id}"><span class="ic">${ic}</span><b>${en}</b><small class="ar">${ar}</small></button>`).join('')}</div>
     <div class="card" style="margin-top:14px"><h2>⚙️ الإعدادات · Settings</h2>
@@ -34,6 +67,7 @@
       <div class="row"><button id="exp">⬇️ نسخة احتياطية · Export</button><label class="muted">استيراد: <input type="file" id="imp" accept=".json"></label><button class="bad" id="rst">مسح التقدّم · Reset</button></div>
       <p class="muted">التقدّم محفوظ في متصفحك فقط. صدّر نسخة احتياطية من وقت لآخر.${S.lastExport ? '' : ' (لم تُصدّر نسخة بعد)'}</p></div>${E.ai ? E.ai.panel() : ''}`;
     if (E.ai) E.ai.bindPanel();
+    bindToday();
     $$('#view [data-go]').forEach(b => b.onclick = () => E.show(b.dataset.go));
     $$('#view [data-lv]').forEach(b => b.onclick = () => { S.level = b.dataset.lv; E.save(); render(); });
     const on = (id, fn) => $(id).onchange = e => { fn(e); E.save(); };

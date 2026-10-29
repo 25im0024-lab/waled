@@ -18,7 +18,7 @@ function item(it, where) {
     if (!Array.isArray(it.opts) || it.opts.length < 2) err(where, 'mc needs >=2 options');
     else { if (!it.opts.includes(it.a)) err(where, `mc answer "${it.a}" not among options`); if (new Set(it.opts).size !== it.opts.length) err(where, 'mc has duplicate options'); }
   } else if (it.t === 'tf') { if (typeof it.a !== 'boolean') err(where, 'tf answer must be boolean'); }
-  else if (it.t === 'fill') { if (!it.a || !String(it.q).includes('____') && !String(it.q).includes('___')) err(where, 'fill needs a gap and answer'); }
+  else if (it.t === 'fill') { if (!it.a || !String(it.q).includes('____')) err(where, 'fill needs a ____ gap (4 underscores) and an answer'); }
   else if (it.t === 'order') { if (!Array.isArray(it.words) || it.words.join(' ').replace(/\s+/g, ' ').toLowerCase().replace(/[.?!,]/g, '') !== String(it.a).toLowerCase().replace(/[.?!,]/g, '')) err(where, 'order words do not rebuild the answer'); }
   else if (it.t === 'match') { if (!Array.isArray(it.pairs) || it.pairs.length < 3) err(where, 'match needs >=3 pairs'); }
 }
@@ -123,8 +123,17 @@ d.sounds.stress.forEach(s => { const n = s[1].split('-'); if (s[1].replace(/-/g,
 d.placement.items.forEach((q, i) => { if (!q.opts.includes(q.a)) err('placement' + i, 'answer not in options'); if (!LEVELS.includes(q.level)) err('placement' + i, 'bad level'); });
 LEVELS.forEach(l => { if (d.placement.items.filter(q => q.level === l).length < 6) err('placement', `needs >=6 questions at ${l}`); });
 
+/* ---- speaking / can-do ---- */
+uniq(d.speaking.tasks, t => t.id, 'speaking tasks');
+d.speaking.tasks.forEach(t => {
+  const w0 = 'speaking:' + t.id; if (!LEVELS.includes(t.level)) err(w0, 'bad level'); arOk(t.title[1], w0); arOk(t.prompt[1], w0); arOk(t.model[1], w0);
+  if (t.frames.length < 3) err(w0, 'needs >=3 phrases'); t.frames.forEach(f => { enOk(f[0], w0); arOk(f[1], w0); });
+  if (t.seconds < 20 || t.seconds > 120) err(w0, 'seconds out of range');
+});
+LEVELS.forEach(l => { if (d.speaking.tasks.filter(t => t.level === l).length < 3) err('speaking', 'needs >=3 tasks at ' + l); if (!d.cando[l] || d.cando[l].length < 6) err('cando ' + l, 'needs >=6 statements'); (d.cando[l] || []).forEach((c, i) => { enOk(c[1], 'cando ' + l + i); arOk(c[2], 'cando ' + l + i); }); });
+
 /* ---- summary ---- */
-console.log(`topics ${d.vocab.topics.length} · words ${nWords} · scenes ${d.scenes.length} · grammar ${d.grammar.lessons.length} · reading ${d.reading.texts.length} · dialogues ${d.listening.dialogues.length} · writing ${d.writing.tasks.length} · work ${d.work.units.length} · expressions ${d.expressions.idioms.length + d.expressions.phrasal.length + d.expressions.colloc.length} · placement ${d.placement.items.length}`);
+console.log(`topics ${d.vocab.topics.length} · words ${nWords} · scenes ${d.scenes.length} · grammar ${d.grammar.lessons.length} · reading ${d.reading.texts.length} · dialogues ${d.listening.dialogues.length} · writing ${d.writing.tasks.length} · work ${d.work.units.length} · expressions ${d.expressions.idioms.length + d.expressions.phrasal.length + d.expressions.colloc.length} · speaking ${d.speaking.tasks.length} · placement ${d.placement.items.length}`);
 warns.slice(0, 15).forEach(w => console.log('warn  ' + w));
 if (warns.length > 15) console.log(`warn  … and ${warns.length - 15} more`);
 if (errors.length) { errors.forEach(e => console.log('ERROR ' + e)); console.log(`\n${errors.length} error(s)`); process.exit(1); }

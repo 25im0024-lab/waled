@@ -13,13 +13,24 @@
     $('#view').innerHTML = `<div class="card"><h2>💼 إنجليزية العمل · English for Work</h2>
       <p class="muted">للبالغين والموظفين: عبارات جاهزة للاستخدام في الاجتماعات والمكالمات والرسائل والعروض، مع حوارات ومواقف تدرّبك على الكلام الفعلي. الهدف: أن تتكلّم بثقة في عملك.</p>
       <div class="levels">${['ALL', 'A2', 'B1'].map(l => `<button data-lv="${l}" class="${l === 'ALL' ? '' : l} ${filter === l ? 'on' : ''}">${l === 'ALL' ? 'الكل · All' : `<b>${l}</b><br><small>${E.LEVEL_AR[l]}</small>`}</button>`).join('')}</div>
-      <div class="row"><span class="chip">${done} / ${D.units.length} ✅</span><button class="big" data-words>💼 مفردات العمل · Business words</button><button class="big" data-daily>🎲 عبارة اليوم · Phrase of the day</button></div></div>
+      <div class="row"><span class="chip">${done} / ${D.units.length} ✅</span><button class="big" data-words>💼 مفردات العمل · Business words</button><button class="big" data-daily>🎲 عبارة اليوم · Phrase of the day</button><button class="big" data-print>🖨️ طباعة بطاقات العبارات</button></div></div>
       <div class="tiles">${list.map(u => { const p = unitPct(u); return `<button class="tile" data-id="${u.id}"><span class="ic">${u.icon}</span><b>${esc(u.title[0])}</b><span class="ar muted" style="text-align:center">${esc(u.title[1])}</span><span class="tag lv ${u.level}">${u.level}</span><small>${p != null ? (p >= 70 ? '✅ ' : '') + p + '%' : u.phrases.length + ' عبارات'}</small></button>`; }).join('')}</div>
       <div class="card"><p class="muted">💡 طريقة مقترحة لكل وحدة: ١) تعلّم العبارات وكرّرها بصوتك ٢) استمع للحوار ٣) تدرّب على دور من الحوار ٤) جرّب «ماذا تقول؟» ٥) استخدم العبارات في عملك الحقيقي هذا الأسبوع.</p></div>`;
     $$('#view [data-lv]').forEach(b => b.onclick = () => { filter = b.dataset.lv; landing(); });
     $$('#view [data-id]').forEach(b => b.onclick = () => unit(D.units.find(u => u.id === b.dataset.id), 'phrases'));
     $('[data-words]').onclick = () => { const t = E.mod.words.topics.find(x => x.id === 'work'); E.mod.words.session(t.words.map(w => ({ t, w, key: 'work:' + w[0] })), t.en, landing); };
     $('[data-daily]').onclick = () => daily();
+    $('[data-print]').onclick = () => printCards(list);
+  }
+
+  /* ---------- printable phrase cards (opens a clean page; use the browser's Print) ---------- */
+  function printCards(units) {
+    const w = window.open('', '_blank');
+    if (!w) return E.toast('اسمح للنوافذ المنبثقة ثم أعد المحاولة');
+    const css = 'body{font-family:system-ui,Segoe UI,Tahoma,Arial,sans-serif;margin:16px;color:#111}h1{font-size:18px}h2{font-size:15px;margin:18px 0 6px;border-bottom:2px solid #2563eb;padding-bottom:3px;break-after:avoid}table{width:100%;border-collapse:collapse;font-size:13px}td{border:1px solid #bbb;padding:5px 8px;vertical-align:top}td.en{direction:ltr;text-align:left;width:55%;font-weight:600}td.ar{direction:rtl;text-align:right}tr{break-inside:avoid}@media print{.np{display:none}}';
+    w.document.write('<!doctype html><html lang="en"><head><meta charset="utf-8"><title>English for Work — phrase cards</title><style>' + css + '</style></head><body><p class="np"><button onclick="print()">🖨️ Print / Save as PDF</button></p><h1>English for Work — Phrase cards · عبارات العمل</h1>' +
+      units.map(u => '<h2>' + esc(u.title[0]) + ' · ' + esc(u.title[1]) + ' (' + u.level + ')</h2><table>' + u.phrases.map(p => '<tr><td class="en">' + esc(p[0]) + '</td><td class="ar">' + esc(p[1]) + '</td></tr>').join('') + '</table>').join('') + '</body></html>');
+    w.document.close();
   }
 
   /* ---------- phrase of the day ---------- */
@@ -129,6 +140,6 @@
     show();
   }
 
-  E.mod.work = { units: D.units };
+  E.mod.work = { units: D.units, open: u => unit(u, 'phrases') };
   E.register('work', 'العمل', '💼', landing, 80);
 })();
