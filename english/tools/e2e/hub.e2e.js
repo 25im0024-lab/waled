@@ -162,6 +162,10 @@ const STUBS = () => {
   await go('work'); await click('[data-id="email"]'); await click('[data-tab="email"]');
   ok((await html('#view')).includes('Dear Mr. Rashid'), 'email unit shows the model email');
 
+  await go('work');
+  const pdf = await page.evaluate(async () => { const a = document.querySelector('[data-pdf]'); const r = await fetch(a.href); const b = new Uint8Array(await r.arrayBuffer()); return { ok: r.ok, type: r.headers.get('content-type'), head: String.fromCharCode(...b.slice(0, 5)), size: b.length, dl: a.getAttribute('download') }; });
+  ok(pdf.ok && pdf.head === '%PDF-' && pdf.size > 100000 && pdf.dl, `Work tab links to a downloadable PDF guide (${Math.round(pdf.size / 1024)} KB)`);
+
   console.log('Sounds');
   await go('sounds'); await click('[data-id="th"]'); await page.waitForSelector('svg');
   ok(await page.$$eval('svg', s => s.length >= 1), 'mouth diagram renders');

@@ -178,3 +178,5 @@ table.t th{background:var(--soft)}
 .dots{display:flex;gap:6px;justify-content:center;margin:10px 0}.dots i{width:8px;height:8px;border-radius:50%;background:var(--line);display:block}.dots i.on{background:var(--primary)}
 
 #view:focus,#view:focus-visible{outline:none}
+a.linkbtn{display:inline-block;text-decoration:none;font-weight:700;background:var(--primary);color:var(--primary-ink);border:1px solid var(--primary);padding:14px 22px;font-size:1.1rem;border-radius:14px}a.linkbtn:hover{filter:brightness(1.08)}
+a.chip{text-decoration:none;color:var(--ink)}
