@@ -1,0 +1,13 @@
+{
+  "name": "English Hub — تعلّم الإنجليزية",
+  "short_name": "English Hub",
+  "description": "Learn English from beginner to intermediate in Arabic and English, with interactive pictures and a workplace speaking section",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4f7fb",
+  "theme_color": "#2563eb",
+  "lang": "ar",
+  "dir": "rtl",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}
