@@ -25,7 +25,7 @@
       if (!ok && cfg.track !== false && E.nb) E.nb.add(it, cfg.title || cfg.id || '');
       const why = it.why ? E.bi(it.why.en, it.why.ar) : '';
       const sayTxt = it.say || (typeof correctText === 'string' && /[a-z]/i.test(correctText) ? correctText : '');
-      $('.fbbox', root).innerHTML = `<div class="fb ${ok ? 'good' : 'bad'}"><b>${ok ? E.S.hints ? GOODS[score % GOODS.length] : 'Correct!' : 'ليست صحيحة · Not quite'}</b>${!ok && correctText ? `<div>الإجابة · Answer: <b class="en" dir="ltr">${esc(correctText)}</b></div>` : ''}${why ? `<div style="margin-top:6px">${why}</div>` : ''}${sayTxt ? `<div style="margin-top:6px">${E.sayBtn(sayTxt)}</div>` : ''}<div style="margin-top:4px;text-align:end"><a class="muted" style="font-size:.75rem" target="_blank" rel="noopener" href="${esc(E.reportUrl ? E.reportUrl(String(it.q || it.say || it.target || '').slice(0, 100)) : '#')}" aria-label="أبلغ عن خطأ في هذا السؤال">🚩 خطأ في السؤال؟</a></div></div><div class="row" style="justify-content:center"><button class="primary big" data-next>التالي · Next ›</button></div>`;
+      $('.fbbox', root).innerHTML = `<div class="fb ${ok ? 'good' : 'bad'}"><b>${ok ? E.S.hints ? GOODS[score % GOODS.length] : 'Correct!' : 'ليست صحيحة · Not quite'}</b>${!ok && correctText ? `<div>الإجابة · Answer: <b class="en" dir="ltr">${esc(correctText)}</b></div>` : ''}${why ? `<div style="margin-top:6px">${why}</div>` : ''}${sayTxt ? `<div style="margin-top:6px">${E.sayBtn(sayTxt)}</div>` : ''}</div><div class="row" style="justify-content:center"><button class="primary big" data-next>التالي · Next ›</button></div>`;
       const nb = $('[data-next]', root); nb.onclick = () => { i++; show(); }; nb.focus({ preventScroll: true });
     }
     function end() {

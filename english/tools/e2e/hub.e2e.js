@@ -215,7 +215,7 @@ const STUBS = () => {
   ok((await html('#view')).includes('آخر 14 يومًا'), 'activity chart is shown');
 
   console.log('Polish');
-  ok(await page.evaluate(() => /issues\/new/.test(EL.reportUrl('x')) && /English%20Hub/.test(EL.reportUrl('x'))), 'report-issue link is built with context');
+  ok(await page.evaluate(() => !document.querySelector('a[href*="github.com"]') && !EL.reportUrl), 'no GitHub links anywhere in the app UI');
   const noName = await page.evaluate(() => { const out = []; for (const t of ['home', 'words', 'grammar', 'work', 'sounds', 'expressions', 'notebook', 'progress', 'speaking']) { EL.show(t); document.querySelectorAll('#view button, #view input, #view select, #view a').forEach(e => { const n = (e.textContent || '').trim() || e.getAttribute('aria-label') || e.getAttribute('title') || (e.labels && e.labels.length) || e.closest('label'); if (!n) out.push(t + ':' + e.outerHTML.slice(0, 70)); }); } return out; });
   ok(noName.length === 0, 'every button/input/link on main tabs has an accessible name' + (noName.length ? ': ' + noName.slice(0, 3).join(' | ') : ''));
   ok(await page.evaluate(() => !!document.querySelector('link[rel="apple-touch-icon"]') && !!document.querySelector('.skip')), 'apple-touch-icon and skip link present');

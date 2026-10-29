@@ -5,7 +5,7 @@
 ## التشغيل
 
 - **محليًا:** من جذر المستودع `python3 -m http.server` ثم افتح `http://localhost:8000/english/` (الميكروفون يحتاج `https` أو `localhost`). يمكن أيضًا فتح `english/index.html` مباشرة، لكن الأوفلاين (service worker) والميكروفون لن يعملا.
-- **GitHub Pages:** نفس إعداد IELTS (`Settings → Pages → Deploy from a branch → / (root)`). يصبح الرابط `https://<user>.github.io/<repo>/english/`.
+- **النشر (Pages):** نفس إعداد IELTS (`Settings → Pages → Deploy from a branch → / (root)`). يصبح الرابط `https://<user>.github.io/<repo>/english/`.
 
 ## ما فيها
 
@@ -32,7 +32,7 @@
 
 ## مراجعة الترجمة بواسطة مدرّس
 
-`node english/tools/export-review-sheet.js` ينتج `english/review/arabic-review-sheet.csv` (نحو 2,700 زوج إنجليزي/عربي مع عمودين فارغين للتصحيح والملاحظات، يفتح في Excel). يوزَّع على مدرّس أو مترجم، ثم تُطبَّق تصحيحاته يدويًا في `english/js/data/*.js`. وزر «🚩 أبلغ عن خطأ» في التذييل وتحت كل سؤال يفتح GitHub Issue معبّأً بمكان الخطأ، ليستعمله المجرّبون.
+`node english/tools/export-review-sheet.js` ينتج `english/review/arabic-review-sheet.csv` (نحو 2,700 زوج إنجليزي/عربي مع عمودين فارغين للتصحيح والملاحظات، يفتح في Excel). يوزَّع على مدرّس أو مترجم، ثم تُطبَّق تصحيحاته يدويًا في `english/js/data/*.js`.
 
 ## حدود يجب معرفتها
 
