@@ -189,11 +189,11 @@ def make_whole(x, idx, bonds_local, L):
 
 
 # ================================================================== main
-def main(datadir, outdir):
+def main(datadir, outdir, final="final_config.data", step0=None):
     os.makedirs(outdir, exist_ok=True)
     f_ts = find(datadir, "h2_msd_timeseries.dat")
     f_eq = find(datadir, "equil.lammpstrj")
-    f_dat = find(datadir, "final_config.data")
+    f_dat = find(datadir, final)
 
     # ------------------------------------------------------------ time series
     d = np.loadtxt(f_ts, comments="#")
@@ -208,7 +208,9 @@ def main(datadir, outdir):
         h = f.readline()
         if "timestep" in h:
             step_final = int(h.split("timestep =")[1].split(",")[0])
-    step0 = step_final - 250000 if step_final else step[0] - 100
+    if step0 is None:
+        step0 = step_final - 250000 if step_final else step[0] - 100
+    T_run = (step[-1] - step0 + (step[1] - step[0])) / 1000.0     # production length, ps
     t = (step - step0) * FS_PER_STEP / 1000.0      # ps since start of production
     dt = (step[1] - step[0]) * FS_PER_STEP / 1000.0
 
@@ -219,6 +221,7 @@ def main(datadir, outdir):
     is_cof = (typ >= 15) & (typ <= 20)
     is_h2 = typ == 21
     is_wat = (typ == 22) | (typ == 23)
+    is_ion = (typ == 24) | (typ == 25)
     nH2 = is_h2.sum()
     nH2mol = len(np.unique(mol[is_h2]))
 
@@ -226,9 +229,10 @@ def main(datadir, outdir):
     log("[NiFe]-hydrogenase + H2 pilot run: analysis summary")
     log("=" * 72)
     log(f"atoms {len(typ)} | protein {is_prot.sum()} | cofactor {is_cof.sum()} | "
-        f"H2 sites {nH2} ({nH2mol} molecules) | water {is_wat.sum() // 3} molecules")
+        f"H2 sites {nH2} ({nH2mol} molecules) | water {is_wat.sum() // 3} molecules | ions {is_ion.sum()}")
     log(f"production: steps {step0} -> {step_final} ({(step_final - step0) / 1000:.0f} ps), "
         f"{len(step)} samples every {dt:.2f} ps")
+    log(f"total system charge: {D['q'].sum():.4f} e")
 
     # ---- H2 temperature vs. canonical expectation ----
     ndof_h2 = 5 * nH2mol           # rigid linear molecule: 3 translational + 2 rotational
@@ -248,24 +252,25 @@ def main(datadir, outdir):
     # ---- MSD / diffusion ----
     log("")
     log("--- H2 MSD and diffusion (single time origin, all 29 H2 pooled) ---")
-    win = (t >= 20) & (t <= 150)
+    fa, fb = 0.08 * T_run, 0.6 * T_run
+    win = (t >= fa) & (t <= fb)
     fits = {}
     for k, lab, dim in [(0, "x", 1), (1, "y", 1), (2, "z", 1), (3, "total", 3)]:
         r = stats.linregress(t[win], msd[win, k])
         Dk = r.slope / (2 * dim) * 1e-20 / 1e-12       # A^2/ps -> m^2/s
         fits[lab] = (r, Dk)
-        log(f"D_{lab:5s} = {Dk * 1e9:5.2f} x 1e-9 m^2/s  (fit 20-150 ps, R^2 = {r.rvalue ** 2:.3f})")
+        log(f"D_{lab:5s} = {Dk * 1e9:5.2f} x 1e-9 m^2/s  (fit {fa:.0f}-{fb:.0f} ps, R^2 = {r.rvalue ** 2:.3f})")
     # windowed sensitivity
     sens = []
-    for a, b in [(10, 100), (20, 150), (50, 200), (100, 250)]:
+    for a, b in [(0.04 * T_run, 0.4 * T_run), (fa, fb), (0.2 * T_run, 0.8 * T_run), (0.4 * T_run, T_run)]:
         w = (t >= a) & (t <= b)
         r = stats.linregress(t[w], msd[w, 3])
         sens.append((a, b, r.slope / 6 * 1e-8 * 1e9))
     log("fit-window sensitivity of D_total (1e-9 m^2/s): " +
-        ", ".join(f"{a}-{b} ps: {v:.2f}" for a, b, v in sens))
-    lg = (t > 1) & (t < 200)
+        ", ".join(f"{a:.0f}-{b:.0f} ps: {v:.2f}" for a, b, v in sens))
+    lg = (t > 1) & (t < 0.8 * T_run)
     alpha = stats.linregress(np.log(t[lg]), np.log(msd[lg, 3])).slope
-    log(f"log-log slope alpha (1-200 ps) = {alpha:.2f}  (1 = Fickian)")
+    log(f"log-log slope alpha (1-{0.8 * T_run:.0f} ps) = {alpha:.2f}  (1 = Fickian)")
 
     # ---- contacts ----
     log("")
@@ -296,7 +301,7 @@ def main(datadir, outdir):
     log(f"Rg: {Rg_ts.mean():.2f} +/- {Rg_ts.std():.3f} A; drift first->last 10 % : "
         f"{Rg_ts[:len(t) // 10].mean():.3f} -> {Rg_ts[-len(t) // 10:].mean():.3f} A")
     log(f"RMSD proxy (no superposition): final {rmsdp[-1]:.2f} A; "
-        f"last-50-ps mean {rmsdp[t > 200].mean():.2f} A")
+        f"last-{0.2 * T_run:.0f}-ps mean {rmsdp[t > 0.8 * T_run].mean():.2f} A")
 
     # ------------------------------------------------------------ equil trajectory
     frames = read_dump(f_eq)
@@ -407,9 +412,13 @@ def main(datadir, outdir):
     log(f"H-H bond length: mean {bondlen.mean():.4f} A, range {bondlen.min():.4f}-{bondlen.max():.4f} A "
         f"(target 0.741)")
     sig21 = 2.96 * 2 ** (1 / 6)
-    log(f"  -> 2^(1/6)*sigma_H2 = {sig21:.3f} A = LJ minimum: with no H-H bond/exclusion the two sites "
-        "repelled each other during the (pre-rigid) minimization and fix rigid/small then froze that "
-        "separation. The 'H2' simulated is a ~3 A dumbbell, not H2.")
+    geom_ok = np.abs(bondlen - 0.741).max() < 0.01
+    if geom_ok:
+        log("  -> H2 geometry check PASSED (all within 0.01 A of 0.741 A)")
+    else:
+        log(f"  -> FAILED. 2^(1/6)*sigma_H2 = {sig21:.3f} A = LJ minimum: with no H-H bond/exclusion the two "
+            "sites repelled each other during the (pre-rigid) minimization and fix rigid/small then froze "
+            "that separation. The 'H2' simulated is a ~3 A dumbbell, not H2.")
     buried = (nwat_mol == 0) & (nprot8 > 40)
     surface = (dprot_mol < 4.5) & ~buried
     bulk = ~buried & ~surface
@@ -457,7 +466,7 @@ def main(datadir, outdir):
         fig.savefig(os.path.join(outdir, name), bbox_inches="tight")
         plt.close(fig)
 
-    w = 50  # 5 ps running mean
+    w = max(1, min(50, len(t) // 5))  # 5 ps running mean (shorter for very short runs)
 
     # ---- Fig 1: overview dashboard ----
     fig, ax = plt.subplots(3, 2, figsize=(10, 8.5), sharex=True)
@@ -482,7 +491,7 @@ def main(datadir, outdir):
     ax[0, 0].legend(loc="upper right", fontsize=7)
     for a in ax[2]:
         a.set_xlabel("production time (ps)")
-    fig.suptitle("Production run overview (250 ps, NVT 300 K)", x=0.01, ha="left",
+    fig.suptitle(f"Production run overview ({T_run:.0f} ps, NVT 300 K)", x=0.01, ha="left",
                  fontweight="bold")
     fig.tight_layout()
     save(fig, "fig01_overview.png")
@@ -494,20 +503,20 @@ def main(datadir, outdir):
         r, Dk = fits[lab]
         ax[0].text(t[-1] + 3, msd[-1, k], f"{lab}: D = {Dk * 1e9:.1f}", color=INK2,
                    fontsize=8, va="center")
-    ax[0].set_xlim(0, 300)
+    ax[0].set_xlim(0, 1.2 * T_run)
     ax[0].set_xlabel("time (ps)"); ax[0].set_ylabel("MSD (Å$^2$)")
-    ax[0].set_title("Per-axis MSD (D in 10$^{-9}$ m$^2$/s, 20–150 ps fit)", loc="left")
+    ax[0].set_title(f"Per-axis MSD (D in 10$^{{-9}}$ m$^2$/s, {fa:.0f}–{fb:.0f} ps fit)", loc="left")
     ax[0].legend(loc="upper left")
     r, Dt = fits["total"]
     ax[1].loglog(t, msd[:, 3], color=C1, lw=1.4, label="MSD total")
-    tt = np.logspace(np.log10(0.5), np.log10(250), 50)
+    tt = np.logspace(np.log10(0.5), np.log10(T_run), 50)
     ax[1].loglog(tt, r.slope * tt, color=INK2, ls="--", lw=0.9,
                  label=f"6Dt, D = {Dt * 1e9:.1f}×10$^{{-9}}$ m$^2$/s")
     ax[1].loglog(tt, msd[0, 3] * (tt / t[0]) ** 2, color=C2, ls=":", lw=1, label="~ t$^2$ (ballistic)")
-    ax[1].axvspan(20, 150, color=GRID, alpha=0.6, lw=0)
+    ax[1].axvspan(fa, fb, color=GRID, alpha=0.6, lw=0)
     ax[1].set_ylim(1, 3000)
     ax[1].set_xlabel("time (ps)"); ax[1].set_ylabel("MSD (Å$^2$)")
-    ax[1].set_title(f"Log–log MSD (α = {alpha:.2f}, 1–200 ps)", loc="left")
+    ax[1].set_title(f"Log–log MSD (α = {alpha:.2f}, 1–{0.8 * T_run:.0f} ps)", loc="left")
     ax[1].legend(loc="upper left", fontsize=8)
     fig.tight_layout()
     save(fig, "fig02_msd_diffusion.png")
@@ -630,8 +639,8 @@ def main(datadir, outdir):
     ax[1].set_xlabel("distance from nearest protein atom (Å)")
     ax[1].set_ylabel("water density (g/cm$^3$)")
     ax[1].set_title("Hydration-shell water density (final frame)", loc="left")
-    ax[2].hist(bondlen, bins=np.arange(0.5, 3.6, 0.1), color=C2, edgecolor="white", lw=0.5,
-               label="simulated (frozen by fix rigid)")
+    ax[2].hist(bondlen, bins=np.arange(0.5, 3.6, 0.05), color=C3 if geom_ok else C2,
+               edgecolor="white", lw=0.5)
     ax[2].axvline(0.741, color=C1, lw=1.6)
     ax[2].text(0.79, ax[2].get_ylim()[1] * 0.9, "intended 0.741 Å", color=INK2, fontsize=8)
     ax[2].axvline(2.96 * 2 ** (1 / 6), color=INK2, ls="--", lw=1)
@@ -639,7 +648,7 @@ def main(datadir, outdir):
                color=INK2, fontsize=8, ha="right")
     ax[2].set_xlabel("H–H site separation within each H$_2$ (Å)")
     ax[2].set_ylabel("molecules")
-    ax[2].set_title("H$_2$ geometry check: FAILED", loc="left")
+    ax[2].set_title("H$_2$ geometry check: " + ("PASSED" if geom_ok else "FAILED"), loc="left")
     fig.tight_layout()
     save(fig, "fig08_final_config.png")
 
@@ -671,6 +680,10 @@ def main(datadir, outdir):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        sys.exit(__doc__)
-    main(sys.argv[1], sys.argv[2])
+    import argparse
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("datadir"); ap.add_argument("outdir")
+    ap.add_argument("--final", default="final_config.data", help="suffix of the write_data file")
+    ap.add_argument("--step0", type=int, default=None, help="time step at which production starts")
+    a = ap.parse_args()
+    main(a.datadir, a.outdir, a.final, a.step0)

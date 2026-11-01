@@ -40,6 +40,8 @@ variable        NWARM     index 5000          # NVT warm-up steps (1 fs)
 variable        NNPT      index 25000         # NPT equilibration steps
 variable        NPROD     index 250000        # production steps (250 ps; >= 1 ns recommended)
 variable        SEED      index 12345
+variable        DUMP_EQ   index 2500          # full-system dump interval, NPT
+variable        DUMP_PROD index 5000          # full-system dump interval, production
 variable        HH_TARGET equal 0.741         # A
 variable        HH_TOL    equal 0.01          # A
 
@@ -222,7 +224,7 @@ fix             fRigidNPT h2 rigid/nvt/small molecule temp 300.0 300.0 100.0
 fix             fNPT integrate_normal npt temp 300.0 300.0 100.0 iso 1.0 1.0 1000.0 dilate all
 variable        rho equal mass(all)/vol*1.66053906660
 thermo_style    custom step temp press vol v_rho etotal v_dHHmin v_dHHmax
-dump            dEQ all custom 2500 equil.lammpstrj id type mol x y z ix iy iz
+dump            dEQ all custom ${DUMP_EQ} equil.lammpstrj id type mol x y z ix iy iz
 dump_modify     dEQ sort id
 fix             fRho all ave/time 100 1 100 v_rho file equil_density.dat
 run             ${NNPT}
@@ -303,7 +305,7 @@ fix             fSeries all ave/time 100 1 100 c_cTempH2 c_cNcontact c_cNpocket 
                 file h2_msd_timeseries.dat &
                 title1 "# step  T_H2(K)  N_contact  N_pocket  minDist_Ni(A)  minDist_Fe(A)  MSDx  MSDy  MSDz  MSDtotal(A^2)  Rg(A)  RMSDproxy(A)  dNiFe(A)  dHHmin(A)  dHHmax(A)"
 
-dump            dProd all custom 5000 production.lammpstrj id type mol x y z ix iy iz
+dump            dProd all custom ${DUMP_PROD} production.lammpstrj id type mol x y z ix iy iz
 dump_modify     dProd sort id
 restart         50000 prod_v7.*.restart
 

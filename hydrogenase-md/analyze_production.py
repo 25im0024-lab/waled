@@ -67,9 +67,9 @@ def fit_kabsch(P, Q):
     return (R @ (P - pc).T).T + qc
 
 
-def main(datadir, dumpfile, outdir):
+def main(datadir, dumpfile, outdir, final="final_config.data", step0=30205, tag_out=""):
     os.makedirs(outdir, exist_ok=True)
-    D = read_data(find(datadir, "final_config.data"))
+    D = read_data(find(datadir, final))
     ts = np.loadtxt(find(datadir, "h2_msd_timeseries.dat"), comments="#")
     eq = read_dump(find(datadir, "equil.lammpstrj"))
     pr = read_dump(dumpfile)
@@ -97,11 +97,12 @@ def main(datadir, dumpfile, outdir):
     heavy_in = pos_in[heavy]
     prot_in = pos_in[prot_idx]
 
-    step0 = 30205
     frames = eq + pr
     tag = np.array(["eq"] * len(eq) + ["prod"] * len(pr))
     steps = np.array([f["step"] for f in frames])
     tps = (steps - step0) / 1000.0                     # ps relative to production start
+    T_run = float(np.round(tps.max()))
+    t_last = 0.6 * T_run                               # "last 40 %" window (150 ps for 250 ps)
 
     log("=" * 72)
     log("Production trajectory analysis (production.lammpstrj + previous files)")
@@ -157,10 +158,10 @@ def main(datadir, dumpfile, outdir):
     prod = tag == "prod"
     log("")
     log("--- protein (heavy atoms, Kabsch fit to the production-start structure) ---")
-    log(f"RMSD: last 100 ps {rmsd[prod & (tps > 150)].mean():.2f} +/- "
-        f"{rmsd[prod & (tps > 150)].std():.2f} A, final {rmsd[-1]:.2f} A, max {rmsd[prod].max():.2f} A")
+    log(f"RMSD: last {T_run - t_last:.0f} ps {rmsd[prod & (tps > t_last)].mean():.2f} +/- "
+        f"{rmsd[prod & (tps > t_last)].std():.2f} A, final {rmsd[-1]:.2f} A, max {rmsd[prod].max():.2f} A")
     log(f"active-site region (heavy atoms < 12 A of Ni, n={loc.sum()}), locally fitted RMSD: "
-        f"last 100 ps {rmsd_site_local[prod & (tps > 150)].mean():.2f} A")
+        f"last {T_run - t_last:.0f} ps {rmsd_site_local[prod & (tps > t_last)].mean():.2f} A")
     log(f"Ni-Fe distance: {nife[prod].mean():.3f} +/- {nife[prod].std():.3f} A")
     log(f"Rg from trajectory: {rgs[prod].mean():.2f} +/- {rgs[prod].std():.3f} A")
     log(f"RMSF over production: mean {rmsf.mean():.2f} A, median {np.median(rmsf):.2f} A, "
@@ -233,8 +234,9 @@ def main(datadir, dumpfile, outdir):
     log("")
     log("--- H2 geometry over all production frames ---")
     log(f"H-H separation: {bond.mean():.3f} A (range {bond.min():.3f}-{bond.max():.3f}); "
-        f"max per-molecule drift over 245 ps = {np.abs(bond - bond[0]).max():.4f} A "
-        "-> geometry frozen by fix rigid, still ~3 A instead of 0.741 A")
+        f"max per-molecule drift over {tF[-1] - tF[0]:.0f} ps = {np.abs(bond - bond[0]).max():.4f} A -> "
+        + ("PASSED (0.741 A)" if np.abs(bond - 0.741).max() < 0.01 else
+           "FAILED: geometry frozen by fix rigid at ~3 A instead of 0.741 A"))
 
     # validation against fix ave/time output at matching steps
     tsd = {int(r[0]): r for r in ts}
@@ -261,7 +263,7 @@ def main(datadir, dumpfile, outdir):
         msd_mol[k] = (dd ** 2).sum(2).mean(0)
     msd_mean = msd_mol.mean(1)
     tl = lags * dtF
-    fw = (tl >= 10) & (tl <= 100)
+    fw = (tl >= max(0.04 * T_run, 2 * dtF)) & (tl <= 0.4 * T_run)
     r = stats.linregress(tl[fw], msd_mean[fw])
     D_all = r.slope / 6 * 1e-8                  # A^2/ps -> m^2/s
     D_mol = np.array([stats.linregress(tl[fw], msd_mol[fw, m]).slope / 6 * 1e-8
@@ -277,12 +279,12 @@ def main(datadir, dumpfile, outdir):
     D_free = stats.linregress(tl[fw], msd_mol[fw][:, free].mean(1)).slope / 6 * 1e-8
     D_bound = (stats.linregress(tl[fw], msd_mol[fw][:, ~free].mean(1)).slope / 6 * 1e-8
                if (~free).sum() > 1 else np.nan)
-    alpha = stats.linregress(np.log(tl[(tl >= 5) & (tl <= 120)]),
-                             np.log(msd_mean[(tl >= 5) & (tl <= 120)])).slope
+    aw = (tl >= dtF) & (tl <= 0.48 * T_run)
+    alpha = stats.linregress(np.log(tl[aw]), np.log(msd_mean[aw])).slope
     log("")
     log("--- H2 diffusion (COM, all time origins, 5 ps resolution) ---")
-    log(f"D = {D_all * 1e9:.2f} x 1e-9 m^2/s (fit 10-100 ps lag), 95 % bootstrap CI over molecules "
-        f"{D_ci[0] * 1e9:.2f}-{D_ci[1] * 1e9:.2f}; alpha (5-120 ps) = {alpha:.2f}")
+    log(f"D = {D_all * 1e9:.2f} x 1e-9 m^2/s (fit {tl[fw][0]:.0f}-{tl[fw][-1]:.0f} ps lag), 95 % bootstrap CI over molecules "
+        f"{D_ci[0] * 1e9:.2f}-{D_ci[1] * 1e9:.2f}; alpha ({tl[aw][0]:.0f}-{tl[aw][-1]:.0f} ps) = {alpha:.2f}")
     log(f"per-molecule D: median {np.median(D_mol) * 1e9:.2f}, range {D_mol.min() * 1e9:.2f}-"
         f"{D_mol.max() * 1e9:.2f} x 1e-9 m^2/s")
     log(f"molecules in contact < 20 % of time (n={free.sum()}): D = {D_free * 1e9:.2f}; "
@@ -307,7 +309,7 @@ def main(datadir, dumpfile, outdir):
             ep_mol.append(m)
     episodes, censored = np.array(episodes), np.array(censored)
     h = contact_mol.astype(float)
-    nlag = 30
+    nlag = min(30, nF - 1)
     CI = np.zeros(nlag)
     CC = np.zeros(nlag)
     for k in range(nlag):
@@ -335,6 +337,10 @@ def main(datadir, dumpfile, outdir):
         CCt[k] = cont.sum() / a_.sum()
     tau_Ct = dtF * (0.5 + CCt[1:][np.cumprod(CCt[1:] > 0) > 0].sum())
     ep_t = np.array([e for e, m_ in zip(episodes, ep_mol) if not trapped[m_]])
+    if len(episodes) == 0:
+        episodes = np.array([0.0]); censored = np.array([False])
+    if len(ep_t) == 0:
+        ep_t = np.array([0.0])
     log(f"contact episodes: {len(episodes)} ({censored.sum()} cut by trajectory ends); "
         f"mean length {episodes.mean():.1f} ps, median {np.median(episodes):.1f} ps, "
         f"longest {episodes.max():.0f} ps")
@@ -369,7 +375,7 @@ def main(datadir, dumpfile, outdir):
     tsec = (ts[:, 0] - step0) / 1000.0
     log("")
     log("=" * 72)
-    log("FINAL RESULTS (production, 250 ps; mean +/- block SEM of 5 x 50 ps blocks)")
+    log(f"FINAL RESULTS (production, {T_run:.0f} ps; mean +/- block SEM of 5 equal blocks)")
     log("=" * 72)
     rows = [
         ("T(H2) as reported (142 DOF) [K]", T.mean(), block_sem(T)),
@@ -381,8 +387,8 @@ def main(datadir, dumpfile, outdir):
         ("pocket occupancy [% of samples]", 100 * (ts[:, 3] > 0).mean(), np.nan),
         ("D(H2) all-origin [1e-9 m^2/s]", D_all * 1e9, (D_ci[1] - D_ci[0]) / 3.92 * 1e9),
         ("Rg protein [A]", ts[:, 10].mean(), block_sem(ts[:, 10])),
-        ("RMSD heavy, Kabsch, last 100 ps [A]", rmsd[prod & (tps > 150)].mean(),
-         rmsd[prod & (tps > 150)].std() / np.sqrt(4)),
+        (f"RMSD heavy, Kabsch, last {T_run - t_last:.0f} ps [A]", rmsd[prod & (tps > t_last)].mean(),
+         rmsd[prod & (tps > t_last)].std() / np.sqrt(4)),
         ("RMSF heavy atoms, mean [A]", rmsf.mean(), np.nan),
         ("Ni-Fe distance [A]", nife[prod].mean(), nife[prod].std() / np.sqrt(prod.sum() / 5)),
         ("contact residence tau_C, transient [ps]", tau_Ct, np.nan),
@@ -439,8 +445,8 @@ def main(datadir, dumpfile, outdir):
         ax[0].plot(tl, msd_mol[:, m], color=C1, lw=0.5, alpha=0.25)
     ax[0].plot(tl, msd_mean, color=C1, lw=2, label="mean of 29 H$_2$")
     ax[0].plot(tl, r.intercept + r.slope * tl, color=C2, ls="--", lw=1.2,
-               label=f"fit 10–100 ps: D = {D_all * 1e9:.1f}×10$^{{-9}}$ m$^2$/s")
-    ax[0].set_xlim(0, 125); ax[0].set_ylim(0, np.percentile(msd_mol[tl <= 125], 98))
+               label=f"fit {tl[fw][0]:.0f}–{tl[fw][-1]:.0f} ps: D = {D_all * 1e9:.1f}×10$^{{-9}}$ m$^2$/s")
+    ax[0].set_xlim(0, 0.5 * T_run); ax[0].set_ylim(0, np.percentile(msd_mol[tl <= 0.5 * T_run], 98))
     ax[0].set_xlabel("lag time (ps)"); ax[0].set_ylabel("MSD (Å$^2$)")
     ax[0].set_title("H$_2$ COM MSD, all time origins", loc="left")
     ax[0].legend(fontsize=8, loc="upper left")
@@ -519,6 +525,10 @@ def main(datadir, dumpfile, outdir):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 4:
-        sys.exit(__doc__)
-    main(*sys.argv[1:])
+    import argparse
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("datadir"); ap.add_argument("dump"); ap.add_argument("outdir")
+    ap.add_argument("--final", default="final_config.data")
+    ap.add_argument("--step0", type=int, default=30205)
+    a = ap.parse_args()
+    main(a.datadir, a.dump, a.outdir, a.final, a.step0)
