@@ -39,5 +39,5 @@ Run with LAMMPS 22 Jul 2025 on the repaired `final_config.data`, using short ste
 - All output files written.
 
 Before running:
-- Fill in the cofactor charges.
+- Rebuild the metal sites, then set the cofactor charges. In the v6 data file all 14 metal-ligating Cys are protonated (HG atoms 0.97–2.0 Å from metals), the Fe CO/CN ligands lack their O/N atoms, and 4 isolated O atoms are typed as cofactor. Charges from Smith et al. 2012 cannot simply be pasted in.
 - Check that the atom IDs used for Ni (12305) and Fe (12306) match your data file.

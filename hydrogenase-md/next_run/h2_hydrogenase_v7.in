@@ -78,6 +78,18 @@ pair_coeff      25 25 0.0355910 4.47766
 # ligands 12307-12312 and 12341 (check against your PDB->data mapping).
 # The counter-ion step below adapts automatically to whatever you set here.
 #
+# WARNING (checked in the v6 data file): setting charges here is NOT enough.
+#  - All 14 metal-ligating cysteines are protonated CYS (SG q = -0.3119 with
+#    an HG atom). Several HG atoms sit 0.97-2.0 A from a metal (HG 5010 is
+#    0.97 A from Ni). The Smith et al. charges assume deprotonated cysteinate
+#    and include the Cys atoms, so the HG atoms must be deleted and the Cys
+#    charges replaced. That is a topology change for the builder.
+#  - The Fe diatomic ligands are incomplete: two C atoms (12307, 12308) bound
+#    to Fe with no O or N partner, plus one S (12309).
+#  - 12310-12312 and 12341 are isolated O atoms (probably crystal waters
+#    without H) typed as cofactor.
+# Rebuild the metal sites from the published topology before filling this block.
+#
 # set            atom 12305 charge  0.000
 # set            atom 12306 charge  0.000
 
