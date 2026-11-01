@@ -6,6 +6,39 @@ Post-processing of `h2_hydrogenase_v6_small.in`: PDB 1H2R, 29 two-site rigid H2 
 python3 analyze_hydrogenase.py <dir with the run outputs> results
 ```
 
+```bash
+python3 analyze_production.py <dir with the run outputs> <production.lammpstrj> results
+```
+
+The second script adds the production trajectory (50 frames, every 5 ps), writes `results/fig10…fig16*.png` and `results/summary_production.txt`, and supersedes the single-origin diffusion estimate below.
+
+## Final results (250 ps production, all files combined)
+
+Uncertainties are block SEM over 5 blocks of 50 ps unless noted.
+
+| Parameter | Value |
+|---|---|
+| T(H2), as reported by LAMMPS (142 DOF) | 305.5 ± 0.2 K |
+| T(H2), corrected to 145 DOF | 299.2 ± 0.2 K |
+| H2 sites in contact with protein (of 58) | 7.1 ± 0.7 |
+| H2 molecules in contact (of 29) | 4.3 ± 0.5 (14.8 %) |
+| Closest H2 site to Ni / Fe | 17.6 ± 0.8 / 19.6 ± 0.8 Å |
+| Pocket occupancy (< 6 Å of Ni or Fe) | 1/2500 samples; 0/50 frames |
+| D(H2), centre of mass, all time origins | 8.0 × 10⁻⁹ m²/s (95 % CI 6.3–10.0); α = 0.96 |
+| Contact residence, transient molecules | τ_C ≈ 12 ps; median episode 10 ps (5 ps sampling) |
+| H2 trapped inside the protein for the whole run | 1 (mol 17, entered during NPT, closest 8.7 Å to Ni) |
+| Protein Rg | 24.93 ± 0.01 Å |
+| Protein heavy-atom RMSD, Kabsch fit, last 100 ps | 1.18 ± 0.04 Å |
+| Active-site RMSD (< 12 Å of Ni, local fit) | 0.79 Å |
+| Mean RMSF of heavy atoms (all / < 12 Å of Ni) | 0.62 / 0.47 Å |
+| Ni–Fe distance | 2.59 ± 0.05 Å (SD) |
+| Protein–image minimum distance | 8.0 Å; below the 12 Å cutoff in 49/50 frames |
+| RDF H2 → protein (types 1–14) | no distinct contact peak; g rises from 0.12 at 3 Å to 0.45 at 12 Å |
+
+The trajectory analysis reproduces LAMMPS's on-the-fly N_contact and min-distance-to-Ni exactly in all 50 frames (fig16).
+
+**Every H2 number above is for a ~3 Å rigid dumbbell, not H2** (see key finding 1). Treat them as a test of the analysis pipeline, not as results.
+
 Inputs, matched by file-name suffix: `h2_msd_timeseries.dat`, `equil.lammpstrj` and `final_config.data`.
 Outputs: `results/fig01…fig09*.png` and `results/summary.txt`, which holds every number quoted below.
 
@@ -22,6 +55,13 @@ Outputs: `results/fig01…fig09*.png` and `results/summary.txt`, which holds eve
 | fig07_equilibration | NPT density, Rg, Kabsch RMSD, H2–Ni distances (equil.lammpstrj) |
 | fig08_final_config | Position of each H2 in the final frame, hydration-shell water density, **H–H geometry check** |
 | fig09_snapshot | Final frame projected onto three planes |
+| fig10_protein_full_run | Kabsch RMSD (whole protein and active site), Rg, protein–image distance over NPT + production |
+| fig11_rmsf | Per-atom RMSF, and RMSF vs distance from Ni |
+| fig12_msd_multiorigin | All-origin COM MSD per molecule and ensemble; per-molecule D |
+| fig13_h2_per_molecule | Heatmap of each H2's distance to Ni; water / contact / buried state map |
+| fig14_residence | Contact episode lengths; residence correlation functions |
+| fig15_rdf | H2 → protein g(r) and running coordination number |
+| fig16_validation | Trajectory analysis vs LAMMPS on-the-fly values |
 
 ## Key findings
 
