@@ -12,6 +12,14 @@ python3 analyze_production.py <dir with the run outputs> <production.lammpstrj> 
 
 The second script adds the production trajectory (50 frames, every 5 ps), writes `results/fig10…fig16*.png` and `results/summary_production.txt`, and supersedes the single-origin diffusion estimate below.
 
+**v7 runs, one command to a full PDF report:**
+
+```bash
+python3 report_v7.py <folder with the v7 outputs> results_v7
+```
+
+This writes all figures (Figs. 1–21, including the v7-only checks, 0.1 ps diffusion and residence, the LAMMPS RDF and thermodynamics), the summaries, and `results_v7/hydrogenase_v7_report.pdf`. The PDF has a cover page with correction checks and final results, one page per figure, and appendices with the full summaries and the input file.
+
 **Report:** `results/hydrogenase_v6_report.pdf` has all 16 figures, one per page, each with an explanation (built by `make_report_pdf.py`). **Next run:** `next_run/` contains the corrected v7 input and the H2 geometry repair tool.
 
 ## Final results (250 ps production, all files combined)

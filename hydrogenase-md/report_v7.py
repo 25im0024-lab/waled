@@ -101,13 +101,14 @@ def key_lines(summary_lines, keys, fn):
     return picked
 
 
-def page_text(fig, y, head, body, color=INK, wrap=104, size=9.2):
+def page_text(fig, y, head, body, color=INK, wrap=104, size=9.2, family="DejaVu Sans"):
     fig.text(ML / W, y, head, fontsize=10.5, weight="bold", color=color, va="top")
     y -= 0.022
     lines = []
     for para in (body if isinstance(body, list) else [body]):
         lines += textwrap.wrap(para, wrap, subsequent_indent="  " if isinstance(body, list) else "") or [""]
-    fig.text(ML / W, y, "\n".join(lines), fontsize=size, color=color, va="top", linespacing=1.45)
+    fig.text(ML / W, y, "\n".join(lines), fontsize=size, color=color, va="top", linespacing=1.45,
+             family=family, parse_math=False)
     return y - 0.0158 * len(lines) - 0.014
 
 
@@ -117,7 +118,7 @@ def main(rundir, outdir, inp=None):
     step0 = int(ts[0, 0] - (ts[1, 0] - ts[0, 0]))
     final = "final_config_v7.data" if glob.glob(os.path.join(rundir, "*final_config_v7.data")) else "final_config.data"
     A1.main(rundir, outdir, final=final, step0=step0)
-    A2.main(rundir, A1.find(rundir, "production.lammpstrj"), outdir, final=final, step0=step0)
+    A2.main(rundir, A1.find(rundir, "production.lammpstrj"), outdir, final=final, step0=step0, t_dof=145)
     A3.main(rundir, outdir, step0)
 
     summ = []
@@ -138,22 +139,26 @@ def main(rundir, outdir, inp=None):
             continue
         if inblock:
             if l.startswith("  "):
-                final_block.append(l.strip())
+                final_block.append(l[2:])
             elif final_block:
                 break
-    checks = [l.strip() for l in summ if ("PASSED" in l or "FAILED" in l or "total system charge" in l
-                                          or "closest protein-image" in l)]
+    checks = []
+    for l in summ:
+        if ("PASSED" in l or "FAILED" in l or "total system charge" in l or "closest protein-image" in l
+                or "WARNING" in l) and l.strip() not in checks:
+            checks.append(l.strip())
 
     pdf_path = os.path.join(outdir, "hydrogenase_v7_report.pdf")
     plt.rcParams["font.family"] = "DejaVu Sans"
     with PdfPages(pdf_path) as pdf:
         fig = plt.figure(figsize=(W, H))
         fig.text(ML / W, 0.94, "[NiFe]-hydrogenase + H₂: v7 run", fontsize=20, weight="bold")
-        fig.text(ML / W, 0.915, f"LAMMPS analysis report: {len(figs)} figures; source: {os.path.abspath(rundir)}",
+        fig.text(ML / W, 0.915, f"LAMMPS analysis report: {len(figs)} figures; run folder: {os.path.basename(os.path.abspath(rundir))}",
                  fontsize=10, color=INK2)
         y = 0.88
         y = page_text(fig, y, "Correction checks", checks or ["(none found)"], wrap=100)
-        y = page_text(fig, y - 0.01, "Final results", final_block or ["(see summaries)"], wrap=100, size=9)
+        y = page_text(fig, y - 0.01, "Final results (mean +/- block SEM)", final_block or ["(see summaries)"],
+                      wrap=100, size=8.4, family="DejaVu Sans Mono")
         fig.text(ML / W, y - 0.01, "Contents", fontsize=10.5, weight="bold", va="top")
         y -= 0.035
         for i, fn in enumerate(figs, 1):
@@ -200,7 +205,7 @@ def main(rundir, outdir, inp=None):
                 fig = plt.figure(figsize=(W, H))
                 fig.text(ML / W, 0.965, title + ("" if k == 0 else " (cont.)"), fontsize=12, weight="bold", va="top")
                 fig.text(ML / W, 0.935, "\n".join(wrapped[k:k + per]), fontsize=6.6, family="DejaVu Sans Mono",
-                         va="top", linespacing=1.3)
+                         va="top", linespacing=1.3, parse_math=False)
                 pdf.savefig(fig)
                 plt.close(fig)
     print("report:", pdf_path)

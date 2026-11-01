@@ -67,7 +67,7 @@ def fit_kabsch(P, Q):
     return (R @ (P - pc).T).T + qc
 
 
-def main(datadir, dumpfile, outdir, final="final_config.data", step0=30205, tag_out=""):
+def main(datadir, dumpfile, outdir, final="final_config.data", step0=30205, tag_out="", t_dof=142):
     os.makedirs(outdir, exist_ok=True)
     D = read_data(find(datadir, final))
     ts = np.loadtxt(find(datadir, "h2_msd_timeseries.dat"), comments="#")
@@ -90,7 +90,7 @@ def main(datadir, dumpfile, outdir, final="final_config.data", step0=30205, tag_
     sol_idx = np.where(is_prot | is_cof)[0]
     pos_in = -np.ones(len(typ), int)
     pos_in[sol_idx] = np.arange(len(sol_idx))
-    B = D["bonds"] - 1
+    B = D["row"][D["bonds"]]
     keep = (pos_in[B[:, 0]] >= 0) & (pos_in[B[:, 1]] >= 0)
     plan = bfs_plan(len(sol_idx), pos_in[B[keep]])
     heavy = np.where(is_prot & (mass > 2.0))[0]
@@ -137,7 +137,7 @@ def main(datadir, dumpfile, outdir, final="final_config.data", step0=30205, tag_
     rmsd = np.array([kabsch_rmsd(w[heavy_in], ref) for w in W])
     rgs = np.array([rg(w[prot_in], mass[prot_idx]) for w in W])
     # active-site region: heavy atoms within 12 A of Ni at the reference
-    ni_in, fe_in = pos_in[NI_ID - 1], pos_in[FE_ID - 1]
+    ni_in, fe_in = pos_in[D["row"][NI_ID]], pos_in[D["row"][FE_ID]]
     dref = np.linalg.norm(ref - W[ref_i][ni_in], axis=1)
     loc = dref < 12.0
     rmsd_site_local = np.array([kabsch_rmsd(w[heavy_in][loc], ref[loc]) for w in W])
@@ -211,7 +211,7 @@ def main(datadir, dumpfile, outdir, final="final_config.data", step0=30205, tag_
         nw = np.array([len(v) for v in tw.query_ball_point(cw, 3.5)])
         n8 = np.array([len(v) for v in tp.query_ball_point(cw, 8.0)])
         buried[f_i] = (nw == 0) & (n8 > 40)
-        ni, fe = x[NI_ID - 1], x[FE_ID - 1]
+        ni, fe = x[D["row"][NI_ID]], x[D["row"][FE_ID]]
         d_ni[f_i] = np.linalg.norm(mic(c - ni, L), axis=1)
         d_fe[f_i] = np.linalg.norm(mic(c - fe, L), axis=1)
         sni = np.linalg.norm(mic(x[h2_ids] - ni, L), axis=1)
@@ -292,7 +292,7 @@ def main(datadir, dumpfile, outdir, final="final_config.data", step0=30205, tag_
 
     # ---------------- contacts, residence
     log("")
-    log("--- H2-protein contact and residence (molecule-level, 4.5 A, 5 ps sampling) ---")
+    log(f"--- H2-protein contact and residence (molecule-level, 4.5 A, {dtF:g} ps sampling) ---")
     log(f"molecules in contact per frame: {contact_mol.sum(1).mean():.2f} +/- "
         f"{contact_mol.sum(1).std():.2f} of {nmol} ({100 * contact_mol.mean():.1f} %)")
     log(f"molecules that touched the protein at least once: {(contact_mol.any(0)).sum()}/{nmol}; "
@@ -351,7 +351,7 @@ def main(datadir, dumpfile, outdir, final="final_config.data", step0=30205, tag_
         "in contact in every frame); not a meaningful average")
     log(f"transient molecules only (n={(~trapped).sum()}): tau_C ~ {tau_Ct:.1f} ps; episodes mean "
         f"{ep_t.mean():.1f} ps, median {np.median(ep_t):.1f} ps, max {ep_t.max():.0f} ps "
-        "(5 ps sampling: contacts shorter than ~5 ps are not resolved; true residence is shorter)")
+        f"({dtF:g} ps sampling: contacts shorter than ~{dtF:g} ps are not resolved; true residence is shorter)")
     top = np.argsort(-frac_contact_mol)[:5]
     log("most protein-associated molecules (mol: % frames in contact, % buried, min d_Ni): " +
         "; ".join(f"{umols[m]}: {100 * frac_contact_mol[m]:.0f}, {100 * buried[:, m].mean():.0f}, "
@@ -378,8 +378,10 @@ def main(datadir, dumpfile, outdir, final="final_config.data", step0=30205, tag_
     log(f"FINAL RESULTS (production, {T_run:.0f} ps; mean +/- block SEM of 5 equal blocks)")
     log("=" * 72)
     rows = [
-        ("T(H2) as reported (142 DOF) [K]", T.mean(), block_sem(T)),
-        ("T(H2) corrected to 145 DOF [K]", T.mean() * 142 / 145, block_sem(T) * 142 / 145),
+        (f"T(H2) as reported ({t_dof} DOF) [K]", T.mean(), block_sem(T)),
+    ] + ([] if t_dof == 145 else [
+        ("T(H2) corrected to 145 DOF [K]", T.mean() * t_dof / 145, block_sem(T) * t_dof / 145),
+    ]) + [
         ("H2 sites in contact (of 58)", ts[:, 2].mean(), block_sem(ts[:, 2])),
         ("H2 molecules in contact (of 29)", contact_mol.sum(1).mean(), block_sem(contact_mol.sum(1))),
         ("closest H2 site to Ni [A]", ts[:, 4].mean(), block_sem(ts[:, 4])),
@@ -530,5 +532,6 @@ if __name__ == "__main__":
     ap.add_argument("datadir"); ap.add_argument("dump"); ap.add_argument("outdir")
     ap.add_argument("--final", default="final_config.data")
     ap.add_argument("--step0", type=int, default=30205)
+    ap.add_argument("--t-dof", type=int, default=142, help="DOF LAMMPS used for T(H2): 142 in v6, 145 in v7")
     a = ap.parse_args()
-    main(a.datadir, a.dump, a.outdir, a.final, a.step0)
+    main(a.datadir, a.dump, a.outdir, a.final, a.step0, t_dof=a.t_dof)

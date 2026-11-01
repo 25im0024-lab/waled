@@ -138,7 +138,10 @@ def read_data(path):
     B = np.array(bonds, dtype=int)
     lo = np.array([box["x"][0], box["y"][0], box["z"][0]])
     hi = np.array([box["x"][1], box["y"][1], box["z"][1]])
-    return dict(id=A[:, 0].astype(int), mol=A[:, 1].astype(int),
+    ids = A[:, 0].astype(int)
+    row = -np.ones(ids.max() + 1, int)       # atom ID -> row (IDs need not be consecutive)
+    row[ids] = np.arange(len(ids))
+    return dict(id=ids, row=row, mol=A[:, 1].astype(int),
                 type=A[:, 2].astype(int), q=A[:, 3], x=A[:, 4:7],
                 img=A[:, 7:10].astype(int), v=V[:, 1:4], bonds=B,
                 lo=lo, L=hi - lo, masses=masses)
@@ -315,11 +318,11 @@ def main(datadir, outdir, final="final_config.data", step0=None):
     sol_idx = np.where(is_prot | is_cof)[0]
     pos_in = -np.ones(len(typ), int)
     pos_in[sol_idx] = np.arange(len(sol_idx))
-    B = D["bonds"] - 1
+    B = D["row"][D["bonds"]]
     keep = (pos_in[B[:, 0]] >= 0) & (pos_in[B[:, 1]] >= 0)
     Bl = pos_in[B[keep]]
     heavy_in_sol = pos_in[prot_heavy]
-    ni_in, fe_in = pos_in[NI_ID - 1], pos_in[FE_ID - 1]
+    ni_in, fe_in = pos_in[D["row"][NI_ID]], pos_in[D["row"][FE_ID]]
 
     eq_t, eq_V, eq_rho, eq_rg, eq_rmsd, eq_dni = [], [], [], [], [], []
     eq_whole = []
@@ -395,7 +398,7 @@ def main(datadir, outdir, final="final_config.data", step0=None):
     prot_tree = cKDTree(np.mod(D["x"][prot_idx] - D["lo"], L), boxsize=L)
     wat_O = np.where(typ == 22)[0]
     wat_tree = cKDTree(np.mod(D["x"][wat_O] - D["lo"], L), boxsize=L)
-    ni_x = D["x"][NI_ID - 1]
+    ni_x = D["x"][D["row"][NI_ID]]
     bondlen, dni_mol, dprot_mol, nwat_mol, nprot8 = [], [], [], [], []
     for mm in umols:
         ii = h2_ids[h2_mols == mm]
@@ -656,7 +659,7 @@ def main(datadir, outdir, final="final_config.data", step0=None):
     fig, ax = plt.subplots(1, 3, figsize=(12, 4.2))
     Pp = np.mod(D["x"][prot_heavy] - D["lo"], L)
     Hh = np.mod(D["x"][h2_ids] - D["lo"], L)
-    M = np.mod(D["x"][[NI_ID - 1, FE_ID - 1]] - D["lo"], L)
+    M = np.mod(D["x"][[D["row"][NI_ID], D["row"][FE_ID]]] - D["lo"], L)
     for a, (i, j, ln) in zip(ax, [(0, 1, "x–y"), (0, 2, "x–z"), (1, 2, "y–z")]):
         a.scatter(Pp[:, i], Pp[:, j], s=0.3, color="#b9b8b2", rasterized=True)
         h2cls = np.repeat(cls, 2)
