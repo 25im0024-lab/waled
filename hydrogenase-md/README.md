@@ -12,6 +12,8 @@ python3 analyze_production.py <dir with the run outputs> <production.lammpstrj> 
 
 The second script adds the production trajectory (50 frames, every 5 ps), writes `results/fig10…fig16*.png` and `results/summary_production.txt`, and supersedes the single-origin diffusion estimate below.
 
+**Report:** `results/hydrogenase_v6_report.pdf` has all 16 figures, one per page, each with an explanation (built by `make_report_pdf.py`). **Next run:** `next_run/` contains the corrected v7 input and the H2 geometry repair tool.
+
 ## Final results (250 ps production, all files combined)
 
 Uncertainties are block SEM over 5 blocks of 50 ps unless noted.

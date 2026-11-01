@@ -1,0 +1,313 @@
+########################################################################
+# LAMMPS input (v7): [NiFe]-hydrogenase (PDB 1H2R) + 29 rigid 2-site H2
+#                    + TIP3P water. Corrected version of v6-small.
+#
+# WHAT CHANGED FROM v6 (all found in the analysis of the v6 run)
+#  1. H2 geometry. In v6 the two H sites had no bond and no exclusion, so
+#     minimization pushed them apart to the LJ minimum (2^(1/6)*sigma =
+#     3.32 A) and fix rigid/small froze 2.1-3.3 A dumbbells for the whole
+#     run. Now:
+#       - intramolecular H2 pairs are excluded (neigh_modify exclude);
+#       - H2 is held fixed during minimization (fix setforce 0);
+#       - the run STOPS if any H-H distance is not 0.741 +/- 0.01 A.
+#     Run fix_h2_geometry.py on the data file first (see below).
+#  2. Mixing rule. AMBER parameters need Lorentz-Berthelot (arithmetic)
+#     mixing; LAMMPS defaults to geometric, which v6 used silently.
+#  3. Net charge (v6: -7 e). Counter-ions (Joung-Cheatham TIP3P Na+/Cl-)
+#     are added automatically to neutralize, away from the protein, and
+#     the run stops if |net charge| > 1e-3 e afterwards. Cofactor charges
+#     (all 0 in v6) go in the marked block BEFORE neutralization.
+#  4. Reported T(H2). compute temp subtracts 3 DOF by default, so T(H2)
+#     read +2 % high (305.5 K for a true ~299 K). extra/dof 0 fixes that.
+#  5. Output for analysis: H2-only trajectory every 0.1 ps (unwrapped),
+#     Ni-Fe distance in the time series, image flags in full dumps,
+#     periodic restart files.
+#  6. Periodic-image check printed at start. v6 had the protein 8-11 A
+#     from its own image (< 12 A cutoff). That can only be fixed by
+#     REBUILDING with a thicker water shell; this script warns, it cannot
+#     add water.
+#
+# PREPARE (once):
+#   python3 fix_h2_geometry.py system_protein_h2_small.data system_v7.data
+#   mpirun -np 8 lmp -in h2_hydrogenase_v7.in
+# Options: -var DATAFILE file.data -var NPROD 1000000 ...
+########################################################################
+
+# ==================== RUN CONTROL (override with -var) ====================
+variable        DATAFILE  index system_v7.data
+variable        NMIN      index 2000          # max minimizer iterations
+variable        NWARM     index 5000          # NVT warm-up steps (1 fs)
+variable        NNPT      index 25000         # NPT equilibration steps
+variable        NPROD     index 250000        # production steps (250 ps; >= 1 ns recommended)
+variable        SEED      index 12345
+variable        HH_TARGET equal 0.741         # A
+variable        HH_TOL    equal 0.01          # A
+
+# ==================== INITIALIZATION ====================
+units           real
+atom_style      full
+boundary        p p p
+
+bond_style      harmonic
+angle_style     harmonic
+dihedral_style  fourier
+
+pair_style      lj/cut/coul/long 12.0 12.0
+pair_modify     mix arithmetic                # [FIX 2] AMBER = Lorentz-Berthelot
+kspace_style    pppm 1.0e-4
+special_bonds   amber
+
+read_data       ${DATAFILE} extra/atom/types 2 &
+                extra/bond/per/atom 6 extra/angle/per/atom 10 extra/special/per/atom 24
+
+# ---- counter-ion types (Joung & Cheatham, J. Phys. Chem. B 2008, 112, 9020; TIP3P set)
+#      Na+: Rmin/2 = 1.212 A, eps = 0.0874393 kcal/mol -> sigma = 2.15954 A
+#      Cl-: Rmin/2 = 2.513 A, eps = 0.0355910 kcal/mol -> sigma = 4.47766 A
+mass            24 22.98977
+mass            25 35.453
+pair_coeff      24 24 0.0874393 2.15954
+pair_coeff      25 25 0.0355910 4.47766
+
+# ==================== COFACTOR CHARGES [FIX 3, TO FILL] ====================
+# In v6 all 33 cofactor atoms (types 15-20: Fe-S clusters, Ni-Fe site,
+# CO/CN ligands, Mg) have q = 0. Put the published charges here, e.g. from
+#   Smith, Xiong, Straatsma, Rosso, Squier, J. Chem. Theory Comput. 2012,
+#   8, 2103-2114, doi:10.1021/ct300185u (reduced or oxidized state),
+# one line per atom:  set atom <id> charge <q>
+# Atom IDs: Ni = 12305, active-site Fe = 12306, clusters 12281-12304,
+# ligands 12307-12312 and 12341 (check against your PDB->data mapping).
+# The counter-ion step below adapts automatically to whatever you set here.
+#
+# set            atom 12305 charge  0.000
+# set            atom 12306 charge  0.000
+
+# ==================== BASE GROUPS ====================
+group           protein    molecule 1 2
+group           cofactors  type 15 16 17 18 19 20
+group           h2         type 21
+group           water      type 22 23
+group           NiAtom     id 12305
+group           FeActive   id 12306
+group           solute     union protein cofactors h2
+
+# [FIX 1] no pair forces inside an H2 (they are a rigid body).
+# LAMMPS warns "Neighbor exclusions used with KSpace": harmless here because
+# the H2 sites carry zero charge, so no Coulomb term is affected.
+neigh_modify    exclude molecule/intra h2
+neighbor        2.0 bin
+neigh_modify    every 1 delay 0 check yes
+timestep        1.0
+thermo          100
+thermo_style    custom step temp press etotal
+
+# ==================== NEUTRALIZATION [FIX 3] ====================
+variable        q0 equal charge(all)
+print           "net charge before neutralization: ${q0} e"
+variable        nIon equal round(abs(${q0}))
+if "${q0} < 0" then "variable ionType equal 24" else "variable ionType equal 25"
+group           ions type 24 25
+if "${nIon} == 0" then "jump SELF ions_done"
+print           "adding ${nIon} counter-ions of type ${ionType} (>= 6 A from protein/cofactors/H2)"
+
+variable        itry loop 3000
+label           ion_loop
+  variable      sd equal 9001+13*${itry}
+  create_atoms  ${ionType} random 1 ${sd} NULL overlap 1.5 maxtry 200
+  group         ions clear
+  group         ions type 24 25
+  delete_atoms  overlap 6.0 ions solute compress no
+  group         ions clear
+  group         ions type 24 25
+  delete_atoms  overlap 2.0 water ions mol yes bond yes compress no
+  variable      nNow equal count(ions)
+  if "${nNow} >= ${nIon}" then "jump SELF ions_done"
+  next          itry
+  jump          SELF ion_loop
+label           ions_done
+
+set             type 24 charge  1.0
+set             type 25 charge -1.0
+group           ions clear
+group           ions type 24 25
+variable        qAfter equal charge(all)
+variable        nIons  equal count(ions)
+print           "counter-ions in system: ${nIons}; net charge now: ${qAfter} e"
+if "$(abs(v_qAfter)) > 1.0e-3" then "print 'ERROR: system is not neutral - stopping'" "quit 1"
+
+# ==================== DERIVED GROUPS (after ions exist) ====================
+group           integrate_normal subtract all h2
+variable        nProtein  equal count(protein)
+variable        nCofactor equal count(cofactors)
+variable        nH2atoms  equal count(h2)
+variable        nWater    equal count(water)/3
+variable        nAll      equal count(all)
+print           "==== GROUP CHECK ===================================="
+print           "protein atoms  : ${nProtein}"
+print           "cofactor atoms : ${nCofactor}"
+print           "H2 atoms       : ${nH2atoms}"
+print           "water molecules: ${nWater}"
+print           "counter-ions   : ${nIons}"
+print           "TOTAL atoms    : ${nAll}"
+print           "======================================================"
+
+# ==================== H2 GEOMETRY GUARD [FIX 1] ====================
+# Two equal masses at separation d have Rg = d/2, so d = 2*Rg per molecule.
+compute         cH2chunk h2 chunk/atom molecule nchunk once compress yes
+compute         cH2rg    h2 gyration/chunk cH2chunk
+variable        dHHmin equal 2*min(c_cH2rg)
+variable        dHHmax equal 2*max(c_cH2rg)
+
+# ---- periodic-image check (protein extent from unwrapped coordinates) ----
+compute         cU protein property/atom xu yu zu
+compute         cExt protein reduce max c_cU[1] c_cU[2] c_cU[3]
+compute         cExtMin protein reduce min c_cU[1] c_cU[2] c_cU[3]
+variable        gapX equal lx-(c_cExt[1]-c_cExtMin[1])
+variable        gapY equal ly-(c_cExt[2]-c_cExtMin[2])
+variable        gapZ equal lz-(c_cExt[3]-c_cExtMin[3])
+
+thermo_style    custom step temp press etotal v_dHHmin v_dHHmax
+run             0
+print           "H-H distance in H2: min ${dHHmin} A, max ${dHHmax} A (target ${HH_TARGET})"
+if "$(abs(v_dHHmin-v_HH_TARGET)) > ${HH_TOL} || $(abs(v_dHHmax-v_HH_TARGET)) > ${HH_TOL}" then &
+   "print 'ERROR: H2 geometry wrong - run fix_h2_geometry.py on the data file first'" "quit 1"
+print           "box minus protein extent (lower bound on image gap): x ${gapX}, y ${gapY}, z ${gapZ} A"
+if "${gapX} < 14.0 || ${gapY} < 14.0 || ${gapZ} < 14.0" then &
+   "print 'WARNING: protein comes closer than cutoff+2 A to its periodic image. Rebuild with a thicker water shell (>= 12-15 A) before production-quality runs.'"
+
+# ==================== RIGID WATER ====================
+fix             fShake water shake 0.0001 20 0 b 85 a 145
+
+# ==================== MINIMIZATION (H2 held fixed) [FIX 1] ====================
+fix             fFreezeH2 h2 setforce 0.0 0.0 0.0
+min_style       cg
+# etol = 0: v6 used 1e-4, which stopped the minimizer after 1 iteration here
+# (max force still ~300 kcal/mol/A after ion insertion); stop on ftol/NMIN instead
+minimize        0.0 1.0e-3 ${NMIN} 100000
+unfix           fFreezeH2
+run             0
+print           "after minimization: H-H min ${dHHmin} A, max ${dHHmax} A"
+if "$(abs(v_dHHmin-v_HH_TARGET)) > ${HH_TOL} || $(abs(v_dHHmax-v_HH_TARGET)) > ${HH_TOL}" then &
+   "print 'ERROR: H2 geometry changed during minimization - stopping'" "quit 1"
+
+# ==================== EQUILIBRATION ====================
+reset_timestep  0
+# loop geom: atom IDs are no longer consecutive after waters were deleted
+velocity        all create 300.0 ${SEED} mom yes rot yes dist gaussian loop geom
+
+fix             fMOM  integrate_normal momentum 100 linear 1 1 1
+fix             fRigidWarm h2 rigid/nvt/small molecule temp 300.0 300.0 100.0
+fix             fNVT  integrate_normal nvt temp 300.0 300.0 100.0
+dump            dWarm all custom 1000 warmup.lammpstrj id type mol x y z ix iy iz
+dump_modify     dWarm sort id
+run             ${NWARM}
+unfix           fNVT
+unfix           fRigidWarm
+undump          dWarm
+
+# rigid fix must precede the box-changing fix; only fNPT owns the barostat,
+# 'dilate all' also rescales the rigid H2 centres of mass
+fix             fRigidNPT h2 rigid/nvt/small molecule temp 300.0 300.0 100.0
+fix             fNPT integrate_normal npt temp 300.0 300.0 100.0 iso 1.0 1.0 1000.0 dilate all
+variable        rho equal mass(all)/vol*1.66053906660
+thermo_style    custom step temp press vol v_rho etotal v_dHHmin v_dHHmax
+dump            dEQ all custom 2500 equil.lammpstrj id type mol x y z ix iy iz
+dump_modify     dEQ sort id
+fix             fRho all ave/time 100 1 100 v_rho file equil_density.dat
+run             ${NNPT}
+unfix           fRho
+unfix           fNPT
+unfix           fRigidNPT
+undump          dEQ
+unfix           fMOM
+write_data      equilibrated_v7.data
+print           "end of NPT: H-H min ${dHHmin} A, max ${dHHmax} A"
+
+# ==================== PRODUCTION ====================
+fix             fNVT2 integrate_normal nvt temp 300.0 300.0 100.0
+fix             fRigidProd h2 rigid/nvt/small molecule temp 300.0 300.0 100.0
+
+# ---- H2 temperature: correct DOF (5 per rigid linear molecule) [FIX 4] ----
+compute         cTempH2 h2 temp
+compute_modify  cTempH2 extra/dof 0
+compute         cMSD    h2 msd
+
+# ---- H2-protein contacts ----
+variable        ADS_CUTOFF equal 4.5
+compute         cContact   h2 coord/atom cutoff ${ADS_CUTOFF} group protein
+variable        vIsContact atom "c_cContact > 0"
+compute         cNcontact  h2 reduce sum v_vIsContact
+
+# ---- closest H2 site to Ni / Fe (minimum image, orthogonal box) ----
+compute         cComNi  NiAtom com
+variable        xNi     equal c_cComNi[1]
+variable        yNi     equal c_cComNi[2]
+variable        zNi     equal c_cComNi[3]
+variable        vDistNi atom "sqrt( (x-v_xNi-lx*round((x-v_xNi)/lx))^2 + (y-v_yNi-ly*round((y-v_yNi)/ly))^2 + (z-v_zNi-lz*round((z-v_zNi)/lz))^2 )"
+compute         cMinDNi h2 reduce min v_vDistNi
+
+compute         cComFe  FeActive com
+variable        xFe     equal c_cComFe[1]
+variable        yFe     equal c_cComFe[2]
+variable        zFe     equal c_cComFe[3]
+variable        vDistFe atom "sqrt( (x-v_xFe-lx*round((x-v_xFe)/lx))^2 + (y-v_yFe-ly*round((y-v_yFe)/ly))^2 + (z-v_zFe-lz*round((z-v_zFe)/lz))^2 )"
+compute         cMinDFe h2 reduce min v_vDistFe
+
+# ---- Ni-Fe distance (active-site integrity) [new] ----
+variable        dxNF equal (v_xNi-v_xFe)-lx*round((v_xNi-v_xFe)/lx)
+variable        dyNF equal (v_yNi-v_yFe)-ly*round((v_yNi-v_yFe)/ly)
+variable        dzNF equal (v_zNi-v_zFe)-lz*round((v_zNi-v_zFe)/lz)
+variable        dNiFe equal sqrt(v_dxNF^2+v_dyNF^2+v_dzNF^2)
+
+# ---- active-site pocket occupancy ----
+group           NiFeCenter id 12305 12306
+variable        POCKET_RADIUS equal 6.0
+compute         cPocket    h2 coord/atom cutoff ${POCKET_RADIUS} group NiFeCenter
+variable        vInPocket  atom "c_cPocket > 0"
+compute         cNpocket   h2 reduce sum v_vInPocket
+
+# ---- protein stability: Rg + RMSD proxy (proper Kabsch RMSD: post-process) ----
+compute         cRg protein gyration
+compute         cDisp protein displace/atom
+variable        vDispSq  atom "c_cDisp[4]^2"
+compute         cSumDispSq protein reduce sum v_vDispSq
+variable        rmsdProxy equal sqrt(c_cSumDispSq/v_nProtein)
+
+# ---- RDF H2 -> protein atom types ----
+compute         cRDF solute rdf 100 21 1*14
+fix             fRDF  all ave/time 1000 1 1000 c_cRDF[*] file h2_protein_rdf.dat mode vector
+
+# ---- per-atom contact/pocket state (residence times) ----
+dump            dResidence h2 custom 100 h2_residence_state.dump id mol v_vIsContact v_vInPocket
+dump_modify     dResidence sort id
+
+# ---- H2-only trajectory, unwrapped, every 0.1 ps (MSD, residence, tunnels) [new] ----
+dump            dH2 h2 custom 100 h2_traj.lammpstrj id mol xu yu zu
+dump_modify     dH2 sort id
+
+thermo          500
+thermo_style    custom step temp c_cTempH2 press etotal c_cNcontact c_cNpocket c_cMinDNi c_cMinDFe c_cMSD[4] c_cRg v_rmsdProxy v_dNiFe v_dHHmax
+
+fix             fSeries all ave/time 100 1 100 c_cTempH2 c_cNcontact c_cNpocket c_cMinDNi c_cMinDFe c_cMSD[1] c_cMSD[2] c_cMSD[3] c_cMSD[4] c_cRg v_rmsdProxy v_dNiFe v_dHHmin v_dHHmax &
+                file h2_msd_timeseries.dat &
+                title1 "# step  T_H2(K)  N_contact  N_pocket  minDist_Ni(A)  minDist_Fe(A)  MSDx  MSDy  MSDz  MSDtotal(A^2)  Rg(A)  RMSDproxy(A)  dNiFe(A)  dHHmin(A)  dHHmax(A)"
+
+dump            dProd all custom 5000 production.lammpstrj id type mol x y z ix iy iz
+dump_modify     dProd sort id
+restart         50000 prod_v7.*.restart
+
+run             ${NPROD}
+
+write_data      final_config_v7.data
+write_restart   final_config_v7.restart
+print           "Done. Post-process with analyze_hydrogenase.py and analyze_production.py"
+
+########################################################################
+# STILL OPEN (cannot be fixed inside this input)
+#  - Water shell: v6 protein is 8-11 A from its own image (< 12 A cutoff).
+#    Rebuild the system with >= 12-15 A of water on every side.
+#  - Metal-centre bonded force constants are generic, and cofactor charges
+#    must be filled in above (Smith et al. 2012, doi:10.1021/ct300185u).
+#  - H2 per-site LJ (eps 0.0256, sigma 2.96) is still the halved single-
+#    site placeholder, not a published 2-site model.
+#  - 29 H2 / 250 ps give noisy statistics; pocket entry needs >= ns.
+########################################################################
