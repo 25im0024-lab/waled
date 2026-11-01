@@ -1,0 +1,59 @@
+========================================================================
+[NiFe]-hydrogenase + H2 pilot run: analysis summary
+========================================================================
+atoms 47849 | protein 12280 | cofactor 33 | H2 sites 58 (29 molecules) | water 11826 molecules
+production: steps 30205 -> 280205 (250 ps), 2500 samples every 0.10 ps
+
+--- H2 temperature (rigid 2-site, rigid/nvt/small) ---
+<T_H2> = 305.5 K, SD = 35.6 K; canonical SD for 145 DOF = 35.2 K
+tau_int = 0.07 ps, N_eff ~ 1880, SEM ~ 0.8 K
+
+--- H2 MSD and diffusion (single time origin, all 29 H2 pooled) ---
+D_x     =  6.48 x 1e-9 m^2/s  (fit 20-150 ps, R^2 = 0.907)
+D_y     =  3.97 x 1e-9 m^2/s  (fit 20-150 ps, R^2 = 0.760)
+D_z     =  5.24 x 1e-9 m^2/s  (fit 20-150 ps, R^2 = 0.943)
+D_total =  5.23 x 1e-9 m^2/s  (fit 20-150 ps, R^2 = 0.944)
+fit-window sensitivity of D_total (1e-9 m^2/s): 10-100 ps: 5.87, 20-150 ps: 5.23, 50-200 ps: 6.76, 100-250 ps: 7.62
+log-log slope alpha (1-200 ps) = 0.83  (1 = Fickian)
+
+--- H2-protein contacts (H2 sites within 4.5 A of any protein atom) ---
+<N_contact> = 7.06 of 58 sites (12.2 %), range 2-20
+integrated autocorrelation time of N_contact = 9.8 ps (collective proxy, NOT the per-molecule residence time)
+N_pocket > 0 in 1 of 2500 samples (0.04 %)
+
+--- closest H2 site to the active-site metals (PBC minimum image) ---
+min dist to Ni: mean 17.6 A, median 17.4 A, closest 5.65 A at t = 100.5 ps; < 10 A in 6.1 % of samples
+min dist to Fe: mean 19.6 A, median 19.5 A, closest 7.07 A at t = 100.5 ps; < 10 A in 1.8 % of samples
+quarter means of minDist_Ni (A): 17.7, 16.3, 19.1, 17.1
+
+--- protein stability ---
+Rg: 24.93 +/- 0.037 A; drift first->last 10 % : 24.878 -> 24.944 A
+RMSD proxy (no superposition): final 2.38 A; last-50-ps mean 2.42 A
+
+--- NPT equilibration trajectory: 10 frames, steps 7500-30000 ---
+  step   7500: V =    500522 A^3, rho = 1.0027 g/cm3, Rg = 24.87 A, heavy-atom RMSD vs first = 0.00 A, closest H2-Ni = 19.6 A
+  step  10000: V =    494716 A^3, rho = 1.0144 g/cm3, Rg = 24.81 A, heavy-atom RMSD vs first = 0.70 A, closest H2-Ni = 19.7 A
+  step  12500: V =    489467 A^3, rho = 1.0253 g/cm3, Rg = 24.81 A, heavy-atom RMSD vs first = 0.80 A, closest H2-Ni = 19.5 A
+  step  15000: V =    490294 A^3, rho = 1.0236 g/cm3, Rg = 24.83 A, heavy-atom RMSD vs first = 0.83 A, closest H2-Ni = 18.7 A
+  step  17500: V =    487579 A^3, rho = 1.0293 g/cm3, Rg = 24.82 A, heavy-atom RMSD vs first = 0.85 A, closest H2-Ni = 19.7 A
+  step  20000: V =    487526 A^3, rho = 1.0294 g/cm3, Rg = 24.82 A, heavy-atom RMSD vs first = 0.86 A, closest H2-Ni = 21.1 A
+  step  22500: V =    486155 A^3, rho = 1.0323 g/cm3, Rg = 24.79 A, heavy-atom RMSD vs first = 0.93 A, closest H2-Ni = 19.7 A
+  step  25000: V =    483230 A^3, rho = 1.0385 g/cm3, Rg = 24.80 A, heavy-atom RMSD vs first = 0.92 A, closest H2-Ni = 27.2 A
+  step  27500: V =    483917 A^3, rho = 1.0371 g/cm3, Rg = 24.79 A, heavy-atom RMSD vs first = 0.93 A, closest H2-Ni = 27.2 A
+  step  30000: V =    483272 A^3, rho = 1.0384 g/cm3, Rg = 24.83 A, heavy-atom RMSD vs first = 0.97 A, closest H2-Ni = 27.7 A
+
+--- final configuration (write_data) ---
+box 77.02 x 78.67 x 79.77 A, rho = 1.0384 g/cm3
+protein heavy-atom RMSD with Kabsch superposition: end-NPT -> final = 1.20 A; first NPT frame -> final = 1.31 A
+protein COM translation over production (unwrapped) = 0.93 A (RMSD proxy contains this, Kabsch RMSD does not)
+Rg from final coordinates = 24.92 A
+protein+cofactor extent 67.4 x 72.2 x 74.6 A vs box; closest approach to its own periodic image = 10.7 A (shift (0, -1, 0))
+H-H bond length: mean 3.0362 A, range 2.0825-3.3199 A (target 0.741)
+  -> 2^(1/6)*sigma_H2 = 3.322 A = LJ minimum: with no H-H bond/exclusion the two sites repelled each other during the (pre-rigid) minimization and fix rigid/small then froze that separation. The 'H2' simulated is a ~3 A dumbbell, not H2.
+H2 classification at the final frame: 2 buried (no water O within 3.5 A, >40 protein atoms within 8 A), 1 at the surface (<4.5 A of protein), 26 in water
+per-molecule (mol, d_Ni, d_protein, waterO<3.5A, protein atoms<8A): 4:39.3,4.9,3,14; 5:36.9,10.4,3,0; 6:35.2,5.4,2,6; 7:33.3,6.5,0,10; 8:44.4,14.4,0,0; 9:35.6,5.9,2,22; 10:33.3,5.9,3,11; 11:55.1,25.1,0,0; 12:38.0,13.4,3,0; 13:39.4,12.5,2,0; 14:50.6,16.3,5,0; 15:40.7,12.9,1,0; 16:45.6,11.0,1,0; 17:17.1,2.2,0,191; 18:42.8,12.6,1,0; 19:44.5,14.1,4,0; 20:37.4,3.4,3,92; 21:46.9,7.8,3,1; 22:45.1,12.7,2,0; 23:41.7,10.9,4,0; 24:39.6,11.9,4,0; 25:50.1,15.1,4,0; 26:56.1,24.0,2,0; 27:43.4,8.2,2,0; 28:33.9,3.2,0,44; 29:40.2,6.8,5,7; 30:51.4,15.6,3,0; 31:48.7,20.1,3,0; 32:32.4,4.9,1,17
+kinetic T from final velocities: water 301.9 K (6 DOF/molecule, SHAKE), protein+cofactors 296.2 K, H2 257.5 K (5 DOF/molecule)
+net charge of cofactor atoms: 0.000 e; atoms with q = 0 among cofactors: 33/33
+total system charge: -7.0000 e
+water density vs distance from nearest protein atom (g/cm3): 0-1A:0.00, 1-2A:0.08, 2-3A:1.12, 3-4A:0.97, 4-5A:0.90, 5-6A:0.95, 6-7A:0.96, 7-8A:0.94, 8-9A:0.99, 9-10A:0.91, 10-11A:0.98, 11-12A:0.91, 12-13A:0.98, 13-14A:0.95, 14-15A:0.99, 15-16A:0.92, 16-17A:0.93, 17-18A:0.98, 18-19A:1.03, 19-20A:0.92, 20-21A:0.94
+largest distance of any point in the box from the protein = 33.7 A
