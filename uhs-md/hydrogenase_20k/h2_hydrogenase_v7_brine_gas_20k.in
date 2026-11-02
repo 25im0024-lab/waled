@@ -1,0 +1,328 @@
+########################################################################
+# LAMMPS input script (v7-20k) - [NiFe]-hydrogenase in a BRINE FILM
+#                                 + H2 / N2 / CH4 / CO2 GAS PHASE
+# Data   : system_protein_brine_gas_20k.data   (20,000 atoms, net charge 0)
+# Units  : real
+#
+# COMPOSITION
+#   ids 1-12312  [NiFe]-hydrogenase 1H2R (12,280 protein atoms, mol 1-2)
+#                + Ni-Fe/Fe-S/Mg cofactors (32 atoms, mol 3)
+#                -> COPIED UNCHANGED from v6 (same ids, types, charges,
+#                   coordinates, bonds/angles/dihedrals; Ni = 12305, Fe = 12306)
+#   ids 12313-12370  29 H2 (58 sites, type 21), v6 coordinates
+#   REMOVED: v6 atom 12341, a build artifact (type-20 "O" with no bonds,
+#            0.741 A = H-H length from cofactor O 12312; not in 1H2R).
+#            Its overlap gave ~1e7 kcal/mol of the v6 starting energy.
+#   brine film   2,278 TIP3P H2O + 51 Na+ + 44 Cl-   (types 22-25)
+#                = 44 NaCl pairs (1.07 mol/kg) + 7 Na+ neutralising protein (-7 e)
+#                hydration h = 0.46 g water / g protein (89.1 kDa)
+#   cushion gas  100 N2  (TraPPE 3-site rigid, types 29/30)
+#                101 CH4 (TraPPE-UA 1 site, type 26)
+#                100 CO2 (TraPPE 3-site rigid, types 27/28)
+#   => 330 gas molecules incl. H2 in the 79.5 x 81.2 x 82.3 A box
+#      (H2 : N2 : CH4 : CO2 = 29 : 100 : 101 : 100)
+#
+# WHY A BRINE FILM AND NOT A FULLY SOLVATED BOX (read this)
+#   Protein + cofactors are 12,312 atoms and ~68 x 69 x 70 A. Filling the
+#   v6 box with liquid needed ~35,500 water atoms. With a 20,000-atom cap
+#   only ~7,600 atoms are left, so full solvation is impossible. The
+#   2,278 waters nearest the protein (all within 6.7 A of a heavy atom)
+#   were kept as a hydration film and the rest of the box is gas: a
+#   protein wetted by brine and exposed to a gas-filled pore. This is a
+#   water-limited model (h = 0.46 g/g, near the ~0.4 g/g level usually
+#   quoted for a complete first hydration shell). It is NOT a dilute
+#   aqueous protein; do not compare its protein dynamics to bulk-solution MD.
+#
+# WHY NVT ONLY (no NPT stage as in v6)
+#   The box holds a gas phase. An isotropic barostat would act mainly on
+#   the highly compressible gas, giving large, slow volume swings and
+#   rescaling the protein with it. Pressure is therefore set by the gas
+#   loading (ideal-gas estimate for 330 molecules in ~3e5 A^3 of free
+#   volume: ~5 MPa at 300 K) and reported, not controlled.
+########################################################################
+
+# ==================== USER SETTINGS ====================
+variable        TEMP    index 300.0     # K
+variable        SEED    index 12345
+variable        NWARM   index 20000     # 0.5 fs steps, strong protein restraint
+variable        NRELAX  index 10000     # 1.0 fs steps, weak protein restraint
+variable        NEQ     index 40000     # 1.0 fs steps, unrestrained NVT
+variable        NPROD   index 250000    # 1.0 fs steps, production (250 ps)
+variable        LIGFIX  index 1         # 1 = bond the 3 Fe-ligand O atoms (see below)
+
+# ==================== INITIALIZATION ====================
+units           real
+atom_style      full
+boundary        p p p
+
+bond_style      harmonic
+angle_style     harmonic
+dihedral_style  fourier
+
+pair_style      lj/cut/coul/long 12.0 12.0
+pair_modify     mix arithmetic
+# ^ CHANGE vs v6: v6 had no pair_modify line, so LAMMPS used its default
+#   GEOMETRIC sigma mixing. AMBER, TIP3P, Joung-Cheatham ions and TraPPE
+#   are all parameterised with Lorentz-Berthelot (arithmetic sigma,
+#   geometric epsilon) cross terms, so arithmetic is the consistent choice.
+#   Protein parameters themselves are not changed.
+kspace_style    pppm 1.0e-4
+special_bonds   amber
+
+read_data       system_protein_brine_gas_20k.data extra/bond/per/atom 2 extra/special/per/atom 6
+
+# ==================== ACTIVE-SITE LIGAND FIX (LIGFIX) ====================
+# In the v6 enzyme topology the O atoms of the Fe-bound diatomic ligands
+# (C 12307-O 12310, C 12308-O 12311, bridging S 12309-O 12312) have NO
+# bond, so they feel full LJ repulsion from their partner at 1.2-1.5 A
+# (~35,000 kcal/mol each) and are blown off the active site during
+# minimisation. LIGFIX=1 adds the 3 missing bonds at their crystal
+# lengths (types 89/90, generic K; no Fe-C-O angle term). The data file
+# itself is not changed. Run with  -var LIGFIX 0  to reproduce v6 exactly.
+if "${LIGFIX} == 1" then &
+   "create_bonds    single/bond 89 12307 12310 special no" &
+   "create_bonds    single/bond 89 12308 12311 special no" &
+   "create_bonds    single/bond 90 12309 12312 special yes" &
+   "print           'LIGFIX: 3 active-site ligand bonds created'"
+
+# ==================== GROUPS / VERIFICATION ====================
+group           protein    molecule 1 2
+group           cofactors  type 15 16 17 18 19 20
+group           h2         type 21
+group           water      type 22 23
+group           na         type 24
+group           cl         type 25
+group           ions       union na cl
+group           brine      union water ions
+group           ch4        type 26
+group           co2        type 27 28
+group           co2C       type 27
+group           n2         type 29 30
+group           n2M        type 30
+group           cushion    union ch4 co2 n2
+group           gases      union h2 cushion
+group           gasCentre  union co2C n2M ch4
+group           rigidgas   union h2 co2 n2
+group           solute     subtract all water ions cushion
+group           protHeavy  type 1 3 5 6 9 10 15 16 17 18 19 20
+group           NiAtom     id 12305
+group           FeActive   id 12306
+group           NiFeCenter id 12305 12306
+
+# H2, N2 and CO2 are rigid bodies (fix rigid/nvt/small). LAMMPS forbids a
+# second integrator on the same atoms, so everything else (protein,
+# cofactors, water, ions, CH4) is integrated by fix nvt on this group.
+group           integrate_normal subtract all rigidgas
+
+variable        nProtein  equal count(protein)
+variable        nCofactor equal count(cofactors)
+variable        nH2       equal count(h2)/2
+variable        nWater    equal count(water)/3
+variable        nNa       equal count(na)
+variable        nCl       equal count(cl)
+variable        nCH4      equal count(ch4)
+variable        nCO2      equal count(co2)/3
+variable        nN2       equal count(n2)/3
+variable        nAll      equal count(all)
+variable        qTot      equal charge(all)
+print           "==== GROUP CHECK ===================================="
+print           "protein atoms   : ${nProtein}   (expect 12280)"
+print           "cofactor atoms  : ${nCofactor}  (expect 32)"
+print           "H2 molecules    : ${nH2}        (expect 29)"
+print           "water molecules : ${nWater}     (expect 2278)"
+print           "Na+ / Cl-       : ${nNa} / ${nCl} (expect 51 / 44)"
+print           "N2 / CH4 / CO2  : ${nN2} / ${nCH4} / ${nCO2} (expect 100 / 101 / 100)"
+print           "TOTAL atoms     : ${nAll}      (expect 20000)"
+print           "net charge      : ${qTot}      (expect 0)"
+print           "======================================================"
+
+# ==================== BONDED METAL CENTER (unchanged from v5/v6) ==========
+# Real crystal geometry (53 bonds, 120 angles), generic force constants.
+# Validated replacement: Smith, Xiong, Straatsma, Rosso, Squier,
+# J. Chem. Theory Comput. 2012, 8, 2103-2114, doi:10.1021/ct300185u
+# (GROMACS files via Sohraby & Nunes-Alves, J. Chem. Inf. Model. 2024,
+#  64, 4193-4203; doi:10.5281/zenodo.11033626). Not applied here.
+
+neighbor        2.0 bin
+neigh_modify    every 1 delay 0 check yes
+
+thermo          100
+thermo_style    custom step temp press pe etotal
+thermo_modify   norm no flush yes
+
+# ==================== MINIMIZATION ====================
+# Gas molecules are held fixed: they were inserted with ideal TraPPE /
+# 0.741 A geometry and only angle-free bonds, so letting them relax here
+# would bend CO2/N2 before the rigid-body fix takes over.
+# H2 now has an H-H bond (type 86). In v6 it had none, so the two sites of
+# each H2 felt full LJ repulsion at 0.741 A (~4.9e7 kcal/mol in total) and
+# drifted apart during minimisation; the bond excludes that pair via
+# special_bonds and does nothing else (H2 is a rigid body).
+fix             fFreezeGas gases setforce 0.0 0.0 0.0
+# Water is minimised FLEXIBLE (TIP3P bond 85 / angle 145 terms in the data
+# file); SHAKE is switched on only afterwards. With SHAKE active the CG line
+# search stalls and the etol criterion ends minimisation after ~10
+# iterations with a large residual force (that is what v6 did). etol = 0
+# so only ftol / maxiter stop it.
+min_style       cg
+minimize        0.0 10.0 5000 50000
+unfix           fFreezeGas
+reset_timestep  0
+
+# ==================== CONSTRAINTS ====================
+fix             fShake water shake 0.0001 20 0 b 85 a 145
+
+# ==================== RIGID GASES (one fix for all stages) ====================
+# NVT throughout, so one rigid thermostat can stay on for the whole run.
+fix             fRigid rigidgas rigid/nvt/small molecule temp ${TEMP} ${TEMP} 100.0
+
+velocity        all create ${TEMP} ${SEED} mom yes rot no dist gaussian
+
+# ==================== EQUILIBRATION 1: 10 ps, dt 0.5 fs, K = 10 ===========
+# The protein lost most of its surrounding water; position restraints on
+# heavy atoms let the brine film and gas relax around it first.
+timestep        0.5
+fix             fMOM  integrate_normal momentum 100 linear 1 1 1
+fix             fNVT  integrate_normal nvt temp ${TEMP} ${TEMP} 100.0
+fix             fRestr protHeavy spring/self 10.0
+dump            dWarm all custom 2000 warmup.lammpstrj id type mol x y z
+dump_modify     dWarm sort id
+run             ${NWARM}
+undump          dWarm
+unfix           fRestr
+
+# ==================== EQUILIBRATION 2: 10 ps, dt 1 fs, K = 2 ==============
+timestep        1.0
+fix             fRestr protHeavy spring/self 2.0
+run             ${NRELAX}
+unfix           fRestr
+
+# ==================== EQUILIBRATION 3: 40 ps unrestrained NVT =============
+thermo          500
+dump            dEQ all custom 5000 equil.lammpstrj id type mol x y z
+dump_modify     dEQ sort id
+run             ${NEQ}
+undump          dEQ
+unfix           fMOM      # momentum correction OFF for production (as v6)
+
+# ==================== PRODUCTION ANALYSIS ====================
+# ---- temperatures / MSD per gas ----
+compute         cTempH2  h2 temp
+compute         cMSD     h2 msd
+compute         cMSDco2  co2C msd
+compute         cMSDn2   n2M msd
+compute         cMSDch4  ch4 msd
+
+# ---- H2-protein contacts (same definition as v6) ----
+variable        ADS_CUTOFF equal 4.5
+compute         cContact   h2 coord/atom cutoff ${ADS_CUTOFF} group protein
+variable        vIsContact atom "c_cContact > 0"
+compute         cNcontact  h2 reduce sum v_vIsContact
+
+# ---- cushion-gas-protein contacts (centre site within 5.0 A of protein) ----
+# Centre sites: C of CO2, centre site of N2, CH4 bead. 5.0 A instead of 4.5
+# because the CO2 O / N2 N sites stick out 0.55-1.16 A from the centre.
+variable        GAS_CUTOFF equal 5.0
+compute         cContactG  gasCentre coord/atom cutoff ${GAS_CUTOFF} group protein
+variable        vIsContactG atom "c_cContactG > 0"
+variable        vConCO2 atom "v_vIsContactG*(type==27)"
+variable        vConN2  atom "v_vIsContactG*(type==30)"
+variable        vConCH4 atom "v_vIsContactG*(type==26)"
+compute         cNconCO2 gasCentre reduce sum v_vConCO2
+compute         cNconN2  gasCentre reduce sum v_vConN2
+compute         cNconCH4 gasCentre reduce sum v_vConCH4
+
+# ---- distances to Ni / Fe (PBC-aware minimum image, as v6) ----
+compute         cComNi  NiAtom com
+variable        xNi     equal c_cComNi[1]
+variable        yNi     equal c_cComNi[2]
+variable        zNi     equal c_cComNi[3]
+variable        vDistNi atom "sqrt( (x-v_xNi-lx*round((x-v_xNi)/lx))^2 + (y-v_yNi-ly*round((y-v_yNi)/ly))^2 + (z-v_zNi-lz*round((z-v_zNi)/lz))^2 )"
+compute         cMinDNi h2 reduce min v_vDistNi
+compute         cMinDNiCO2 co2C reduce min v_vDistNi
+compute         cMinDNiN2  n2M  reduce min v_vDistNi
+compute         cMinDNiCH4 ch4  reduce min v_vDistNi
+
+compute         cComFe  FeActive com
+variable        xFe     equal c_cComFe[1]
+variable        yFe     equal c_cComFe[2]
+variable        zFe     equal c_cComFe[3]
+variable        vDistFe atom "sqrt( (x-v_xFe-lx*round((x-v_xFe)/lx))^2 + (y-v_yFe-ly*round((y-v_yFe)/ly))^2 + (z-v_zFe-lz*round((z-v_zFe)/lz))^2 )"
+compute         cMinDFe h2 reduce min v_vDistFe
+
+# ---- active-site pocket occupancy (6 A from Ni or Fe) ----
+variable        POCKET_RADIUS equal 6.0
+compute         cPocket    h2 coord/atom cutoff ${POCKET_RADIUS} group NiFeCenter
+variable        vInPocket  atom "c_cPocket > 0"
+compute         cNpocket   h2 reduce sum v_vInPocket
+compute         cPocketG   gasCentre coord/atom cutoff ${POCKET_RADIUS} group NiFeCenter
+variable        vInPocketG atom "c_cPocketG > 0"
+variable        vPocCO2 atom "v_vInPocketG*(type==27)"
+variable        vPocN2  atom "v_vInPocketG*(type==30)"
+variable        vPocCH4 atom "v_vInPocketG*(type==26)"
+compute         cNpocCO2 gasCentre reduce sum v_vPocCO2
+compute         cNpocN2  gasCentre reduce sum v_vPocN2
+compute         cNpocCH4 gasCentre reduce sum v_vPocCH4
+
+# ---- protein stability: Rg + RMSD proxy (no Kabsch fit, as v6) ----
+compute         cRg protein gyration
+compute         cDisp protein displace/atom
+variable        vDispSq  atom "c_cDisp[4]^2"
+compute         cSumDispSq protein reduce sum v_vDispSq
+variable        rmsdProxy equal sqrt(c_cSumDispSq/v_nProtein)
+
+# ---- RDFs: gas-protein (types 1-14) and gas-water oxygen (type 22) ----
+#  cols: H2-prot  CO2C-prot  N2M-prot  CH4-prot  H2-Ow  CO2C-Ow  N2M-Ow  CH4-Ow  Na-Cl
+compute         cRDF all rdf 120 21 1*14 27 1*14 30 1*14 26 1*14 21 22 27 22 30 22 26 22 24 25
+fix             fRDF all ave/time 1000 1 1000 c_cRDF[*] file gas_rdf.dat mode vector
+
+# ---- residence-time state dumps (post-process with run-length encoding) ----
+dump            dResidence h2 custom 100 h2_residence_state.dump id mol v_vIsContact v_vInPocket
+dump_modify     dResidence sort id
+dump            dResidenceG gasCentre custom 100 gas_residence_state.dump id mol type v_vIsContactG v_vInPocketG
+dump_modify     dResidenceG sort id
+
+thermo          500
+thermo_style    custom step temp c_cTempH2 press pe etotal &
+                c_cNcontact c_cNpocket c_cMinDNi c_cMinDFe &
+                c_cNconCO2 c_cNconN2 c_cNconCH4 c_cNpocCO2 c_cNpocN2 c_cNpocCH4 &
+                c_cRg v_rmsdProxy
+
+fix             fSeries all ave/time 100 1 100 c_cTempH2 c_cNcontact c_cNpocket c_cMinDNi c_cMinDFe &
+                c_cMSD[4] c_cMSDco2[4] c_cMSDn2[4] c_cMSDch4[4] &
+                c_cNconCO2 c_cNconN2 c_cNconCH4 c_cNpocCO2 c_cNpocN2 c_cNpocCH4 &
+                c_cMinDNiCO2 c_cMinDNiN2 c_cMinDNiCH4 c_cRg v_rmsdProxy &
+                file gas_timeseries.dat &
+                title1 "# step T_H2 Ncontact_H2(sites) Npocket_H2(sites) minDNi_H2 minDFe_H2 MSD_H2 MSD_CO2 MSD_N2 MSD_CH4 Ncon_CO2 Ncon_N2 Ncon_CH4 Npoc_CO2 Npoc_N2 Npoc_CH4 minDNi_CO2 minDNi_N2 minDNi_CH4 Rg RMSDproxy  (A, A^2, K)"
+
+dump            dProd all custom 5000 production.lammpstrj id type mol x y z
+dump_modify     dProd sort id
+
+# ==================== PRODUCTION: 250 ps NVT ====================
+run             ${NPROD}
+
+write_data      final_config_20k.data
+write_restart   final_config_20k.restart
+
+print           "Done. Time series: gas_timeseries.dat   RDFs: gas_rdf.dat"
+print           "Residence states: h2_residence_state.dump, gas_residence_state.dump"
+
+########################################################################
+# CAVEATS
+#  - Water-limited model (see header): protein is hydrated by a ~1-layer
+#    brine film, not bulk solution. Gas molecules can reach dry protein
+#    patches directly; contact counts will be higher than in bulk water.
+#  - Metal-centre force constants are generic (see note above).
+#  - H2 site LJ (eps 0.0256, sigma 2.96 per site) is the v6 placeholder
+#    split, not a literature-fitted 2-site model.
+#  - Ions: Joung & Cheatham, J. Phys. Chem. B 2008, 112, 9020-9041,
+#    doi:10.1021/jp8001614 (TIP3P-specific set).
+#    Gases: TraPPE - CO2/N2: Potoff & Siepmann, AIChE J. 2001, 47,
+#    1676-1682, doi:10.1002/aic.690470719; CH4: Martin & Siepmann,
+#    J. Phys. Chem. B 1998, 102, 2569-2577, doi:10.1021/jp972543+.
+#    TraPPE was fitted for gas/fluid-phase equilibria; its cross terms with
+#    AMBER/TIP3P via Lorentz-Berthelot are a standard but unvalidated mix.
+#  - 300 K and ~5 MPa are below typical UHS reservoir conditions
+#    (often 320-360 K, 5-20 MPa); raise TEMP / add gas if you need those.
+#  - RMSD proxy has no optimal superposition.
+########################################################################
