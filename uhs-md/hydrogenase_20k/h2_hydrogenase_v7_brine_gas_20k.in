@@ -13,41 +13,50 @@
 #   REMOVED: v6 atom 12341, a build artifact (type-20 "O" with no bonds,
 #            0.741 A = H-H length from cofactor O 12312; not in 1H2R).
 #            Its overlap gave ~1e7 kcal/mol of the v6 starting energy.
-#   brine film   2,278 TIP3P H2O + 51 Na+ + 44 Cl-   (types 22-25)
-#                = 44 NaCl pairs (1.07 mol/kg) + 7 Na+ neutralising protein (-7 e)
-#                hydration h = 0.46 g water / g protein (89.1 kDa)
-#   cushion gas  100 N2  (TraPPE 3-site rigid, types 29/30)
-#                101 CH4 (TraPPE-UA 1 site, type 26)
-#                100 CO2 (TraPPE 3-site rigid, types 27/28)
-#   => 330 gas molecules incl. H2 in the 79.5 x 81.2 x 82.3 A box
-#      (H2 : N2 : CH4 : CO2 = 29 : 100 : 101 : 100)
+#   brine film   1,533 TIP3P H2O + 35 Na+ + 28 Cl-   (types 22-25)
+#                = 28 NaCl pairs (1.01 mol/kg) + 7 Na+ neutralising protein (-7 e)
+#                hydration h = 0.31 g water / g protein (89.1 kDa)
+#   cushion gas  424 N2  (TraPPE 3-site rigid, types 29/30)
+#                424 CH4 (TraPPE-UA 1 site, type 26)
+#                424 CO2 (TraPPE 3-site rigid, types 27/28)
+#   => 1,301 gas molecules incl. H2 in the 79.5 x 81.2 x 82.3 A start box
+#      (H2 : N2 : CH4 : CO2 = 29 : 424 : 424 : 424)
+#
+# CONDITIONS: T = 353.15 K (80 degC), P = 20 MPa (197.38 atm)
+#   The gas loading was set in build_20k.py so that the gas phase starts at
+#   the mixture density at 353.15 K / 20 MPa (CoolProp HEOS, Z = 0.919) in the
+#   free volume left by protein + brine (2.9e5 A^3, voxels >= 3 A from any
+#   non-gas atom). The NPT stages below then hold 20 MPa with a barostat, so
+#   the box corrects any error in that estimate (adsorption on the protein,
+#   gas dissolved in brine, TraPPE vs real-gas EOS).
 #
 # WHY A BRINE FILM AND NOT A FULLY SOLVATED BOX (read this)
 #   Protein + cofactors are 12,312 atoms and ~68 x 69 x 70 A. Filling the
 #   v6 box with liquid needed ~35,500 water atoms. With a 20,000-atom cap
 #   only ~7,600 atoms are left, so full solvation is impossible. The
-#   2,278 waters nearest the protein (all within 6.7 A of a heavy atom)
+#   1,533 waters nearest the protein (all within 5.6 A of a heavy atom)
 #   were kept as a hydration film and the rest of the box is gas: a
-#   protein wetted by brine and exposed to a gas-filled pore. This is a
-#   water-limited model (h = 0.46 g/g, near the ~0.4 g/g level usually
-#   quoted for a complete first hydration shell). It is NOT a dilute
-#   aqueous protein; do not compare its protein dynamics to bulk-solution MD.
+#   protein wetted by brine and exposed to a gas-filled pore. At 20 MPa the
+#   gas needs 2,968 atoms, so the film is thinner than one complete
+#   hydration layer (h = 0.31 g/g, below the ~0.4 g/g usually quoted for a
+#   full first shell). It is NOT a dilute aqueous protein; do not compare
+#   its protein dynamics to bulk-solution MD.
 #
-# WHY NVT ONLY (no NPT stage as in v6)
-#   The box holds a gas phase. An isotropic barostat would act mainly on
-#   the highly compressible gas, giving large, slow volume swings and
-#   rescaling the protein with it. Pressure is therefore set by the gas
-#   loading (ideal-gas estimate for 330 molecules in ~3e5 A^3 of free
-#   volume: ~5 MPa at 300 K) and reported, not controlled.
+# BAROSTAT NOTE
+#   Rigid gases are integrated by fix rigid/nvt/small, everything else by
+#   fix npt. fix npt's own pressure would only count the kinetic energy of
+#   its group and miss the rigid gas molecules (most of the gas), so it is
+#   given the full-system pressure (cPressAll) with fix_modify.
 ########################################################################
 
 # ==================== USER SETTINGS ====================
-variable        TEMP    index 300.0     # K
+variable        TEMP    index 353.15    # K   (80 degC)
+variable        PRESS   index 197.385   # atm (20 MPa; LAMMPS real units use atm)
 variable        SEED    index 12345
-variable        NWARM   index 20000     # 0.5 fs steps, strong protein restraint
-variable        NRELAX  index 10000     # 1.0 fs steps, weak protein restraint
-variable        NEQ     index 40000     # 1.0 fs steps, unrestrained NVT
-variable        NPROD   index 250000    # 1.0 fs steps, production (250 ps)
+variable        NWARM   index 20000     # 0.5 fs steps, NVT, strong protein restraint
+variable        NRELAX  index 10000     # 1.0 fs steps, NVT, weak protein restraint
+variable        NEQ     index 100000    # 1.0 fs steps, NPT 20 MPa equilibration (100 ps)
+variable        NPROD   index 250000    # 1.0 fs steps, NPT 20 MPa production (250 ps)
 variable        LIGFIX  index 1         # 1 = bond the 3 Fe-ligand O atoms (see below)
 
 # ==================== INITIALIZATION ====================
@@ -129,9 +138,9 @@ print           "==== GROUP CHECK ===================================="
 print           "protein atoms   : ${nProtein}   (expect 12280)"
 print           "cofactor atoms  : ${nCofactor}  (expect 32)"
 print           "H2 molecules    : ${nH2}        (expect 29)"
-print           "water molecules : ${nWater}     (expect 2278)"
-print           "Na+ / Cl-       : ${nNa} / ${nCl} (expect 51 / 44)"
-print           "N2 / CH4 / CO2  : ${nN2} / ${nCH4} / ${nCO2} (expect 100 / 101 / 100)"
+print           "water molecules : ${nWater}     (expect 1533)"
+print           "Na+ / Cl-       : ${nNa} / ${nCl} (expect 35 / 28)"
+print           "N2 / CH4 / CO2  : ${nN2} / ${nCH4} / ${nCO2} (expect 424 each)"
 print           "TOTAL atoms     : ${nAll}      (expect 20000)"
 print           "net charge      : ${qTot}      (expect 0)"
 print           "======================================================"
@@ -173,7 +182,9 @@ reset_timestep  0
 fix             fShake water shake 0.0001 20 0 b 85 a 145
 
 # ==================== RIGID GASES (one fix for all stages) ====================
-# NVT throughout, so one rigid thermostat can stay on for the whole run.
+# One rigid thermostat for the whole run. It is defined BEFORE fix npt, as
+# LAMMPS requires; fix npt "dilate all" then rescales the rigid-body centres
+# too, so the gases follow the box without a second barostat.
 fix             fRigid rigidgas rigid/nvt/small molecule temp ${TEMP} ${TEMP} 100.0
 
 velocity        all create ${TEMP} ${SEED} mom yes rot no dist gaussian
@@ -197,8 +208,13 @@ fix             fRestr protHeavy spring/self 2.0
 run             ${NRELAX}
 unfix           fRestr
 
-# ==================== EQUILIBRATION 3: 40 ps unrestrained NVT =============
+# ==================== EQUILIBRATION 3: 100 ps NPT at 20 MPa ================
+unfix           fNVT
+compute         cPressAll all pressure thermo_temp
+fix             fNPT  integrate_normal npt temp ${TEMP} ${TEMP} 100.0 iso ${PRESS} ${PRESS} 1000.0 dilate all
+fix_modify      fNPT  press cPressAll
 thermo          500
+thermo_style    custom step temp press vol lx pe etotal
 dump            dEQ all custom 5000 equil.lammpstrj id type mol x y z
 dump_modify     dEQ sort id
 run             ${NEQ}
@@ -264,6 +280,10 @@ compute         cNpocCO2 gasCentre reduce sum v_vPocCO2
 compute         cNpocN2  gasCentre reduce sum v_vPocN2
 compute         cNpocCH4 gasCentre reduce sum v_vPocCH4
 
+# ---- box state (NPT) ----
+variable        vPress equal press
+variable        vVol   equal vol
+
 # ---- protein stability: Rg + RMSD proxy (no Kabsch fit, as v6) ----
 compute         cRg protein gyration
 compute         cDisp protein displace/atom
@@ -283,7 +303,7 @@ dump            dResidenceG gasCentre custom 100 gas_residence_state.dump id mol
 dump_modify     dResidenceG sort id
 
 thermo          500
-thermo_style    custom step temp c_cTempH2 press pe etotal &
+thermo_style    custom step temp c_cTempH2 press vol lx pe etotal &
                 c_cNcontact c_cNpocket c_cMinDNi c_cMinDFe &
                 c_cNconCO2 c_cNconN2 c_cNconCH4 c_cNpocCO2 c_cNpocN2 c_cNpocCH4 &
                 c_cRg v_rmsdProxy
@@ -291,14 +311,16 @@ thermo_style    custom step temp c_cTempH2 press pe etotal &
 fix             fSeries all ave/time 100 1 100 c_cTempH2 c_cNcontact c_cNpocket c_cMinDNi c_cMinDFe &
                 c_cMSD[4] c_cMSDco2[4] c_cMSDn2[4] c_cMSDch4[4] &
                 c_cNconCO2 c_cNconN2 c_cNconCH4 c_cNpocCO2 c_cNpocN2 c_cNpocCH4 &
-                c_cMinDNiCO2 c_cMinDNiN2 c_cMinDNiCH4 c_cRg v_rmsdProxy &
+                c_cMinDNiCO2 c_cMinDNiN2 c_cMinDNiCH4 c_cRg v_rmsdProxy v_vPress v_vVol &
                 file gas_timeseries.dat &
-                title1 "# step T_H2 Ncontact_H2(sites) Npocket_H2(sites) minDNi_H2 minDFe_H2 MSD_H2 MSD_CO2 MSD_N2 MSD_CH4 Ncon_CO2 Ncon_N2 Ncon_CH4 Npoc_CO2 Npoc_N2 Npoc_CH4 minDNi_CO2 minDNi_N2 minDNi_CH4 Rg RMSDproxy  (A, A^2, K)"
+                title1 "# step T_H2 Ncontact_H2(sites) Npocket_H2(sites) minDNi_H2 minDFe_H2 MSD_H2 MSD_CO2 MSD_N2 MSD_CH4 Ncon_CO2 Ncon_N2 Ncon_CH4 Npoc_CO2 Npoc_N2 Npoc_CH4 minDNi_CO2 minDNi_N2 minDNi_CH4 Rg RMSDproxy P(atm) V(A^3)  (A, A^2, K)"
 
 dump            dProd all custom 5000 production.lammpstrj id type mol x y z
 dump_modify     dProd sort id
 
-# ==================== PRODUCTION: 250 ps NVT ====================
+# ==================== PRODUCTION: 250 ps NPT, 353.15 K, 20 MPa ============
+# fNPT and fRigid from equilibration stay on. Analysis distances use lx/ly/lz,
+# so they follow the box. MSD includes the small barostat dilation.
 run             ${NPROD}
 
 write_data      final_config_20k.data
@@ -322,7 +344,12 @@ print           "Residence states: h2_residence_state.dump, gas_residence_state.
 #    J. Phys. Chem. B 1998, 102, 2569-2577, doi:10.1021/jp972543+.
 #    TraPPE was fitted for gas/fluid-phase equilibria; its cross terms with
 #    AMBER/TIP3P via Lorentz-Berthelot are a standard but unvalidated mix.
-#  - 300 K and ~5 MPa are below typical UHS reservoir conditions
-#    (often 320-360 K, 5-20 MPa); raise TEMP / add gas if you need those.
+#  - 353 K: the force fields (AMBER protein, TIP3P, TraPPE) were fitted
+#    mainly near ambient conditions; TIP3P water is too mobile already at
+#    298 K. [NiFe]-hydrogenase from D. vulgaris Miyazaki F is mesophilic, so
+#    partial unfolding at 353 K over long runs is plausible - watch Rg/RMSD.
+#  - If you change TEMP/PRESS, also rebuild the data file with matching
+#    T_TARGET/P_TARGET in build_20k.py, otherwise the barostat has to
+#    change the box volume a lot.
 #  - RMSD proxy has no optimal superposition.
 ########################################################################

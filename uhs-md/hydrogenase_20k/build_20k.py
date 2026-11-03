@@ -17,7 +17,13 @@ KB = 0.0019872043  # kcal/(mol K)
 
 # ---------------- composition (edit here) ----------------
 N_TOTAL = 20000
-N_CO2, N_CH4, N_N2 = 100, 101, 100   # CH4 = 101 uses the atom freed by removing the v6 artifact
+# Reservoir conditions. The number of each cushion gas (N2 = CH4 = CO2 = n) is solved so
+# that the gas phase has the Peng-Robinson mixture density at (T, P) in the free volume
+# left by the protein + brine film. Water is reduced to keep the 20,000-atom total.
+T_TARGET = 353.15              # K  (80 degC)
+P_TARGET = 20.0e6              # Pa (20 MPa = 197.38 atm)
+FREEVOL_EXCL = 3.0             # A, voxel counts as gas space if >= this from every
+                               #    protein / cofactor / water / ion atom centre
 NACL_MOLALITY = 1.0            # mol NaCl / kg water (target, rounded to integer pairs)
 KEEP_LAST_ID = 12371           # v6 ids 1-12371 = protein + cofactors (types 1-20) + 29 H2 (type 21)
 # v6 BUILD ARTIFACT: id 12341 is typed as a cofactor O (type 20, mol 3) but has no bonds,
@@ -130,6 +136,62 @@ class Grid:
         return np.sqrt((d * d).sum(1)).min()
 
 
+# Peng-Robinson constants: Tc (K), Pc (Pa), acentric factor (CoolProp / NIST values)
+PR_CONST = {"H2": (33.145, 1.2964e6, -0.219), "N2": (126.192, 3.3958e6, 0.0372),
+            "CH4": (190.564, 4.5992e6, 0.01142), "CO2": (304.1282, 7.3773e6, 0.22394)}
+PR_ORDER = ["H2", "N2", "CH4", "CO2"]
+
+
+def pr_density(T, P, x):
+    """Peng-Robinson (1976) vapour-root number density [1/A^3] and Z for mole
+    fractions x in PR_ORDER; van der Waals one-fluid mixing, all k_ij = 0."""
+    R = 8.314462618
+    a, b = [], []
+    for name in PR_ORDER:
+        Tc, Pc, w = PR_CONST[name]
+        k = 0.37464 + 1.54226 * w - 0.26992 * w * w
+        alpha = (1 + k * (1 - np.sqrt(T / Tc))) ** 2
+        a.append(0.45724 * R * R * Tc * Tc / Pc * alpha)
+        b.append(0.07780 * R * Tc / Pc)
+    a, b = np.array(a), np.array(b)
+    am = float(x @ np.sqrt(np.outer(a, a)) @ x)
+    bm = float(x @ b)
+    A, B = am * P / (R * T) ** 2, bm * P / (R * T)
+    roots = np.roots([1.0, -(1 - B), A - 3 * B * B - 2 * B, -(A * B - B * B - B ** 3)])
+    Z = max(r.real for r in roots if abs(r.imag) < 1e-10 and r.real > B)
+    n_per_m3 = P / (Z * 1.380649e-23 * T)
+    return n_per_m3 * 1e-30, Z
+
+
+def gas_density(T, P, x):
+    """Mixture number density [1/A^3] and Z. Uses CoolProp HEOS (multi-fluid,
+    GERG-2008 / Kunz-Wagner type mixing) when installed, else Peng-Robinson."""
+    try:
+        import CoolProp.CoolProp as CP
+        names = {"H2": "Hydrogen", "N2": "Nitrogen", "CH4": "Methane", "CO2": "CarbonDioxide"}
+        fl = "&".join(f"{names[n]}[{v}]" for n, v in zip(PR_ORDER, x) if v > 0)
+        dm = CP.PropsSI("Dmolar", "T", T, "P", P, "HEOS::" + fl)
+        return dm * 6.02214076e23 * 1e-30, P / (dm * 8.314462618 * T), "CoolProp HEOS"
+    except Exception:
+        rho, Z = pr_density(T, P, x)
+        return rho, Z, "Peng-Robinson (k_ij = 0)"
+
+
+def free_voxel_volume(xyz, lo, L, rex, h=0.5):
+    """Volume (A^3) of 0.5 A voxels farther than rex from every point (periodic)."""
+    n = np.maximum(np.round(L / h).astype(int), 1)
+    occ = np.zeros(n, dtype=bool)
+    idx = np.floor(((xyz - lo) % L) / (L / n)).astype(int) % n
+    r = int(np.ceil(rex / h))
+    g = np.arange(-r, r + 1)
+    off = np.array(np.meshgrid(g, g, g, indexing="ij")).reshape(3, -1).T
+    off = off[((off * (L / n)) ** 2).sum(1) <= rex * rex]
+    for o in off:
+        j = (idx + o) % n
+        occ[j[:, 0], j[:, 1], j[:, 2]] = True
+    return (~occ).sum() * np.prod(L / n)
+
+
 def main(inp, out, seed=2026):
     rng = np.random.default_rng(seed)
     head, sec = parse(inp)
@@ -172,21 +234,6 @@ def main(inp, out, seed=2026):
     masses = {int(l.split()[0]): float(l.split()[1]) for l in sec["Masses"]}
     m_prot = sum(masses[atoms[i][1]] for i in prot_ids)
 
-    # ---- atom budget ----
-    n_gas_atoms = 3 * N_CO2 + N_CH4 + 3 * N_N2
-    free = N_TOTAL - len(keep) - n_gas_atoms - n_cation_extra   # = 3W + 2*Npair
-    # Npair ~= molality * W * 0.018015
-    W = int(free / (3 + 2 * NACL_MOLALITY * 0.0180153))
-    while True:
-        npair = (free - 3 * W) // 2
-        if (free - 3 * W) % 2 == 0 and npair >= 0:
-            break
-        W -= 1
-    n_na, n_cl = npair + n_cation_extra, npair
-    n_ion = n_na + n_cl
-    print(f"water W={W}  NaCl pairs={npair}  Na+={n_na} Cl-={n_cl}  "
-          f"molality={npair / (W * 0.0180153):.3f} mol/kg")
-
     # ---- waters: rank by distance to protein heavy atoms ----
     heavy = np.array([keep[i][3] for i in prot_ids if keep[i][1] in HEAVY_PROTEIN_TYPES])
     waters = []  # (O id, H id, H id)
@@ -203,6 +250,44 @@ def main(inp, out, seed=2026):
         d -= L * np.round(d / L)
         dmin = np.minimum(dmin, np.sqrt((d * d).sum(-1)).min(1))
     order = np.argsort(dmin)
+
+    # ---- solve gas loading (n per cushion gas) and brine size together ----
+    def brine_for(n_each):
+        free = N_TOTAL - len(keep) - 7 * n_each - n_cation_extra   # = 3W + 2*Npair
+        W = int(free / (3 + 2 * NACL_MOLALITY * 0.0180153))
+        while (free - 3 * W) % 2 or free - 3 * W < 0:
+            W -= 1
+        return W, (free - 3 * W) // 2
+
+    prot_xyz = np.array([keep[i][3] for i in prot_ids])
+
+    def free_volume(nwat_sites):
+        pts = [prot_xyz]
+        for k in order[:nwat_sites]:
+            pts.append(np.array([atoms[w][3] for w in waters[k]]))
+        return free_voxel_volume(np.vstack(pts), lo, L, FREEVOL_EXCL)
+
+    n_h2 = len(h2_mols)
+    n_each = 100
+    for it in range(30):
+        W, npair = brine_for(n_each)
+        vfree = free_volume(W + 2 * npair + n_cation_extra)
+        ntot = n_h2 + 3 * n_each
+        x = np.array([n_h2, n_each, n_each, n_each]) / ntot
+        rho, Z, eos = gas_density(T_TARGET, P_TARGET, x)    # molecules / A^3
+        n_new = int(round((rho * vfree - n_h2) / 3))
+        print(f"  iter {it}: n={n_each:4d}  W={W}  Vfree={vfree:9.0f} A^3  "
+              f"rho={rho:.6f} /A^3  Z={Z:.3f}  -> n={n_new}")
+        if n_new == n_each:
+            break
+        n_each = n_new
+    N_CO2 = N_CH4 = N_N2 = n_each
+    n_na, n_cl = npair + n_cation_extra, npair
+    n_ion = n_na + n_cl
+    print(f"gas loading for {T_TARGET:.2f} K, {P_TARGET / 1e6:.1f} MPa: H2 {n_h2}, "
+          f"N2 = CH4 = CO2 = {n_each}  (Z_mix = {Z:.3f}, {eos})")
+    print(f"water W={W}  NaCl pairs={npair}  Na+={n_na} Cl-={n_cl}  "
+          f"molality={npair / (W * 0.0180153):.3f} mol/kg")
     sel = order[:W + n_ion]
     print(f"brine film: waters kept up to {dmin[sel].max():.2f} A from protein heavy atoms")
 
@@ -255,6 +340,7 @@ def main(inp, out, seed=2026):
         raise RuntimeError("gas placement failed - box too crowded")
 
     gas_mols = []   # list of (kind, [(type, xyz)])
+    print(f"placing {N_CO2} CO2, {N_N2} N2, {N_CH4} CH4 ...")
     plan = [("CO2", N_CO2), ("N2", N_N2), ("CH4", N_CH4)]
     for kind, n in plan:
         for _ in range(n):
@@ -345,7 +431,8 @@ def main(inp, out, seed=2026):
     with open(out, "w") as f:
         f.write("LAMMPS data file: [NiFe]-hydrogenase (1H2R, unchanged) + 29 H2 + NaCl brine "
                 f"film ({W} TIP3P, {n_na} Na+, {n_cl} Cl-) + cushion gas "
-                f"({N_N2} N2, {N_CH4} CH4, {N_CO2} CO2)\n\n")
+                f"({N_N2} N2, {N_CH4} CH4, {N_CO2} CO2) loaded for "
+                f"{T_TARGET:.2f} K / {P_TARGET / 1e6:.1f} MPa\n\n")
         f.write(f"{nid} atoms\n{len(bonds)} bonds\n{len(angles)} angles\n"
                 f"{len(dihed)} dihedrals\n0 impropers\n\n")
         f.write(f"30 atom types\n90 bond types\n145 angle types\n77 dihedral types\n\n")
