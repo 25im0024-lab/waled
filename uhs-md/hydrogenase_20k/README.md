@@ -2,7 +2,7 @@
 
 | File | Purpose |
 |---|---|
-| `h2_hydrogenase_v7_brine_gas_20k.in` | LAMMPS input at **353.15 K and 20 MPa**: minimisation, restrained NVT warm-up, then 100 ps NPT equilibration and 250 ps NPT production, with gas/active-site analysis |
+| `h2_hydrogenase_v7_brine_gas_20k.in` | LAMMPS input at **333.15 K and 15 MPa**: minimisation, restrained NVT warm-up, then 100 ps NPT equilibration and 250 ps NPT production, with gas/active-site analysis |
 | `system_protein_brine_gas_20k.data` | 20,000-atom data file, net charge 0 |
 | `build_20k.py` | Builds the data file from the v6 `system_protein_h2_small.data`. Gas loading is solved for `T_TARGET` and `P_TARGET` (needs numpy; uses CoolProp if installed, otherwise Peng–Robinson) |
 
@@ -12,20 +12,20 @@
 |---|---|---|---|
 | [NiFe]-hydrogenase 1H2R + cofactors | 1 | 12,312 | v6, copied unchanged (Ni = 12305, Fe = 12306) |
 | H2 | 29 | 58 | v6 2-site rigid |
-| Water | 1,533 | 4,599 | TIP3P, SHAKE |
-| Na+ / Cl- | 35 / 28 | 63 | Joung–Cheatham 2008, TIP3P set (1.01 mol/kg NaCl + 7 Na+ counter-ions) |
-| N2 | 424 | 1,272 | TraPPE 3-site, rigid |
-| CH4 | 424 | 424 | TraPPE-UA |
-| CO2 | 424 | 1,272 | TraPPE 3-site, rigid |
+| Water | 1,725 | 5,175 | TIP3P, SHAKE |
+| Na+ / Cl- | 41 / 34 | 75 | Joung–Cheatham 2008, TIP3P set (1.09 mol/kg NaCl + 7 Na+ counter-ions) |
+| N2 | 340 | 1,020 | TraPPE 3-site, rigid |
+| CH4 | 340 | 340 | TraPPE-UA |
+| CO2 | 340 | 1,020 | TraPPE 3-site, rigid |
 | **Total** | | **20,000** | |
 
 Starting box: 79.5 × 81.2 × 82.3 Å (same as v6). The barostat adjusts it during the NPT stages.
 
-**Conditions: 353.15 K (80 °C) and 20 MPa.** The gas count is set from the mixture density at these conditions (CoolProp HEOS, Z = 0.919) in the free volume of the box. The barostat then holds 20 MPa (197.385 atm).
+**Conditions: 333.15 K (60 °C) and 15 MPa.** The gas count is set from the mixture density at these conditions (CoolProp HEOS, Z = 0.887) in the free volume of the box. The barostat then holds 15 MPa (148.038 atm).
 
 ## Design limits
 
-- **A brine film, not bulk solvent.** Fully solvating this 89 kDa enzyme needs about 35,000 water atoms, so a 20,000-atom cap leaves room only for a hydration film. At 20 MPa the gas alone needs 2,968 atoms. The kept water is therefore h = 0.31 g water per g protein, every water within 5.6 Å of a heavy atom. That is less than one complete hydration layer.
+- **A brine film, not bulk solvent.** Fully solvating this 89 kDa enzyme needs about 35,000 water atoms, so a 20,000-atom cap leaves room only for a hydration film. At 15 MPa the gas alone needs 2,380 atoms. The kept water is therefore h = 0.35 g water per g protein, every water within 5.9 Å of a heavy atom. That is less than one complete hydration layer.
 - **Pressure.** fix npt is given the full-system pressure via `fix_modify press`. Otherwise it would miss the kinetic energy of the rigid gas molecules.
 - **If you change `TEMP`/`PRESS`,** rebuild the data file with matching `T_TARGET`/`P_TARGET`.
 
