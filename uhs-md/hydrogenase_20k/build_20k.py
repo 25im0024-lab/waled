@@ -20,8 +20,8 @@ N_TOTAL = 20000
 # Reservoir conditions. The number of each cushion gas (N2 = CH4 = CO2 = n) is solved so
 # that the gas phase has the Peng-Robinson mixture density at (T, P) in the free volume
 # left by the protein + brine film. Water is reduced to keep the 20,000-atom total.
-T_TARGET = 333.15              # K  (60 degC)
-P_TARGET = 15.0e6              # Pa (15 MPa = 148.04 atm)
+T_TARGET = 313.15              # K  (40 degC)
+P_TARGET = 10.0e6              # Pa (10 MPa = 98.69 atm)
 FREEVOL_EXCL = 3.0             # A, voxel counts as gas space if >= this from every
                                #    protein / cofactor / water / ion atom centre
 NACL_MOLALITY = 1.0            # mol NaCl / kg water (target, rounded to integer pairs)

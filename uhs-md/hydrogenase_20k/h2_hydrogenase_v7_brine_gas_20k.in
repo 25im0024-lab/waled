@@ -13,20 +13,20 @@
 #   REMOVED: v6 atom 12341, a build artifact (type-20 "O" with no bonds,
 #            0.741 A = H-H length from cofactor O 12312; not in 1H2R).
 #            Its overlap gave ~1e7 kcal/mol of the v6 starting energy.
-#   brine film   1,725 TIP3P H2O + 41 Na+ + 34 Cl-   (types 22-25)
-#                = 34 NaCl pairs (1.09 mol/kg) + 7 Na+ neutralising protein (-7 e)
-#                hydration h = 0.35 g water / g protein (89.1 kDa)
-#   cushion gas  340 N2  (TraPPE 3-site rigid, types 29/30)
-#                340 CH4 (TraPPE-UA 1 site, type 26)
-#                340 CO2 (TraPPE 3-site rigid, types 27/28)
-#   => 1,049 gas molecules incl. H2 in the 79.5 x 81.2 x 82.3 A start box
-#      (H2 : N2 : CH4 : CO2 = 29 : 340 : 340 : 340)
+#   brine film   1,972 TIP3P H2O + 45 Na+ + 38 Cl-   (types 22-25)
+#                = 38 NaCl pairs (1.07 mol/kg) + 7 Na+ neutralising protein (-7 e)
+#                hydration h = 0.40 g water / g protein (89.1 kDa)
+#   cushion gas  233 N2  (TraPPE 3-site rigid, types 29/30)
+#                233 CH4 (TraPPE-UA 1 site, type 26)
+#                233 CO2 (TraPPE 3-site rigid, types 27/28)
+#   => 728 gas molecules incl. H2 in the 79.5 x 81.2 x 82.3 A start box
+#      (H2 : N2 : CH4 : CO2 = 29 : 233 : 233 : 233)
 #
-# CONDITIONS: T = 333.15 K (60 degC), P = 15 MPa (148.04 atm)
+# CONDITIONS: T = 313.15 K (40 degC), P = 10 MPa (98.69 atm)
 #   The gas loading was set in build_20k.py so that the gas phase starts at
-#   the mixture density at 333.15 K / 15 MPa (CoolProp HEOS, Z = 0.887) in the
-#   free volume left by protein + brine (2.85e5 A^3, voxels >= 3 A from any
-#   non-gas atom). The NPT stages below then hold 15 MPa with a barostat, so
+#   the mixture density at 313.15 K / 10 MPa (CoolProp HEOS, Z = 0.880) in the
+#   free volume left by protein + brine (2.77e5 A^3, voxels >= 3 A from any
+#   non-gas atom). The NPT stages below then hold 10 MPa with a barostat, so
 #   the box corrects any error in that estimate (adsorption on the protein,
 #   gas dissolved in brine, TraPPE vs real-gas EOS).
 #
@@ -34,12 +34,12 @@
 #   Protein + cofactors are 12,312 atoms and ~68 x 69 x 70 A. Filling the
 #   v6 box with liquid needed ~35,500 water atoms. With a 20,000-atom cap
 #   only ~7,600 atoms are left, so full solvation is impossible. The
-#   1,725 waters nearest the protein (all within 5.9 A of a heavy atom)
+#   1,972 waters nearest the protein (all within 6.2 A of a heavy atom)
 #   were kept as a hydration film and the rest of the box is gas: a
-#   protein wetted by brine and exposed to a gas-filled pore. At 15 MPa the
-#   gas needs 2,380 atoms, so the film is thinner than one complete
-#   hydration layer (h = 0.35 g/g, below the ~0.4 g/g usually quoted for a
-#   full first shell). It is NOT a dilute aqueous protein; do not compare
+#   protein wetted by brine and exposed to a gas-filled pore. At 10 MPa the
+#   gas needs 1,631 atoms, leaving h = 0.40 g/g, about the ~0.4 g/g usually
+#   quoted for a complete first hydration shell - i.e. roughly one water
+#   layer, not more. It is NOT a dilute aqueous protein; do not compare
 #   its protein dynamics to bulk-solution MD.
 #
 # BAROSTAT NOTE
@@ -50,13 +50,13 @@
 ########################################################################
 
 # ==================== USER SETTINGS ====================
-variable        TEMP    index 333.15    # K   (60 degC)
-variable        PRESS   index 148.038   # atm (15 MPa; LAMMPS real units use atm)
+variable        TEMP    index 313.15    # K   (40 degC)
+variable        PRESS   index 98.6923   # atm (10 MPa; LAMMPS real units use atm)
 variable        SEED    index 12345
 variable        NWARM   index 20000     # 0.5 fs steps, NVT, strong protein restraint
 variable        NRELAX  index 10000     # 1.0 fs steps, NVT, weak protein restraint
-variable        NEQ     index 100000    # 1.0 fs steps, NPT 15 MPa equilibration (100 ps)
-variable        NPROD   index 250000    # 1.0 fs steps, NPT 15 MPa production (250 ps)
+variable        NEQ     index 100000    # 1.0 fs steps, NPT 10 MPa equilibration (100 ps)
+variable        NPROD   index 250000    # 1.0 fs steps, NPT 10 MPa production (250 ps)
 variable        LIGFIX  index 1         # 1 = bond the 3 Fe-ligand O atoms (see below)
 
 # ==================== INITIALIZATION ====================
@@ -138,9 +138,9 @@ print           "==== GROUP CHECK ===================================="
 print           "protein atoms   : ${nProtein}   (expect 12280)"
 print           "cofactor atoms  : ${nCofactor}  (expect 32)"
 print           "H2 molecules    : ${nH2}        (expect 29)"
-print           "water molecules : ${nWater}     (expect 1725)"
-print           "Na+ / Cl-       : ${nNa} / ${nCl} (expect 41 / 34)"
-print           "N2 / CH4 / CO2  : ${nN2} / ${nCH4} / ${nCO2} (expect 340 each)"
+print           "water molecules : ${nWater}     (expect 1972)"
+print           "Na+ / Cl-       : ${nNa} / ${nCl} (expect 45 / 38)"
+print           "N2 / CH4 / CO2  : ${nN2} / ${nCH4} / ${nCO2} (expect 233 each)"
 print           "TOTAL atoms     : ${nAll}      (expect 20000)"
 print           "net charge      : ${qTot}      (expect 0)"
 print           "======================================================"
@@ -208,7 +208,7 @@ fix             fRestr protHeavy spring/self 2.0
 run             ${NRELAX}
 unfix           fRestr
 
-# ==================== EQUILIBRATION 3: 100 ps NPT at 15 MPa ================
+# ==================== EQUILIBRATION 3: 100 ps NPT at 10 MPa ================
 unfix           fNVT
 compute         cPressAll all pressure thermo_temp
 fix             fNPT  integrate_normal npt temp ${TEMP} ${TEMP} 100.0 iso ${PRESS} ${PRESS} 1000.0 dilate all
@@ -318,7 +318,7 @@ fix             fSeries all ave/time 100 1 100 c_cTempH2 c_cNcontact c_cNpocket 
 dump            dProd all custom 5000 production.lammpstrj id type mol x y z
 dump_modify     dProd sort id
 
-# ==================== PRODUCTION: 250 ps NPT, 333.15 K, 15 MPa ============
+# ==================== PRODUCTION: 250 ps NPT, 313.15 K, 10 MPa ============
 # fNPT and fRigid from equilibration stay on. Analysis distances use lx/ly/lz,
 # so they follow the box. MSD includes the small barostat dilation.
 run             ${NPROD}
@@ -344,10 +344,10 @@ print           "Residence states: h2_residence_state.dump, gas_residence_state.
 #    J. Phys. Chem. B 1998, 102, 2569-2577, doi:10.1021/jp972543+.
 #    TraPPE was fitted for gas/fluid-phase equilibria; its cross terms with
 #    AMBER/TIP3P via Lorentz-Berthelot are a standard but unvalidated mix.
-#  - 333 K: the force fields (AMBER protein, TIP3P, TraPPE) were fitted
+#  - 313 K: the force fields (AMBER protein, TIP3P, TraPPE) were fitted
 #    mainly near ambient conditions; TIP3P water is too mobile already at
 #    298 K. [NiFe]-hydrogenase from D. vulgaris Miyazaki F is mesophilic, so
-#    partial unfolding at 333 K over long runs is possible - watch Rg/RMSD.
+#    unfolding at 313 K is unlikely on this time scale, but watch Rg/RMSD.
 #  - If you change TEMP/PRESS, also rebuild the data file with matching
 #    T_TARGET/P_TARGET in build_20k.py, otherwise the barostat has to
 #    change the box volume a lot.
