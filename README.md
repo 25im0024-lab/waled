@@ -16,8 +16,6 @@
 
 ---
 
-https://github.com/25im0024-lab/waled/commit/be429ce5f3b571389ec05952bc00c307bfe19e9d
-
 ## FracGel Lab — NaOA/KCl/guar fracturing gel
 
 ### ▶ [افتح FracGel Lab](https://25im0024-lab.github.io/waled/fracgel/)
