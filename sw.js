@@ -1,7 +1,7 @@
 /* Home page service worker: offline copy of the tools hub only.
    Scope is the whole site, but every request outside the hub's own files is left to the network
    (and to each app's own, narrower service worker, which takes precedence for its folder). */
-const CACHE = 'waled-home-v1';
+const CACHE = 'waled-home-v2';
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icon.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png'];
 const ROOT = new URL('./', self.location).pathname;
 const OWN = new Set(SHELL.map(p => new URL(p, self.location).pathname));
