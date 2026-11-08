@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="ar" dir="rtl">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Drilling Tools — أدوات الحفر</title>
-<meta name="description" content="Free drilling and production engineering tools: Driller's Console simulator, FPSO Console, Field Hydraulics calculator (API RP 13D, Herschel-Bulkley) and a bilingual parameter guide. Arabic and English.">
+<title>Petroleum Engineering Tools</title>
+<meta name="description" content="Free drilling and production engineering tools: Driller's Console simulator, FPSO Console, Field Hydraulics calculator (API RP 13D, Herschel-Bulkley), FracGel Lab, Frac Gel Lab 3D, English Hub and IELTS Coach. Each tool also has an Arabic interface.">
 <meta name="theme-color" content="#0b2340">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="manifest" href="manifest.webmanifest">
@@ -16,13 +16,13 @@ html,body{margin:0;background:var(--bg) radial-gradient(1200px 600px at 50% -10%
 a{color:var(--cyan)}
 .wrap{max-width:1100px;margin:0 auto;padding:20px 16px 40px}
 header{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:18px}
-h1{margin:0;font-size:28px}h1 span{display:block;font-size:15px;color:var(--cyan);font-weight:600;direction:ltr;text-align:right}
+h1{margin:0;font-size:28px}h1 span{display:block;font-size:15px;color:var(--cyan);font-weight:600;}
 .sub{margin:4px 0 0;color:var(--muted)}
 h2{font-size:19px;margin:26px 0 10px;border-inline-start:4px solid var(--cyan);padding-inline-start:10px}
 .en{direction:ltr;text-align:left;color:var(--muted);font-size:13.5px;unicode-bidi:isolate}
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
 .card{background:linear-gradient(180deg,var(--panel2),var(--panel) 45%);border:1px solid var(--line);border-radius:6px;padding:16px;display:flex;flex-direction:column;gap:8px}
-.card h3{margin:0;font-size:19px}.card h3 small{display:block;font-size:13px;color:var(--cyan);direction:ltr;text-align:right;font-weight:600}
+.card h3{margin:0;font-size:19px}.card h3 small{display:block;font-size:13px;color:var(--cyan);font-weight:600}
 .card p{margin:0}
 .card .btns{margin-top:auto;display:flex;gap:6px;flex-wrap:wrap;padding-top:6px}
 .btn{display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:6px 14px;border-radius:4px;border:1px solid #2b5f90;background:linear-gradient(#173556,#0f2440);color:#e6f3ff;text-decoration:none;font-weight:600;font-size:14px}
@@ -44,119 +44,111 @@ code{direction:ltr;unicode-bidi:isolate;background:#081830;border:1px solid var(
 <div class="wrap">
 <header>
   <div>
-    <h1>أدوات هندسة الحفر<span>Drilling Engineering Tools</span></h1>
-    <p class="sub">محاكي تدريبي، وحاسبة للبيانات الحقلية، ودليل للبارامترات — مجانية، بالعربي والإنجليزي، وتعمل بدون إنترنت بعد التثبيت.</p>
-    <p class="en">A training simulator, a field-data hydraulics calculator and a parameter guide — free, Arabic &amp; English, offline after install.</p>
+    <h1>Petroleum Engineering Tools<span>Drilling · Offshore production · Fracturing fluids</span></h1>
+    <p class="sub">Free training simulators, a field-data hydraulics calculator, fracturing-gel research tools and guides. They run in the browser and work offline once installed. Each tool also has an Arabic interface (العربية) inside it.</p>
   </div>
   <a class="btn" href="https://github.com/25im0024-lab/waled" rel="noopener">GitHub</a>
 </header>
 
-<h2>الأدوات <span class="en">Tools</span></h2>
+<h2>Tools</h2>
 <div class="cards">
   <div class="card">
-    <h3>محاكي لوحة الحفّار<small>Driller's Console</small></h3>
-    <span class="tag">للتدريب · Training</span>
-    <p>لوحة تحكم تفاعلية لمنصة حفر:</p>
+    <h3>Driller's Console<small>Rig control-panel simulator</small></h3>
+    <span class="tag">Training</span>
+    <p>An interactive drilling-rig control panel:</p>
     <ul>
-      <li>Auto-driller و top drive والمضخات.</li>
-      <li>دورة سائل الحفر، وبت PDC.</li>
-      <li>BOP و kill sheet، وسيناريوهات kick و losses.</li>
-      <li>إنذارات ومنحنيات لحظية.</li>
+      <li>Auto-driller, top drive and mud pumps.</li>
+      <li>Mud circulation and a PDC bit.</li>
+      <li>BOP and kill sheet, with kick and loss scenarios.</li>
+      <li>Alarms and live trends.</li>
     </ul>
-    <p class="en">Interactive rig control panel: auto-driller, top drive, pumps, mud circulation, PDC bit, BOP and kill sheet, kick/loss scenarios, alarms and trends.</p>
-    <div class="btns"><a class="btn pri" href="drillers-console/?lang=ar">افتح بالعربي</a><a class="btn" href="drillers-console/?lang=en">Open in English</a></div>
+    <div class="btns"><a class="btn pri" href="drillers-console/?lang=en">Open</a></div>
   </div>
   <div class="card">
-    <h3>حاسبة البيانات الحقلية<small>Field Hydraulics</small></h3>
-    <span class="tag">API RP 13D · Herschel-Bulkley</span>
-    <p>أدخل بيانات بئرك واحصل على النتائج:</p>
+    <h3>Field Hydraulics<small>Calculator for field data</small></h3>
+    <span class="tag">API RP 13D · Herschel–Bulkley</span>
+    <p>Enter your well and get the results:</p>
     <ul>
-      <li><b>المدخلات:</b> الهندسة، والـ survey، وقراءات Fann، والمضخات، والـ nozzles.</li>
-      <li><b>النتائج:</b> SPP و ECD، وهيدروليكا البت، وتنظيف البئر.</li>
-      <li><b>المقارنة:</b> مع القيم المقاسة.</li>
+      <li><b>Inputs:</b> geometry, survey, Fann readings, pumps and nozzles.</li>
+      <li><b>Results:</b> SPP, ECD, bit hydraulics and hole cleaning.</li>
+      <li><b>Check:</b> compare them with measured values.</li>
     </ul>
-    <p class="en">Enter your well (geometry, survey, Fann readings, pumps, nozzles) to get SPP, ECD, bit hydraulics and hole cleaning, and compare them with measured values.</p>
-    <div class="btns"><a class="btn pri" href="drillers-console/hydraulics/?lang=ar">افتح بالعربي</a><a class="btn" href="drillers-console/hydraulics/?lang=en">Open in English</a></div>
+    <div class="btns"><a class="btn pri" href="drillers-console/hydraulics/?lang=en">Open</a></div>
   </div>
   <div class="card">
-    <h3>محاكي وحدة FPSO<small>FPSO Console — offshore production</small></h3>
-    <span class="tag">تطبيق مستقل · Separate app</span>
-    <p>وحدة إنتاج وتخزين وتفريغ عائمة كاملة: من المكمن والآبار تحت البحر، مروراً بالـ manifold والـ risers والـ turret، ثم الفصل وضغط الغاز ومعالجة الماء، وصولاً إلى التخزين والتفريغ إلى ناقلة مكوكية.</p>
-    <p>كاميرات حية (ROV تحت البحر وداخل السفينة)، ومهبط مروحيات مع مروحية، وطاقم يعمل في مواقعه، وإضاءة نهار/ليل. اضغط أي جزء من الرسم ليظهر شرحه.</p>
-    <p class="en">A complete FPSO, from the reservoir and subsea wells through risers, turret mooring and topsides processing to storage and tanker offloading. Live ROV and inside-the-vessel cameras, helideck with helicopter, crew at work, day/night lighting. Tap any part for its explanation.</p>
-    <div class="btns"><a class="btn pri" href="fpso/?lang=ar">افتح بالعربي</a><a class="btn" href="fpso/?lang=en">Open in English</a><a class="btn" href="fpso/guide/fpso-guide.pdf">الدليل الشامل PDF</a></div>
+    <h3>FPSO Console<small>Offshore production simulator</small></h3>
+    <span class="tag">Separate app</span>
+    <p>A complete floating production, storage and offloading unit: from the reservoir and subsea wells through the manifold, risers and turret mooring, to separation, gas compression and water treatment, then storage and offloading to a shuttle tanker.</p>
+    <p>Live ROV and inside-the-vessel cameras, a helideck with a helicopter, crew at their stations and day/night lighting. Tap any part of the drawing for its explanation.</p>
+    <div class="btns"><a class="btn pri" href="fpso/?lang=en">Open</a><a class="btn" href="fpso/guide/fpso-guide.pdf">Full guide (PDF)</a></div>
   </div>
   <div class="card">
     <h3>FracGel Lab<small>NaOA / KCl / guar fracturing gel</small></h3>
-    <span class="tag">للبحث · Research workbench</span>
-    <p>منضدة عمل لجل التكسير المكوّن من wormlike micelles و guar:</p>
+    <span class="tag">Research workbench</span>
+    <p>A workbench for a fracturing gel built from wormlike micelles and guar:</p>
     <ul>
-      <li>مصفوفة العينات مع عينات الضبط ومؤشر التآزر.</li>
-      <li>تحليل Maxwell للـ frequency sweep، و power law للـ flow curve، وترسيب الـ proppant.</li>
-      <li>ترتيب التركيبات بالـ desirability، وسطح استجابة يقترح نقطة تحقق.</li>
+      <li>Sample matrix with controls and a synergy index.</li>
+      <li>Maxwell analysis of frequency sweeps, power-law flow curves and proppant settling.</li>
+      <li>Desirability ranking of formulations and a response surface that proposes a verification point.</li>
     </ul>
-    <p class="en">Sample matrix with controls and synergy index, Maxwell and power-law analysis, proppant settling, desirability ranking and a response surface that proposes a verification point.</p>
-    <div class="btns"><a class="btn pri" href="fracgel/">افتح</a></div>
+    <div class="btns"><a class="btn pri" href="fracgel/">Open</a></div>
   </div>
   <div class="card">
-    <h3>مختبر جل التكسير 3D<small>Frac Gel Lab 3D</small></h3>
-    <span class="tag">للعرض · Presentations</span>
-    <p>تحضير جل NaOA / KCl / guar في مختبر ثلاثي الأبعاد:</p>
+    <h3>Frac Gel Lab 3D<small>Virtual fracturing-gel lab</small></h3>
+    <span class="tag">Presentations</span>
+    <p>Prepare a NaOA / KCl / guar gel in a 3D lab:</p>
     <ul>
-      <li>nano view يُظهر الانتقال من محلول إلى wormlike micelles.</li>
-      <li>rheometer، وتعليق الـ proppant، والتسخين، والكسر بالـ APS أو بالتخفيف بالماء المقطّر.</li>
-      <li>اختبار الكسر في حمام مائي مع قياس اللزوجة بأنبوب Cannon-Fenske.</li>
+      <li>A nano view showing the change from solution to wormlike micelles.</li>
+      <li>Rheometer, proppant suspension, heating, and breaking with APS or dilution with deionized water.</li>
+      <li>A water-bath break test with Cannon–Fenske viscosity measurement.</li>
     </ul>
-    <p class="en">3D WLM frac-gel bench with a nano view, rheometer, proppant, heating and breakers. Presentation mode works with a clicker.</p>
-    <div class="btns"><a class="btn pri" href="vlab/?lang=ar">افتح بالعربي</a><a class="btn" href="vlab/?lang=en">Open in English</a></div>
+    <p>Presentation mode works with a clicker.</p>
+    <div class="btns"><a class="btn pri" href="vlab/?lang=en">Open</a></div>
   </div>
   <div class="card">
-    <h3>تعلّم الإنجليزية و IELTS<small>English Hub &amp; IELTS Coach</small></h3>
-    <span class="tag">عربي + English · تطبيقان مستقلان</span>
-    <p><b>English Hub:</b> تعلّم الإنجليزية من المبتدئ إلى المتوسط (A1–B1): كلمات بصور، مشاهد تفاعلية، قواعد، قراءة، استماع، كتابة، نطق، مع قسم English for Work.</p>
-    <p><b>IELTS Coach:</b> تدريب على IELTS Academic (Reading / Listening / Writing / Speaking) بنمط الاختبار الحقيقي.</p>
-    <p class="en">Bilingual English-learning app (A1–B1, incl. English for Work) and IELTS Academic practice in exam format.</p>
+    <h3>English Hub &amp; IELTS Coach<small>Language learning</small></h3>
+    <span class="tag">Two separate apps</span>
+    <p><b>English Hub:</b> learn English from beginner to intermediate (A1–B1) with picture vocabulary, interactive scenes, grammar, reading, listening, writing, pronunciation and an English for Work section. Explanations are in Arabic.</p>
+    <p><b>IELTS Coach:</b> IELTS Academic practice (Reading, Listening, Writing, Speaking) in the format of the real test.</p>
     <div class="btns"><a class="btn pri" href="english/">English Hub</a><a class="btn" href="ielts/">IELTS Coach</a></div>
   </div>
   <div class="card">
-    <h3>دليل البارامترات<small>Parameter Guide (PDF)</small></h3>
-    <span class="tag">عربي + English · 18 صفحة</span>
-    <p>يشرح لكل بارامتر مهمته وكيف تفسّره. ويضم دورة الطين، وبت الـ PDC، والـ kill sheet، والإنذارات.</p>
-    <p>ويتضمن كل معادلات المحاكي والحاسبة مع شرحها، ومع بيان هل كل معادلة قياسية أم افتراض للنموذج.</p>
-    <p class="en">Role and interpretation of every parameter, plus every equation used by both tools (standard vs model assumption).</p>
-    <div class="btns"><a class="btn pri" href="drillers-console/guide/drillers-console-guide.pdf" target="_blank" rel="noopener">افتح الـ PDF</a></div>
+    <h3>Parameter Guide<small>Driller's Console &amp; Field Hydraulics (PDF)</small></h3>
+    <span class="tag">English + Arabic · 18 pages</span>
+    <p>Explains the role of every parameter and how to read it, including the mud circuit, the PDC bit, the kill sheet and the alarms.</p>
+    <p>It also lists every equation used by the simulator and the calculator, with an explanation, and states whether each one is a standard or a model assumption.</p>
+    <div class="btns"><a class="btn pri" href="drillers-console/guide/drillers-console-guide.pdf" target="_blank" rel="noopener">Open PDF</a></div>
   </div>
 </div>
 
-<p class="warn" style="margin-top:14px"><b>تنبيه:</b> المحاكي نموذج تدريبي مبسّط وغير معايَر على منصة حقيقية. الحاسبة أداة مساعدة هندسية وليست برنامجاً معتمداً، فقارن نتائجها بقياسات حقيقية (SPP و ECD من PWD) قبل استخدامها في أي قرار.<br><span class="en">The simulator is a simplified training model. The calculator is an engineering aid, not validated software: check its results against measurements before using them for decisions.</span></p>
+<p class="warn" style="margin-top:14px"><b>Note:</b> the simulators are simplified training models, not calibrated against a real rig or vessel. The calculator is an engineering aid, not validated software: compare its results with real measurements (SPP, and ECD from PWD) before using them for any decision.</p>
 
-<h2>التثبيت كتطبيق <span class="en">Install as an app</span></h2>
+<h2>Install as an app</h2>
 <div class="steps">
-  <div class="card"><h3>Android<small>Chrome</small></h3><ol><li>افتح رابط المحاكي.</li><li>القائمة ⋮ ← <b>Install app</b> أو <b>Add to Home screen</b>.</li></ol></div>
-  <div class="card"><h3>iPhone / iPad<small>Safari</small></h3><ol><li>افتح رابط المحاكي في Safari.</li><li>زر المشاركة ← <b>Add to Home Screen</b>.</li></ol></div>
-  <div class="card"><h3>الكمبيوتر<small>Chrome / Edge</small></h3><ol><li>افتح هذه الصفحة (تثبَّت كتطبيق يجمع كل الأدوات) أو رابط أي محاكٍ ليُثبَّت وحده.</li><li><b>Chrome:</b> أيقونة التثبيت ⊕ في آخر شريط العنوان، أو القائمة ⋮ ← <b>Cast, save and share</b> ← <b>Install page as app</b>.</li><li><b>Edge:</b> القائمة ⋯ ← <b>Apps</b> ← <b>Install this site as an app</b>.</li><li>إن لم يظهر خيار التثبيت: القائمة ⋮ ← <b>Cast, save and share</b> ← <b>Create shortcut</b> وفعّل <b>Open as window</b>.</li></ol></div>
+  <div class="card"><h3>Android<small>Chrome</small></h3><ol><li>Open the tool's link.</li><li>Menu ⋮ → <b>Install app</b> or <b>Add to Home screen</b>.</li></ol></div>
+  <div class="card"><h3>iPhone / iPad<small>Safari</small></h3><ol><li>Open the tool's link in Safari.</li><li>Share button → <b>Add to Home Screen</b>.</li></ol></div>
+  <div class="card"><h3>Computer<small>Chrome / Edge</small></h3><ol><li>Open this page (it installs as one app with all the tools) or any tool's link to install that tool alone.</li><li><b>Chrome:</b> the install icon ⊕ at the end of the address bar, or menu ⋮ → <b>Cast, save and share</b> → <b>Install page as app</b>.</li><li><b>Edge:</b> menu ⋯ → <b>Apps</b> → <b>Install this site as an app</b>.</li><li>If no install option appears: menu ⋮ → <b>Cast, save and share</b> → <b>Create shortcut</b>, and tick <b>Open as window</b>.</li></ol></div>
 </div>
-<p>بعد التثبيت، اضغط مطوّلاً على أيقونة التطبيق (أو انقر بالزر الأيمن على الكمبيوتر) لتظهر اختصارات تفتح <b>الحاسبة</b> أو <b>الدليل</b> مباشرة. يعمل التطبيق بدون إنترنت بعد أول فتح.<br><span class="en">After installing, long-press (or right-click) the app icon for shortcuts to the calculator and the guide. Works offline after the first visit.</span></p>
+<p>After installing, long-press the app icon (or right-click it on a computer) for shortcuts that open the <b>calculator</b> or the <b>guide</b> directly. The app works offline after the first visit.</p>
 
-<h2>رموز QR للعروض والملصقات <span class="en">QR codes for slides &amp; posters</span></h2>
+<h2>QR codes for slides &amp; posters</h2>
 <div class="qr">
-  <figure><img src="qr/waled-home.svg" alt="QR code: this page" width="220" height="220"><figcaption><b>هذه الصفحة</b> · Home<br><a href="qr/waled-home.svg" download>SVG</a><a href="qr/waled-home.png" download>PNG</a></figcaption></figure>
-  <figure><img src="qr/drillers-console-ar.svg" alt="QR code: Driller's Console (Arabic)" width="220" height="220"><figcaption><b>المحاكي</b> · Simulator<br><a href="qr/drillers-console-ar.svg" download>SVG</a><a href="qr/drillers-console-ar.png" download>PNG</a></figcaption></figure>
-  <figure><img src="qr/fpso-ar.svg" alt="QR code: FPSO Console (Arabic)" width="220" height="220"><figcaption><b>محاكي FPSO</b> · FPSO<br><a href="qr/fpso-ar.svg" download>SVG</a><a href="qr/fpso-ar.png" download>PNG</a></figcaption></figure>
-  <figure><img src="qr/field-hydraulics-ar.svg" alt="QR code: Field Hydraulics (Arabic)" width="220" height="220"><figcaption><b>الحاسبة</b> · Calculator<br><a href="qr/field-hydraulics-ar.svg" download>SVG</a><a href="qr/field-hydraulics-ar.png" download>PNG</a></figcaption></figure>
+  <figure><img src="qr/waled-home.svg" alt="QR code: this page" width="220" height="220"><figcaption><b>This page</b><br><a href="qr/waled-home.svg" download>SVG</a><a href="qr/waled-home.png" download>PNG</a></figcaption></figure>
+  <figure><img src="qr/drillers-console-en.svg" alt="QR code: Driller's Console" width="220" height="220"><figcaption><b>Driller's Console</b><br><a href="qr/drillers-console-en.svg" download>SVG</a><a href="qr/drillers-console-en.png" download>PNG</a></figcaption></figure>
+  <figure><img src="qr/fpso-en.svg" alt="QR code: FPSO Console" width="220" height="220"><figcaption><b>FPSO Console</b><br><a href="qr/fpso-en.svg" download>SVG</a><a href="qr/fpso-en.png" download>PNG</a></figcaption></figure>
+  <figure><img src="qr/field-hydraulics-en.svg" alt="QR code: Field Hydraulics" width="220" height="220"><figcaption><b>Field Hydraulics</b><br><a href="qr/field-hydraulics-en.svg" download>SVG</a><a href="qr/field-hydraulics-en.png" download>PNG</a></figcaption></figure>
 </div>
-<p class="en" style="margin-top:6px">SVG for print (scales without blur), PNG for slides. · استخدم SVG للطباعة لأنه لا يفقد الدقة عند التكبير، و PNG للعروض التقديمية.</p>
+<p style="margin-top:6px;color:var(--muted);font-size:13.5px">Use SVG for print (it scales without blur) and PNG for slides. Arabic-interface versions of these codes are in the <a href="https://github.com/25im0024-lab/waled/tree/main/qr" rel="noopener">qr folder</a>.</p>
 
-<h2>أدوات أخرى في المستودع <span class="en">Other tools in this repository</span></h2>
+<h2>Other tools in this repository</h2>
 <div class="other">
-  <a class="btn" href="oilfield/">رحلة البرميل · Oilfield guide</a>
-  <a class="btn" href="rig-3d.html">محاكي المنصة ثلاثي الأبعاد (نسخة قديمة) · 3D rig demo</a>
+  <a class="btn" href="oilfield/">Oilfield guide (Arabic)</a>
+  <a class="btn" href="rig-3d.html">3D rig demo (older version)</a>
 </div>
 
 <footer>
-  <p>الكود مفتوح المصدر بترخيص <a href="https://github.com/25im0024-lab/waled/blob/main/LICENSE" rel="noopener">MIT</a>: يمكنك الاستخدام والتعديل وإعادة النشر بشرط إبقاء إشعار الترخيص، والبرنامج مقدَّم "كما هو" دون أي ضمان.<br>
-  <span class="en">Open source under the MIT License — provided "as is", without warranty of any kind.</span></p>
-  <p>لا تجمع هذه الأدوات أي بيانات: كل ما تدخله يبقى في متصفحك. · <span class="en">No data is collected; everything you enter stays in your browser.</span></p>
+  <p>Open source under the <a href="https://github.com/25im0024-lab/waled/blob/main/LICENSE" rel="noopener">MIT License</a>: you may use, modify and redistribute it if you keep the licence notice. Provided "as is", without warranty of any kind.</p>
+  <p>These tools collect no data: everything you enter stays in your browser.</p>
 </footer>
 </div>
 <script>if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(() => {});</script>
