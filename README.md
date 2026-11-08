@@ -16,14 +16,6 @@
 
 ---
 
-https://github.com/25im0024-lab/waled/commit/be429ce5f3b571389ec05952bc00c307bfe19e9d
-
-## UHS-MD: Hydrogen Storage in Carbonates (LAMMPS)
-
-### ▶ [Open UHS Pore Lab (runs in the browser)](https://25im0024-lab.github.io/waled/uhs-md/)
-
-Live 3D molecular dynamics of H2 with a cushion gas (CO2, CH4 or N2) in a calcite nanopore, with brine and methanogenic bacteria, and a 3D player for the full atomistic LAMMPS model: [`uhs-md/`](uhs-md/README.md).
-
 ## FracGel Lab — NaOA/KCl/guar fracturing gel
 
 ### ▶ [افتح FracGel Lab](https://25im0024-lab.github.io/waled/fracgel/)
