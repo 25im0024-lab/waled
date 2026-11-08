@@ -396,6 +396,12 @@
     const first = qs.get('lesson') || store.get('vlab.lesson');
     setLesson(VL.lessons[first] ? first : 'gel');
     requestAnimationFrame(frame);
-    if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+    if ('serviceWorker' in navigator && location.protocol === 'https:') {
+      // a new service worker takes over after a deploy: reload once so the page is the new version
+      const hadController = !!navigator.serviceWorker.controller;
+      let reloaded = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadController && !reloaded) { reloaded = true; location.reload(); } });
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    }
   };
 })();

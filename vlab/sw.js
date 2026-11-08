@@ -1,6 +1,7 @@
-/* Virtual Lab service worker: offline cache (stale-while-revalidate) for this folder.
+/* Frac Gel Lab 3D service worker: offline copy of this folder.
+   Network first, so a new deploy shows on the next load; the cache is only the offline fallback.
    Bump CACHE when the app shell changes to drop old copies. */
-const CACHE = 'vlab-v1';
+const CACHE = 'vlab-v2';
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icon.svg', 'css/style.css', 'js/model.js', 'js/app.js', 'js/gel.js', 'js/break.js',
   'vendor/three.min.js', 'vendor/OrbitControls.js'];
 const SCOPE_PATH = new URL('./', self.location).pathname;
@@ -12,9 +13,6 @@ self.addEventListener('fetch', e => {
   const r = e.request; if (r.method !== 'GET') return;
   const u = new URL(r.url);
   if (u.origin !== self.location.origin || !u.pathname.startsWith(SCOPE_PATH)) return;
-  e.respondWith(caches.open(CACHE).then(async c => {
-    const hit = await c.match(r, { ignoreSearch: true });
-    const net = fetch(r).then(res => { if (res && res.ok) c.put(r, res.clone()); return res; }).catch(() => hit || (r.mode === 'navigate' ? c.match('index.html') : undefined));
-    return hit || net;
-  }));
+  e.respondWith(fetch(r, { cache: 'no-cache' }).then(res => { if (res && res.ok) caches.open(CACHE).then(c => c.put(r, res.clone())); return res; })
+    .catch(() => caches.match(r, { ignoreSearch: true }).then(hit => hit || (r.mode === 'navigate' ? caches.match('index.html') : undefined))));
 });
