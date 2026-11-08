@@ -1,0 +1,62 @@
+========================================================================
+Production trajectory analysis (production.lammpstrj + previous files)
+========================================================================
+production frames: 50 (steps 35000-280000, every 5 ps); equilibration frames: 10
+
+--- protein (heavy atoms, Kabsch fit to the production-start structure) ---
+RMSD: last 100 ps 1.18 +/- 0.07 A, final 1.21 A, max 1.29 A
+active-site region (heavy atoms < 12 A of Ni, n=373), locally fitted RMSD: last 100 ps 0.79 A
+Ni-Fe distance: 2.588 +/- 0.047 A
+Rg from trajectory: 24.93 +/- 0.037 A
+RMSF over production: mean 0.62 A, median 0.55 A, 95th pct 1.16 A; atoms < 12 A of Ni: 0.47 A
+closest protein-image approach: min 8.0 A, mean 10.1 A; below 12 A cutoff in 49/50 production frames
+
+--- H2 geometry over all production frames ---
+H-H separation: 3.036 A (range 2.082-3.321); max per-molecule drift over 245 ps = 0.0012 A -> geometry frozen by fix rigid, still ~3 A instead of 0.741 A
+
+--- validation vs fix ave/time (50 matching steps) ---
+N_contact: exact match in 50/50 frames; min-dist-to-Ni max |diff| = 0.000 A
+
+--- H2 diffusion (COM, all time origins, 5 ps resolution) ---
+D = 7.97 x 1e-9 m^2/s (fit 10-100 ps lag), 95 % bootstrap CI over molecules 6.26-9.97; alpha (5-120 ps) = 0.96
+per-molecule D: median 8.16, range 0.21-27.84 x 1e-9 m^2/s
+molecules in contact < 20 % of time (n=20): D = 7.64; protein-associated (n=9): D = 8.72 x 1e-9 m^2/s
+
+--- H2-protein contact and residence (molecule-level, 4.5 A, 5 ps sampling) ---
+molecules in contact per frame: 4.30 +/- 1.88 of 29 (14.8 %)
+molecules that touched the protein at least once: 22/29; buried at least once: 4; buried fraction of molecule-frames 3.7 %
+contact episodes: 67 (6 cut by trajectory ends); mean length 16.0 ps, median 10.0 ps, longest 250 ps
+single-frame (<= 5 ps) episodes: 48 % -> most contacts are shorter than the sampling interval
+residence correlation, all molecules: tau_C ~ 40.0 ps, tau_I ~ 39.6 ps -> dominated by 1 trapped molecule(s) (mol 17, in contact in every frame); not a meaningful average
+transient molecules only (n=28): tau_C ~ 11.8 ps; episodes mean 12.5 ps, median 10.0 ps, max 65 ps (5 ps sampling: contacts shorter than ~5 ps are not resolved; true residence is shorter)
+most protein-associated molecules (mol: % frames in contact, % buried, min d_Ni): 17: 100, 100, 8.7; 16: 36, 0, 36.6; 4: 32, 0, 33.8; 28: 30, 2, 25.6; 30: 28, 0, 27.3
+
+--- active site (5 ps frames) ---
+closest H2 site to Ni per frame: mean 17.7 A, min 7.59 A; pocket (<6 A of Ni or Fe) occupied in 0/50 frames
+closest H2 COM to Ni over the whole run: 8.7 A (mol 17)
+
+--- RDF H2 sites -> protein atoms (types 1-14), averaged over 50 frames ---
+g(r) at r = 3 A: 0.115, 3.5 A: 0.163, 4 A: 0.175, 4.5 A: 0.192, 6 A: 0.253, 8 A: 0.320, 10 A: 0.387, 11.9 A: 0.450
+local maxima (r, g): (2.94, 0.119), (3.18, 0.157), (3.54, 0.163), (3.78, 0.190)
+coordination number within 4.5 A = 1.41, within 12 A = 63.4
+note: protein atoms are not homogeneous in the box, so g(r) here follows the LAMMPS 'compute rdf' convention and does not tend to 1.
+
+========================================================================
+FINAL RESULTS (production, 250 ps; mean +/- block SEM of 5 x 50 ps blocks)
+========================================================================
+  T(H2) as reported (142 DOF) [K]           305.52  +/- 0.19
+  T(H2) corrected to 145 DOF [K]            299.20  +/- 0.19
+  H2 sites in contact (of 58)                 7.06  +/- 0.70
+  H2 molecules in contact (of 29)             4.30  +/- 0.45
+  closest H2 site to Ni [A]                  17.57  +/- 0.78
+  closest H2 site to Fe [A]                  19.56  +/- 0.75
+  pocket occupancy [% of samples]             0.04
+  D(H2) all-origin [1e-9 m^2/s]               7.97  +/- 0.95
+  Rg protein [A]                             24.93  +/- 0.01
+  RMSD heavy, Kabsch, last 100 ps [A]         1.18  +/- 0.04
+  RMSF heavy atoms, mean [A]                  0.62
+  Ni-Fe distance [A]                          2.59  +/- 0.01
+  contact residence tau_C, transient [ps]     11.82
+  contact episode median, transient [ps]     10.00
+  H2 trapped inside protein (whole run)       1.00
+  protein-image min distance [A]              8.01
