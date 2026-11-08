@@ -36,6 +36,19 @@ let S = (() => { try { return merge(clone(DEF), JSON.parse(localStorage.getItem(
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* storage unavailable */ } };
 const get = (p, o = S) => p.split('.').reduce((a, k) => a == null ? a : a[k], o);
 function set(p, v) { const ks = p.split('.'); let a = S; for (let i = 0; i < ks.length - 1; i++) a = a[ks[i]]; a[ks[ks.length - 1]] = v; }
+/* File export: inside the claude.ai artifact viewer use the `downloads` capability; elsewhere (GitHub Pages, local file) a normal download link. */
+async function saveFile(name, text, mime) {
+  if (window.claude && window.claude.use) {
+    const dl = await window.claude.use('downloads').catch(() => null);
+    if (dl) {
+      try { await dl.save({ filename: name, data: text }); toast('حُفظ الملف: ' + name); }
+      catch (e) { if (!e || e.code !== 'declined') toast('تعذّر حفظ الملف (' + ((e && e.code) || 'error') + ').'); }
+      return;
+    }
+  }
+  const b = new Blob([text], { type: mime }), a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
 function toast(t) { const e = document.createElement('div'); e.textContent = t; $('toast').appendChild(e); setTimeout(() => e.remove(), 4200); }
 const nm = w => esc(S.meta[w] || (w === 'mine' ? 'عينتي' : 'المرجع'));
 
@@ -423,7 +436,7 @@ OUT.cmp = R => {
     (S.meta.cite ? `<p class="note">المرجع: ${esc(S.meta.cite)}</p>` : '') + '<p class="note">الفرق % = (عيّنتي − البحث) ÷ |البحث| × 100. القيمة اليدوية تُقدَّم على المحسوبة.</p>';
   $('csvBtn').onclick = () => { const q = s => `"${String(s).replace(/<[^>]+>/g, '').replace(/"/g, '""')}"`;
     const lines = [['group', 'metric', 'unit', S.meta.mine, S.meta.ref + ' (computed)', 'paper (manual)', 'diff %'].map(q).join(',')].concat(rs.map(r => [r.g, r.l, r.u, r.mine ?? '', r.ref ?? '', r.man ?? '', r.d === null ? '' : r.d.toFixed(2)].map(q).join(',')));
-    const b = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv' }), a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'frac-lab-comparison.csv'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); };
+    saveFile('frac-lab-comparison.csv', '\ufeff' + lines.join('\n'), 'text/csv'); };
 };
 OUT.ref = () => {};
 
@@ -457,7 +470,7 @@ function bind() {
   $('tabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (b) { S.tab = b.dataset.tab; save(); renderTab(); } });
   $('exBtn').onclick = () => { if (confirm('تحميل المثال يستبدل بياناتك الحالية. هل صدّرت نسخة JSON؟ متابعة؟')) loadExample(); };
   $('clrBtn').onclick = () => { if (confirm('مسح كل البيانات والبدء من جديد؟')) { S = clone(DEF); save(); renderTab(); } };
-  $('expBtn').onclick = () => { const b = new Blob([JSON.stringify(S, null, 1)], { type: 'application/json' }), a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'frac-lab-' + new Date().toISOString().slice(0, 10) + '.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); };
+  $('expBtn').onclick = () => saveFile('frac-lab-' + new Date().toISOString().slice(0, 10) + '.json', JSON.stringify(S, null, 1), 'application/json');
   $('impFile').addEventListener('change', e => { const f = e.target.files[0]; if (!f) return; f.text().then(t => { const o = JSON.parse(t); if (!o.rheo || !o.meta) throw new Error('format'); S = merge(clone(DEF), o); save(); renderTab(); toast('استُوردت البيانات.'); }).catch(() => toast('تعذّرت قراءة الملف (المتوقع ملف JSON مُصدَّر من هذه الأداة).')); e.target.value = ''; });
   $('prtBtn').onclick = () => window.print();
   let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(calc, 150); });
