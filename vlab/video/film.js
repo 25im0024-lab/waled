@@ -234,8 +234,9 @@
       po = fade(t, a + 0.3, b);
       const n = 1 + (t >= 104.5) + (t >= 109.3);
       const spread = (Math.max(...RUNS) - Math.min(...RUNS)) / MEAN * 100;
-      ph = `<h3>${t_(TX.runsH)}</h3>` + RUNS.slice(0, n).map((v, i) => `<div class="eq">${t_(TX.run)} ${i + 1}:  ${v.toFixed(1)} s</div>`).join('') +
-        (n === 3 ? `<div class="eq ok">${t_(TX.mean)}:  ${MEAN.toFixed(1)} s</div><div class="eq">${t_(TX.spread)}:  ${spread.toFixed(2)} %</div>` : '');
+      const d = lang === 'ar' ? 'rtl' : 'ltr', num = x => `<bdi dir="ltr">${x}</bdi>`;
+      ph = `<h3>${t_(TX.runsH)}</h3>` + RUNS.slice(0, n).map((v, i) => `<div class="eq" dir="${d}">${t_(TX.run)} ${i + 1}: ${num(`${v.toFixed(1)} s`)}</div>`).join('') +
+        (n === 3 ? `<div class="eq ok" dir="${d}">${t_(TX.mean)}: ${num(`${MEAN.toFixed(1)} s`)}</div><div class="eq" dir="${d}">${t_(TX.spread)}: ${num(`${spread.toFixed(2)} %`)}</div>` : '');
     } else if (name === 'calc') {
       po = fade(t, a + 0.3, b);
       const nu = C * MEAN, eta = nu * RHO, k = n => t >= a + 0.8 + n * 1.3;
