@@ -59,7 +59,9 @@
     crit: L('η ≤ 5 mPa·s → broken (use your reference’s criterion)', 'η ≤ 5 mPa·s ← مكسور (اعتمد معيار مرجعك)'),
     wait: L('equilibrating', 'توازن حراري'),
   };
-  const t_ = o => o[lang];
+  // In Arabic captions keep "50 mL", "0.9 mm²/s", "±0.02 °C" in reading order by isolating them as LTR runs
+  const UNIT = /([±]?\d[\d.,]*\s?(?:mm²\/s²|mm²\/s|mg\/L|g\/L|mL|mg|mm|min|°C|h|s|g|L|%)(?![A-Za-z²]))/g;
+  const t_ = o => { const v = o[lang]; return lang === 'ar' && typeof v === 'string' ? v.replace(UNIT, '\u2066$1\u2069') : v; };
 
   /* ------------------------------------------------------------------ renderer */
   const canvas = $('#c');

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Cannon-Fenske Film</title>
+<title>Lab Films</title>
 <style>
   :root { --ink: #f4f7fa; --muted: #b7c3cf; --acc: #39d6a0; --warn: #ffbf5a; --panel: rgba(12, 20, 30, 0.82); --line: rgba(255, 255, 255, 0.16); }
   * { box-sizing: border-box; }
@@ -36,6 +36,7 @@
   #lines { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
   .mark { position: absolute; font: 700 38px "DejaVu Sans", sans-serif; color: #ffd66b; text-shadow: 0 2px 8px rgba(0,0,0,.7); }
   [dir="rtl"] #cap, [dir="rtl"] #panel, [dir="rtl"] #title { font-family: "Noto Sans Arabic", "Noto Naskh Arabic", "DejaVu Sans", sans-serif; }
+  [dir="rtl"] #temp, [dir="rtl"] #watch .s, #panel .w { font-family: "Noto Sans Arabic", "DejaVu Sans", sans-serif; }
   [dir="rtl"] .lab { font-family: "Noto Sans Arabic", "DejaVu Sans", sans-serif; }
 </style>
 </head>
@@ -52,6 +53,9 @@
   <div class="ov" id="cap"></div>
 </div>
 <script src="../vendor/three.min.js"></script>
-<script src="film.js"></script>
+<script>
+  // ?film=residue plays the filtration / residue film; the default is the Cannon-Fenske film
+  document.write('<script src="' + (new URLSearchParams(location.search).get('film') === 'residue' ? 'residue.js' : 'film.js') + '"><\/script>');
+</script>
 </body>
 </html>
