@@ -10,13 +10,13 @@
       brand: 'مختبر جل التكسير WLM', home: 'كل الأدوات', lessonGel: 'تحضير الجل', lessonBreak: 'اختبار الكسر (حمام مائي)', lessonGelS: 'التحضير', lessonBreakS: 'الكسر', present: '▶ عرض', exitPresent: '■ إنهاء العرض',
       reset: '↺ إعادة', doit: 'نفّذ الخطوة', next: 'التالي ›', stepOf: (i, n) => `الخطوة ${i} من ${n}`, finished: 'اكتملت كل الخطوات. جرّب بحرية أو أعد البدء.',
       fact: 'ثابت', inf: 'استنتاج', illu: 'توضيحي', spec: 'تخمين', nano: 'Nano view', busy: 'انتظر انتهاء الحركة الحالية',
-      noWebGL: 'المتصفح لا يدعم WebGL، والمختبر يحتاجه.', stepDone: 'تمت الخطوة ✓', keys: 'العرض: → أو PageDown للتالي، ← أو PageUp للسابق، Esc للخروج.',
+      noWebGL: 'المتصفح لا يدعم WebGL، والمختبر يحتاجه.', vidTitle: 'فيديو: قياس اللزوجة بأنبوب Cannon-Fenske', vidBtn: '▶ فيديو: القياس بـ Cannon-Fenske', vidDl: '⬇ تحميل', stepDone: 'تمت الخطوة ✓', keys: 'العرض: → أو PageDown للتالي، ← أو PageUp للسابق، Esc للخروج.',
     },
     en: {
       brand: 'WLM Frac Gel Lab', home: 'All tools', lessonGel: 'Gel preparation', lessonBreak: 'Break test (water bath)', lessonGelS: 'Prepare', lessonBreakS: 'Break', present: '▶ Present', exitPresent: '■ Exit',
       reset: '↺ Reset', doit: 'Do this step', next: 'Next ›', stepOf: (i, n) => `STEP ${i} OF ${n}`, finished: 'All steps done. Explore freely or reset.',
       fact: 'Established', inf: 'Inference', illu: 'Illustrative', spec: 'Speculation', nano: 'Nano view', busy: 'Wait for the current motion to finish',
-      noWebGL: 'This browser has no WebGL, which the lab needs.', stepDone: 'Step done ✓', keys: 'Presenting: → or PageDown = next, ← or PageUp = back, Esc = exit.',
+      noWebGL: 'This browser has no WebGL, which the lab needs.', vidTitle: 'Video: measuring viscosity with a Cannon-Fenske viscometer', vidBtn: '▶ Video: Cannon-Fenske measurement', vidDl: '⬇ Download', stepDone: 'Step done ✓', keys: 'Presenting: → or PageDown = next, ← or PageUp = back, Esc = exit.',
     },
   };
   const store = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch { /* private mode */ } } };
@@ -344,6 +344,28 @@
     if (lesson) { if (lesson.relabel) lesson.relabel(); renderControls(); renderStep(); refreshInstrument(); }
   }
 
+  /* ------------------------------------------------------------------ Cannon-Fenske video, English or Arabic captions */
+  let vidLang = null;
+  const vidSrc = l => `video/cannon-fenske-${l}.mp4`;
+  function setVidLang(l, keep) {
+    const v = $('#vid'), t = v.currentTime || 0, playing = !v.paused;
+    vidLang = l;
+    $$('#vidLang button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.vl === l)));
+    $('#vidDl').href = vidSrc(l); $('#vidDl').setAttribute('download', `cannon-fenske-${l}.mp4`);
+    v.poster = `video/cannon-poster-${l}.jpg`; v.src = vidSrc(l);
+    if (keep) v.addEventListener('loadedmetadata', () => { v.currentTime = t; if (playing) v.play().catch(() => {}); }, { once: true });
+  }
+  VL.openVideo = () => {
+    $('#vidModal').hidden = false;
+    if (!vidLang) setVidLang(lang === 'ar' ? 'ar' : 'en', false);
+    $('#vid').play().catch(() => {});
+    $('#vidClose').focus();
+  };
+  function closeVideo() { $('#vid').pause(); $('#vidModal').hidden = true; }
+  $$('#vidLang button').forEach(b => b.onclick = () => { if (b.dataset.vl !== vidLang) setVidLang(b.dataset.vl, true); });
+  $('#vidClose').onclick = closeVideo;
+  $('#vidModal').addEventListener('click', e => { if (e.target.id === 'vidModal') closeVideo(); });
+
   /* ------------------------------------------------------------------ presentation mode */
   function setPresent(on) {
     document.body.classList.toggle('present', on);
@@ -353,9 +375,11 @@
     setTimeout(resize, 200);
   }
   addEventListener('keydown', e => {
-    if (/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
+    if (/INPUT|SELECT|TEXTAREA|VIDEO/.test(e.target.tagName)) return;
+    if (!$('#vidModal').hidden && e.key !== 'Escape') return;
     if (e.key === 'ArrowRight' || e.key === 'PageDown' || (e.key === ' ' && document.body.classList.contains('present'))) { e.preventDefault(); doStep(); }
     else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); go(-1); }
+    else if (e.key === 'Escape' && !$('#vidModal').hidden) closeVideo();
     else if (e.key === 'Escape' && document.body.classList.contains('present')) setPresent(false);
   });
   document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && document.body.classList.contains('present')) setPresent(false); });

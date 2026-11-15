@@ -85,6 +85,15 @@ a { color: var(--acc); }
   padding: 9px 16px; border-radius: 12px; z-index: 9; pointer-events: none; max-width: min(560px, calc(100vw - 32px)); text-align: center; }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
+[hidden] { display: none !important; }
+.vmodal { position: fixed; inset: 0; z-index: 8; background: rgba(5, 10, 15, 0.72); display: grid; place-items: center; padding: 16px; }
+.vbox { width: min(1200px, 100%); background: var(--panel-solid); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); overflow: hidden; }
+.vbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 14px; }
+.vbar b { flex: 1; min-width: 0; font-size: 15px; }
+.vbar .seg { margin: 0; }
+.vbtn { padding: 5px 12px; border-radius: 10px; border: 1px solid var(--line); text-decoration: none; color: var(--ink); background: transparent; font-size: 13.5px; }
+.vbox video { display: block; width: 100%; aspect-ratio: 16 / 9; background: #000; }
+
 /* presentation mode: bigger type, step card becomes a caption bar */
 body.present .top { opacity: .0; transition: opacity .3s; }
 body.present .top:hover, body.present .top:focus-within { opacity: 1; }

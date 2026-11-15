@@ -13,6 +13,7 @@ self.addEventListener('fetch', e => {
   const r = e.request; if (r.method !== 'GET') return;
   const u = new URL(r.url);
   if (u.origin !== self.location.origin || !u.pathname.startsWith(SCOPE_PATH)) return;
+  if (r.headers.has('range') || u.pathname.endsWith('.mp4')) return; // videos stream from the network
   e.respondWith(fetch(r, { cache: 'no-cache' }).then(res => { if (res && res.ok) caches.open(CACHE).then(c => c.put(r, res.clone())); return res; })
     .catch(() => caches.match(r, { ignoreSearch: true }).then(hit => hit || (r.mode === 'navigate' ? caches.match('index.html') : undefined))));
 });

@@ -495,7 +495,7 @@
         <label>${VL.t(L('القارورة للقياس', 'Vial to measure'))}<select id="bSel">${outs.length ? outs.map(([v, i]) => `<option value="${i}" ${B.sel === i ? 'selected' : ''}>${v.tp} min${v.cooled ? '' : ' *'}</option>`).join('') : '<option>—</option>'}</select></label>
         <label>${VL.t(L('أنبوب Cannon-Fenske', 'Cannon-Fenske size'))}<select id="bSize">${Object.entries(M.CANNON).map(([k, c]) => `<option value="${k}" ${B.size === +k ? 'selected' : ''}>${k} · ${c.lo}–${c.hi} mm²/s</option>`).join('')}</select></label>
       </div>
-      <div class="row"><button id="bRun" class="pri">${VL.t(L('قِس زمن الجريان ×3', 'Time the efflux ×3'))}</button></div>
+      <div class="row"><button id="bRun" class="pri">${VL.t(L('قِس زمن الجريان ×3', 'Time the efflux ×3'))}</button><button id="bVid">${VL.t('vidBtn')}</button></div>
       <p class="note" style="margin:0">${VL.t(L('الـ residue: ورق Whatman ashless قطر 50 mm، و 50 mL من السائل المكسور، وورقة blank.', 'Residue: Whatman ashless 50 mm paper, 50 mL of broken fluid, and a blank paper.'))}</p>
       <div class="grid2">
         <label>${VL.t(L('درجة الورق', 'Paper grade'))}<select id="bGrade" ${B.res.m1 !== null ? 'disabled' : ''}>${[[40, '8 µm'], [41, '20 µm'], [42, '2.5 µm'], [44, '3 µm']].map(([k, p]) => `<option value="${k}" ${B.res.grade === k ? 'selected' : ''}>Grade ${k} · ${p}</option>`).join('')}</select></label>
@@ -517,6 +517,7 @@
     $('#bSel').onchange = e => { B.sel = +e.target.value; };
     $('#bSize').onchange = e => { B.size = +e.target.value; B.sizeTouched = true; };
     $('#bRun').onclick = () => VL.run(() => runViscometer(B.sel));
+    $('#bVid').onclick = () => VL.openVideo();
     $('#bGrade').onchange = e => { B.res.grade = +e.target.value; };
     $('#bResV').onchange = e => { B.res.vial = +e.target.value; };
     $('#bW').onclick = () => VL.run(weighPapers);

@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cannon-Fenske Film</title>
+<style>
+  :root { --ink: #f4f7fa; --muted: #b7c3cf; --acc: #39d6a0; --warn: #ffbf5a; --panel: rgba(12, 20, 30, 0.82); --line: rgba(255, 255, 255, 0.16); }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #1b2633; color: var(--ink);
+    font-family: "Noto Sans", "Noto Sans Arabic", "DejaVu Sans", system-ui, sans-serif; }
+  #stage { position: fixed; inset: 0; background: radial-gradient(ellipse at 50% 35%, #3b5065 0%, #22303e 55%, #151d26 100%); }
+  canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .ov { position: absolute; transition: none; }
+  #title { left: 0; right: 0; top: 34%; text-align: center; }
+  #title h1 { font-size: 64px; margin: 0 0 18px; font-weight: 800; letter-spacing: 0.01em; }
+  #title p { font-size: 30px; margin: 0; color: var(--muted); }
+  #cap { left: 50%; bottom: 46px; transform: translateX(-50%); width: min(1500px, 88%); background: var(--panel); border: 1px solid var(--line);
+    border-radius: 18px; padding: 20px 30px; font-size: 33px; line-height: 1.45; text-align: center; }
+  #cap b { color: var(--acc); font-weight: 700; display: block; font-size: 25px; letter-spacing: 0.06em; margin-bottom: 4px; }
+  #panel { right: 70px; top: 90px; width: 640px; background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 24px 30px; font-size: 27px; line-height: 1.5; }
+  #panel h3 { margin: 0 0 12px; font-size: 28px; color: var(--acc); }
+  #panel table { width: 100%; border-collapse: collapse; font-size: 26px; direction: ltr; }
+  #panel td, #panel th { padding: 6px 10px; border-bottom: 1px solid var(--line); text-align: center; }
+  #panel th { color: var(--muted); font-weight: 600; }
+  #panel tr.hi td { background: rgba(57, 214, 160, 0.2); color: #fff; font-weight: 700; }
+  #panel .eq { direction: ltr; font-family: "DejaVu Sans Mono", monospace; font-size: 27px; margin: 6px 0; }
+  #panel .eq[dir="rtl"] { direction: rtl; text-align: right; font-family: "Noto Sans Arabic", "DejaVu Sans", sans-serif; }
+  #panel .ok { color: var(--acc); } #panel .bad { color: #ff8a7a; } #panel .note { color: var(--muted); font-size: 22px; margin-top: 10px; }
+  #watch { left: 70px; top: 80px; background: #0b1712; border: 2px solid #2c5a47; border-radius: 16px; padding: 14px 26px; font-family: "DejaVu Sans Mono", monospace; direction: ltr; }
+  #watch .t { font-size: 62px; color: #ffd66b; font-weight: 700; }
+  #watch .s { font-size: 21px; color: #7fd8b0; }
+  #flag { left: 0; right: 0; top: 6%; text-align: center; font-size: 54px; font-weight: 800; color: #ffd66b; text-shadow: 0 3px 14px rgba(0,0,0,.6); }
+  #temp { left: 70px; top: 210px; background: #0b1712; border: 2px solid #2c5a47; border-radius: 16px; padding: 12px 24px; font-family: "DejaVu Sans Mono", monospace; direction: ltr; font-size: 40px; color: #5dffb1; }
+  .lab { position: absolute; font-size: 25px; padding: 6px 14px; background: rgba(255,255,255,0.93); color: #14202b; border-radius: 10px; white-space: nowrap; box-shadow: 0 4px 14px rgba(0,0,0,.35); }
+  #lines { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  .mark { position: absolute; font: 700 38px "DejaVu Sans", sans-serif; color: #ffd66b; text-shadow: 0 2px 8px rgba(0,0,0,.7); }
+  [dir="rtl"] #cap, [dir="rtl"] #panel, [dir="rtl"] #title { font-family: "Noto Sans Arabic", "Noto Naskh Arabic", "DejaVu Sans", sans-serif; }
+  [dir="rtl"] .lab { font-family: "Noto Sans Arabic", "DejaVu Sans", sans-serif; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="c"></canvas>
+  <svg id="lines"></svg>
+  <div id="labels"></div>
+  <div class="ov" id="title"><h1></h1><p></p></div>
+  <div class="ov" id="panel"></div>
+  <div class="ov" id="watch"><div class="t">0.0 s</div><div class="s"></div></div>
+  <div class="ov" id="temp">30.00 °C</div>
+  <div class="ov" id="flag"></div>
+  <div class="ov" id="cap"></div>
+</div>
+<script src="../vendor/three.min.js"></script>
+<script src="film.js"></script>
+</body>
+</html>
