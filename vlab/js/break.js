@@ -487,6 +487,7 @@
         <button id="bHeat" class="${B.heat ? 'pri' : ''}">${VL.t(B.heat ? L('الحمام يعمل', 'Bath on') : L('شغّل الحمام', 'Bath on'))}</button>
         <button id="bStart" ${B.running ? 'disabled' : ''}>${VL.t(L('ضع القوارير وابدأ', 'Load vials & start'))}</button>
       </div>
+      <div class="row"><button id="bVid3">${VL.t('vidBtn3')}</button></div>
       <div class="row">
         <label class="inline">${VL.t(L('تسريع الزمن', 'Time-lapse'))} <select id="bSpeed">${[60, 600, 3000].map(v => `<option value="${v}" ${B.speed === v ? 'selected' : ''}>×${v}</option>`).join('')}</select></label>
         <button id="bCool">${VL.t(L('برّد ورشّح', 'Cool & filter'))}</button>
@@ -520,6 +521,7 @@
     $('#bRun').onclick = () => VL.run(() => runViscometer(B.sel));
     $('#bVid').onclick = () => VL.openVideo('cannon');
     $('#bVid2').onclick = () => VL.openVideo('residue');
+    $('#bVid3').onclick = () => VL.openVideo('breaktest');
     $('#bGrade').onchange = e => { B.res.grade = +e.target.value; };
     $('#bResV').onchange = e => { B.res.vial = +e.target.value; };
     $('#bW').onclick = () => VL.run(weighPapers);

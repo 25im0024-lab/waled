@@ -1,8 +1,9 @@
-// Render a lab film to MP4, one language at a time: the Cannon-Fenske film (default) or --film residue.
+// Render a lab film to MP4, one language at a time: the Cannon-Fenske film (default), --film residue or --film breaktest.
 // Needs Playwright (Chromium) and ffmpeg, plus Noto Sans Arabic for the Arabic captions.
 //   node vlab/video/render.js en            → vlab/video/cannon-fenske-en.mp4
 //   node vlab/video/render.js ar --fps 25   → vlab/video/cannon-fenske-ar.mp4
 //   node vlab/video/render.js en --film residue      → vlab/video/residue-en.mp4
+//   node vlab/video/render.js en --film breaktest    → vlab/video/break-test-en.mp4
 //   node vlab/video/render.js en --stills 15,47,88   → PNG stills only (for checking)
 // The film is stepped frame by frame through FILM.frame(t), so the result is smooth however slow the GPU is.
 const { chromium } = require('playwright');
@@ -16,8 +17,9 @@ const lang = args[0] === 'ar' ? 'ar' : 'en';
 const opt = k => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : null; };
 const fps = +(opt('--fps') || 25);
 const stills = opt('--stills');
-const film = opt('--film') === 'residue' ? 'residue' : 'cannon';
-const out = opt('--out') || path.join(__dirname, `${film === 'residue' ? 'residue' : 'cannon-fenske'}-${lang}.mp4`);
+const FILMS = { cannon: 'cannon-fenske', residue: 'residue', breaktest: 'break-test' };
+const film = FILMS[opt('--film')] ? opt('--film') : 'cannon';
+const out = opt('--out') || path.join(__dirname, `${FILMS[film]}-${lang}.mp4`);
 const tmp = opt('--tmp') || fs.mkdtempSync(path.join(require('os').tmpdir(), `film-${film}-${lang}-`));
 const root = path.join(__dirname, '..');
 
