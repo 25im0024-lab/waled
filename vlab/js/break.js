@@ -501,6 +501,7 @@
         <label>${VL.t(L('درجة الورق', 'Paper grade'))}<select id="bGrade" ${B.res.m1 !== null ? 'disabled' : ''}>${[[40, '8 µm'], [41, '20 µm'], [42, '2.5 µm'], [44, '3 µm']].map(([k, p]) => `<option value="${k}" ${B.res.grade === k ? 'selected' : ''}>Grade ${k} · ${p}</option>`).join('')}</select></label>
         <label>${VL.t(L('القارورة للـ residue', 'Vial for residue'))}<select id="bResV" ${B.res.filtered ? 'disabled' : ''}>${outs.length ? outs.map(([v, i]) => `<option value="${i}" ${(B.res.vial === i || (B.res.vial < 0 && i === outs[outs.length - 1][1])) ? 'selected' : ''}>${v.tp} min</option>`).join('') : '<option>—</option>'}</select></label>
       </div>
+      <div class="row"><button id="bVid2">${VL.t('vidBtn2')}</button></div>
       <div class="row"><button id="bW">${VL.t(L('زِن الورق', 'Weigh papers'))}</button><button id="bF">${VL.t(L('رشّح واغسل', 'Filter & wash'))}</button><button id="bD">${VL.t(L('جفّف وزِن', 'Dry & weigh'))}</button></div>`;
     const $ = q => el.querySelector(q);
     $('#bPreset').onchange = e => { const [n, g] = e.target.value.split('|').map(Number); Object.assign(s, { naoa: n, guar: g, kcl: 1 }); VL.renderControls(); };
@@ -517,7 +518,8 @@
     $('#bSel').onchange = e => { B.sel = +e.target.value; };
     $('#bSize').onchange = e => { B.size = +e.target.value; B.sizeTouched = true; };
     $('#bRun').onclick = () => VL.run(() => runViscometer(B.sel));
-    $('#bVid').onclick = () => VL.openVideo();
+    $('#bVid').onclick = () => VL.openVideo('cannon');
+    $('#bVid2').onclick = () => VL.openVideo('residue');
     $('#bGrade').onchange = e => { B.res.grade = +e.target.value; };
     $('#bResV').onchange = e => { B.res.vial = +e.target.value; };
     $('#bW').onclick = () => VL.run(weighPapers);
