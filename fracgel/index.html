@@ -150,9 +150,18 @@ footer{margin-top:28px;border-top:1px solid var(--line);padding-top:12px;color:v
     <button id="btnCsv"><span data-l="ar">تصدير CSV</span><span data-l="en">Export CSV</span></button>
     <label class="btn" for="fileImport"><span data-l="ar">استيراد JSON</span><span data-l="en">Import JSON</span></label>
     <input type="file" id="fileImport" accept="application/json,.json" hidden>
+    <label class="btn" for="fileXlsx"><span data-l="ar">استيراد Excel</span><span data-l="en">Import Excel</span></label>
+    <input type="file" id="fileXlsx" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
     <button id="btnLang" class="ghost"></button>
   </div>
 </header>
+
+<section class="panel" id="xlsxPanel" hidden style="margin-bottom:12px">
+  <div class="row" style="justify-content:space-between"><h2><span data-l="ar">استيراد من Excel</span><span data-l="en">Import from Excel</span></h2><span class="status" id="xlsxFile"></span></div>
+  <p class="note"><span data-l="ar">يقرأ ملف «Rheology Workbench» (أوراق Results و Steady و Frequency و Temperature) داخل المتصفح، فلا يُرفع إلى أي مكان. القيم الموجودة في الملف تحلّ محل الحقول نفسها في كل عينة، وتبقى الحقول الأخرى كما هي (الترسيب، الكسر، الملاحظات). اللزوجة عند 100 s⁻¹.</span><span data-l="en">Reads a "Rheology Workbench" file (sheets Results, Steady, Frequency, Temperature) inside the browser; nothing is uploaded. Values in the file replace the same fields of each sample; other fields (settling, breaking, notes) stay as they are. Viscosity is at 100 s⁻¹.</span></p>
+  <div style="overflow-x:auto"><table class="data" id="xlsxTable"></table></div>
+  <div class="row" style="margin-top:10px"><button class="pri" id="btnXlsxApply"><span data-l="ar">طبّق على العينات</span><span data-l="en">Apply to the samples</span></button><button class="ghost" id="btnXlsxCancel"><span data-l="ar">إلغاء</span><span data-l="en">Cancel</span></button></div>
+</section>
 
 <section class="panel" id="ghPanel" hidden style="margin-bottom:12px">
   <div class="row" style="justify-content:space-between"><h2><span data-l="ar">الحفظ في مستودع GitHub خاص</span><span data-l="en">Save to a private GitHub repository</span></h2><span class="status" id="ghStatus"><span data-l="ar">غير متصل</span><span data-l="en">Not connected</span></span></div>
@@ -234,11 +243,11 @@ footer{margin-top:28px;border-top:1px solid var(--line);padding-top:12px;color:v
         <label class="f">KCl <span class="u">g/100 mL</span><input type="number" step="any" data-f="kcl" id="f_kcl"></label>
         <label class="f">pH<input type="number" step="any" data-f="pH" id="f_pH"></label>
       </fieldset>
-      <fieldset><legend><span data-l="ar">اللزوجة عند 170 s⁻¹</span><span data-l="en">Viscosity at 170 s⁻¹</span></legend>
-        <label class="f"><span data-l="ar">عند 25 °C <span class="u">mPa·s</span></span><span data-l="en">At 25 °C <span class="u">mPa·s</span></span><input type="number" step="any" data-f="eta170_25" id="f_eta170_25"></label>
+      <fieldset><legend><span data-l="ar">اللزوجة عند 100 s⁻¹</span><span data-l="en">Viscosity at 100 s⁻¹</span></legend>
+        <label class="f"><span data-l="ar">عند 25 °C <span class="u">mPa·s</span></span><span data-l="en">At 25 °C <span class="u">mPa·s</span></span><input type="number" step="any" data-f="eta100_25" id="f_eta100_25"></label>
         <label class="f"><span data-l="ar">حرارة الاختبار <span class="u">°C</span></span><span data-l="en">Test temperature <span class="u">°C</span></span><input type="number" step="any" data-f="testT" id="f_testT"></label>
         <label class="f"><span data-l="ar">مدة القص <span class="u">min</span></span><span data-l="en">Shear time <span class="u">min</span></span><input type="number" step="any" data-f="shearMin" id="f_shearMin"></label>
-        <label class="f"><span data-l="ar">في نهاية القص الحراري <span class="u">mPa·s</span></span><span data-l="en">At the end of heated shear <span class="u">mPa·s</span></span><input type="number" step="any" data-f="eta170_T" id="f_eta170_T"></label>
+        <label class="f"><span data-l="ar">في نهاية القص الحراري <span class="u">mPa·s</span></span><span data-l="en">At the end of heated shear <span class="u">mPa·s</span></span><input type="number" step="any" data-f="eta100_T" id="f_eta100_T"></label>
       </fieldset>
       <fieldset><legend><span data-l="ar">Viscoelasticity (من تبويب Maxwell أو يدوياً)</span><span data-l="en">Viscoelasticity (from the Maxwell tab or by hand)</span></legend>
         <label class="f">G₀ <span class="u">Pa</span><input type="number" step="any" data-f="G0" id="f_G0"></label>
@@ -304,7 +313,7 @@ footer{margin-top:28px;border-top:1px solid var(--line);padding-top:12px;color:v
     <div class="panel">
       <div class="plotbox"><canvas id="plotFlow" aria-label="Viscosity versus shear rate"></canvas></div>
       <dl class="kv" id="flowOut"></dl>
-      <div class="row"><button id="btnSaveNK" disabled><span data-l="ar">احفظ n و K</span><span data-l="en">Save n and K</span></button><button id="btnSave170" disabled><span data-l="ar">احفظ η(170) كقيمة 25 °C</span><span data-l="en">Save η(170) as the 25 °C value</span></button></div>
+      <div class="row"><button id="btnSaveNK" disabled><span data-l="ar">احفظ n و K</span><span data-l="en">Save n and K</span></button><button id="btnSave100" disabled><span data-l="ar">احفظ η(100) كقيمة 25 °C</span><span data-l="en">Save η(100) as the 25 °C value</span></button></div>
     </div>
   </div>
   <div class="panel">
@@ -326,7 +335,7 @@ footer{margin-top:28px;border-top:1px solid var(--line);padding-top:12px;color:v
     <h2><span data-l="ar">معايير الأداء </span><span data-l="en">Performance criteria </span><span class="en muted" style="font-size:14px">Derringer–Suich desirability</span></h2>
     <p class="note"><span data-l="ar">لكل معيار تحوّل القيمة إلى درجة d بين 0 و 1، والدرجة الكلية D هي المتوسط الهندسي الموزون. إذا فشلت عينة في معيار واحد (d = 0) فإن D = 0. الحدود الافتراضية أمثلة، فعدّلها لتطابق المعيار الذي تعتمده في الرسالة.</span><span data-l="en">Each criterion turns its value into a score d between 0 and 1, and the overall score D is the weighted geometric mean. If a sample fails one criterion (d = 0), then D = 0. The default limits are examples: change them to match the criteria you use in your thesis.</span></p>
     <div class="scroll"><table class="data" id="specTable"></table></div>
-    <p class="callout"><span data-l="ar">حد 50 mPa·s عند 170 s⁻¹ بعد القص الحراري، وحد 5 mPa·s لسائل الكسر، مأخوذان من المعيار الصيني SY/T 6376 كما يُستشهد به كثيراً في أبحاث الـ VES. ثقتي في رقم المعيار والقيم متوسطة، فتحقق من النص الأصلي قبل الاستشهاد.</span><span data-l="en">The 50 mPa·s limit at 170 s⁻¹ after heated shear and the 5 mPa·s limit for the broken fluid come from the Chinese standard SY/T 6376, as often cited in VES research. Confidence in the standard number and the values is moderate, so check the original text before citing it.</span></p>
+    <p class="callout"><span data-l="ar">حد 50 mPa·s بعد القص الحراري، وحد 5 mPa·s لسائل الكسر، مأخوذان من المعيار الصيني SY/T 6376 كما يُستشهد به كثيراً في أبحاث الـ VES، وهو يعرّفهما عند 170 s⁻¹. قياساتك هنا عند 100 s⁻¹، والسائل shear-thinning فيعطي η أعلى عند 100، فقارن بحذر. ثقتي في رقم المعيار والقيم متوسطة، فتحقق من النص الأصلي قبل الاستشهاد.</span><span data-l="en">The 50 mPa·s limit after heated shear and the 5 mPa·s limit for the broken fluid come from the Chinese standard SY/T 6376, as often cited in VES research, which defines them at 170 s⁻¹. Your readings here are at 100 s⁻¹, and a shear-thinning fluid reads higher at 100, so compare with care. Confidence in the standard number and the values is moderate, so check the original text before citing it.</span></p>
   </div>
   <div class="panel">
     <h2><span data-l="ar">ترتيب العينات</span><span data-l="en">Sample ranking</span></h2>
@@ -418,11 +427,11 @@ function toast(msg) { const t = document.createElement('div'); t.className = 'to
 
 /* ---------- state ---------- */
 function blankSample(naoa, guar) {
-  return { naoa, guar, kcl: 1, pH: null, eta170_25: null, testT: 90, shearMin: 60, eta170_T: null, G0: null, tauR: null, eta0: null, n: null, K: null,
+  return { naoa, guar, kcl: 1, pH: null, eta100_25: null, testT: 90, shearMin: 60, eta100_T: null, G0: null, tauR: null, eta0: null, n: null, K: null,
     settle: null, breaker: '', breakTime: null, brokenVisc: null, residue: null, notes: '', freq: '', flow: '', flowUnit: 'Pa·s' };
 }
 const DEFAULT_SPECS = [
-  { m: 'eta170_T', goal: 'max', lo: 50, hi: 150, w: 3, on: true },
+  { m: 'eta100_T', goal: 'max', lo: 50, hi: 150, w: 3, on: true },
   { m: 'ret', goal: 'max', lo: 40, hi: 90, w: 1, on: true },
   { m: 'settle', goal: 'min', lo: 1, hi: 20, w: 2, on: true },
   { m: 'brokenVisc', goal: 'min', lo: 2, hi: 5, w: 2, on: true },
@@ -432,7 +441,7 @@ const DEFAULT_SPECS = [
 function emptyState() {
   const samples = {};
   for (const n of NAOA) for (const g of GUAR) samples[key(n, g)] = blankSample(n, g);
-  return { v: 1, demo: false, samples, specs: JSON.parse(JSON.stringify(DEFAULT_SPECS)), sel: MID, matMetric: 'eta170_25', rsm: { resp: 'eta170_T', goal: 'max' }, settle: { d: 0.6, rhoP: 2.65, rhoF: 1.01 }, checks: {} };
+  return { v: 1, demo: false, samples, specs: JSON.parse(JSON.stringify(DEFAULT_SPECS)), sel: MID, matMetric: 'eta100_25', rsm: { resp: 'eta100_T', goal: 'max' }, settle: { d: 0.6, rhoP: 2.65, rhoF: 1.01 }, checks: {} };
 }
 /* Clearly fake numbers so the page shows what it does on first open. Seeded, so they never change. */
 function demoState() {
@@ -445,7 +454,7 @@ function demoState() {
     const bump = n && g ? 1.4 + 0.6 * Math.exp(-((n - 8) ** 2) / 8 - ((g - 0.5) ** 2) / 0.05) : 1;
     const e25 = n || g ? (eN(n) + eG(g)) * bump : 1.1;
     const ret = n && g ? 0.55 + 0.12 * Math.exp(-((g - 0.5) ** 2) / 0.05) : n ? 0.32 : g ? 0.5 : 0.9;
-    Object.assign(s, { pH: n ? +jit(9.8, 0.02).toFixed(1) : 7.2, eta170_25: +jit(e25).toFixed(1), eta170_T: +jit(e25 * ret).toFixed(1) });
+    Object.assign(s, { pH: n ? +jit(9.8, 0.02).toFixed(1) : 7.2, eta100_25: +jit(e25).toFixed(1), eta100_T: +jit(e25 * ret).toFixed(1) });
     if (n) {
       const G0 = 2.2 * (n / 6) ** 2.2 * (1 + 0.6 * g), tau = 0.9 * (n / 6) ** 1.4 * (1 + 1.6 * g);
       Object.assign(s, { G0: +jit(G0).toFixed(2), tauR: +jit(tau).toFixed(2), eta0: +(G0 * tau).toFixed(1), n: +jit(0.22 + 0.1 * g, 0.05).toFixed(2), K: +jit(G0 * tau * 0.25).toFixed(2) });
@@ -463,7 +472,19 @@ function demoState() {
   s.notes = tr('مثال: guar hydrated 60 min ثم أُضيف NaOA و KCl، راحة 24 h، centrifuge لإزالة الفقاعات.', 'Example: guar hydrated 60 min, then NaOA and KCl added, rested 24 h, centrifuged to remove bubbles.');
   return st;
 }
-function load() { try { const raw = localStorage.getItem(STORE); if (!raw) return null; const st = JSON.parse(raw); return st && st.samples ? st : null; } catch { return null; } }
+/* Viscosities used to be stored at 170 1/s (eta170_*); the lab now measures at 100 1/s. Older data move over as they are. */
+function migrate(st) {
+  if (!st || !st.samples) return st;
+  for (const smp of Object.values(st.samples)) for (const [o, n] of [['eta170_25', 'eta100_25'], ['eta170_T', 'eta100_T']]) {
+    if (o in smp) { if (smp[n] === undefined || smp[n] === null) smp[n] = smp[o]; delete smp[o]; }
+  }
+  const ren = id => ({ eta170_25: 'eta100_25', eta170_T: 'eta100_T' }[id] || id);
+  if (st.matMetric) st.matMetric = ren(st.matMetric);
+  if (st.rsm && st.rsm.resp) st.rsm.resp = ren(st.rsm.resp);
+  if (Array.isArray(st.specs)) st.specs.forEach(x => { if (x && x.m) x.m = ren(x.m); });
+  return st;
+}
+function load() { try { const raw = localStorage.getItem(STORE); if (!raw) return null; const st = JSON.parse(raw); return st && st.samples ? migrate(st) : null; } catch { return null; } }
 let S = load() || demoState();
 let saveTimer = 0;
 function localSave() {
@@ -483,9 +504,9 @@ function synergyOf(s, f) {
   return a && b ? C.synergy(num(s[f]), num(a[f]), num(b[f])) : NaN;
 }
 const METRICS = [
-  { id: 'eta170_25', label: tr('η عند 170 s⁻¹، 25 °C', 'η at 170 s⁻¹, 25 °C'), unit: 'mPa·s', log: true },
-  { id: 'eta170_T', label: tr('η بعد القص الحراري', 'η after heated shear'), unit: 'mPa·s', log: true },
-  { id: 'ret', label: tr('الاحتفاظ باللزوجة حرارياً', 'Viscosity retention at temperature'), unit: '%', get: s => ratio(num(s.eta170_T), num(s.eta170_25)) * 100 },
+  { id: 'eta100_25', label: tr('η عند 100 s⁻¹، 25 °C', 'η at 100 s⁻¹, 25 °C'), unit: 'mPa·s', log: true },
+  { id: 'eta100_T', label: tr('η بعد القص الحراري', 'η after heated shear'), unit: 'mPa·s', log: true },
+  { id: 'ret', label: tr('الاحتفاظ باللزوجة حرارياً', 'Viscosity retention at temperature'), unit: '%', get: s => ratio(num(s.eta100_T), num(s.eta100_25)) * 100 },
   { id: 'G0', label: 'G₀ plateau modulus', unit: 'Pa', log: true },
   { id: 'tauR', label: 'τR relaxation time', unit: 's', log: true },
   { id: 'eta0', label: 'η₀ zero-shear', unit: 'Pa·s', log: true },
@@ -495,7 +516,7 @@ const METRICS = [
   { id: 'brokenVisc', label: tr('لزوجة المكسور', 'Broken-fluid viscosity'), unit: 'mPa·s' },
   { id: 'residue', label: 'Residue', unit: 'mg/L' },
   { id: 'loading', label: tr('مجموع NaOA + guar', 'Total NaOA + guar'), unit: 'g/100 mL', get: s => s.naoa + s.guar },
-  { id: 'SI', label: tr('مؤشر التآزر (η 170، 25 °C)', 'Synergy index (η 170, 25 °C)'), unit: '×', get: s => synergyOf(s, 'eta170_25') },
+  { id: 'SI', label: tr('مؤشر التآزر (η 100، 25 °C)', 'Synergy index (η 100, 25 °C)'), unit: '×', get: s => synergyOf(s, 'eta100_25') },
   { id: 'SI0', label: tr('مؤشر التآزر (η₀)', 'Synergy index (η₀)'), unit: '×', get: s => synergyOf(s, 'eta0') },
   { id: 'D', label: tr('الدرجة الكلية D', 'Overall score D'), unit: '0–1', get: s => scoreOf(s).D },
 ];
@@ -507,7 +528,7 @@ function scoreOf(s) {
   const measured = parts.filter(p => Number.isFinite(p.d)).length;
   return { D: measured ? C.overallD(ds, ws) : NaN, parts, complete: measured === parts.length };
 }
-const progress = s => [num(s.eta170_25) !== null, num(s.G0) !== null || num(s.eta0) !== null, num(s.eta170_T) !== null, num(s.settle) !== null, num(s.brokenVisc) !== null || num(s.residue) !== null];
+const progress = s => [num(s.eta100_25) !== null, num(s.G0) !== null || num(s.eta0) !== null, num(s.eta100_T) !== null, num(s.settle) !== null, num(s.brokenVisc) !== null || num(s.residue) !== null];
 const sampleName = s => s.naoa ? `S${s.naoa}-${s.guar}` : s.guar ? `G${s.guar}-K` : 'K (blank)';
 const inPlan = s => PLAN.has(key(s.naoa, s.guar));
 const sampleKind = s => (s.naoa && s.guar ? tr('خليط', 'mixture') : s.naoa ? tr('ضبط: NaOA فقط', 'control: NaOA only') : s.guar ? tr('ضبط: guar فقط', 'control: guar only') : tr('ضبط: KCl فقط', 'control: KCl only')) + (isGrid(s) && !inPlan(s) ? tr(' (مقترح)', ' (suggested)') : '');
@@ -553,7 +574,7 @@ const cur = () => S.samples[S.sel] || S.samples[sortedKeys()[0]];
 $('#matMetric').innerHTML = METRICS.map(m => `<option value="${m.id}">${m.label} (${m.unit})</option>`).join('');
 $('#matMetric').addEventListener('change', e => { S.matMetric = e.target.value; save(); renderMatrix(); });
 function renderMatrix() {
-  const mid = S.matMetric || 'eta170_25', m = MET[mid]; $('#matMetric').value = mid;
+  const mid = S.matMetric || 'eta100_25', m = MET[mid]; $('#matMetric').value = mid;
   const vals = Object.values(S.samples).filter(isGrid).map(s => val(s, mid)).filter(Number.isFinite);
   const tf = v => m.log && v > 0 ? Math.log10(v) : v;
   const lo = vals.length ? Math.min(...vals.map(tf)) : 0, hi = vals.length ? Math.max(...vals.map(tf)) : 1;
@@ -586,14 +607,14 @@ function renderMatrix() {
 }
 function renderTodo() {
   const all = Object.values(S.samples), items = [];
-  const noBase = all.filter(s => (s.naoa || s.guar) && num(s.eta170_25) === null).length;
+  const noBase = all.filter(s => (s.naoa || s.guar) && num(s.eta100_25) === null).length;
   const noVE = all.filter(s => s.naoa > 0 && num(s.G0) === null).length;
-  const noT = all.filter(s => (s.naoa || s.guar) && num(s.eta170_T) === null).length;
-  const ctrls = NAOA.slice(1).filter(n => num(S.samples[key(n, 0)].eta170_25) === null).length + GUAR.slice(1).filter(g => num(S.samples[key(0, g)].eta170_25) === null).length;
+  const noT = all.filter(s => (s.naoa || s.guar) && num(s.eta100_T) === null).length;
+  const ctrls = NAOA.slice(1).filter(n => num(S.samples[key(n, 0)].eta100_25) === null).length + GUAR.slice(1).filter(g => num(S.samples[key(0, g)].eta100_25) === null).length;
   const missing = GUAR.slice(1).filter(g => !PLAN.has(key(0, g))).map(g => `G${g}-K`);
   if (missing.length) items.push(tr(`خطتك لا تضم ${missing.join(' و ')}. أضفها (guar + KCl فقط) ليُحسب مؤشر التآزر لخلائط ${missing.map(m => m.slice(1, -2)).join(' و ')} g guar.`, `Your plan does not include ${missing.join(' and ')}. Add them (guar + KCl only) so the synergy index can be computed for the ${missing.map(m => m.slice(1, -2)).join(' and ')} g guar mixtures.`));
   if (ctrls) items.push(tr(`${ctrls} من عينات الضبط بلا قياس بعد، وبدونها لا يُحسب مؤشر التآزر.`, `${ctrls} control sample(s) not measured yet; without them the synergy index cannot be computed.`));
-  if (noBase) items.push(tr(`${noBase} عينة بلا لزوجة أساسية عند 170 s⁻¹ و25 °C.`, `${noBase} sample(s) without a base viscosity at 170 s⁻¹ and 25 °C.`));
+  if (noBase) items.push(tr(`${noBase} عينة بلا لزوجة أساسية عند 100 s⁻¹ و25 °C.`, `${noBase} sample(s) without a base viscosity at 100 s⁻¹ and 25 °C.`));
   if (noVE) items.push(tr(`${noVE} عينة تحتوي NaOA بلا frequency sweep (G₀ و τR).`, `${noVE} NaOA sample(s) without a frequency sweep (G₀ and τR).`));
   if (noT) items.push(tr(`${noT} عينة بلا اختبار القص الحراري.`, `${noT} sample(s) without a heated-shear test.`));
   const mixes = all.filter(s => s.naoa > 0 && s.guar > 0 && Number.isFinite(val(s, S.rsm.resp))).length;
@@ -608,7 +629,7 @@ $('#btnAddExtra').addEventListener('click', () => {
 });
 
 /* ---------- sample card ---------- */
-const NUM_FIELDS = ['kcl', 'pH', 'eta170_25', 'testT', 'shearMin', 'eta170_T', 'G0', 'tauR', 'eta0', 'n', 'K', 'settle', 'breakTime', 'brokenVisc', 'residue'];
+const NUM_FIELDS = ['kcl', 'pH', 'eta100_25', 'testT', 'shearMin', 'eta100_T', 'G0', 'tauR', 'eta0', 'n', 'K', 'settle', 'breakTime', 'brokenVisc', 'residue'];
 function renderSample() {
   const s = cur();
   $('#sampleTitle').textContent = `${sampleName(s)} · ${sampleKind(s)}`;
@@ -620,7 +641,7 @@ function renderDerived() {
   const s = cur(), sc = scoreOf(s), ms = C.meshSizeNm(num(s.G0), 25);
   const rows = [
     [tr('الاحتفاظ باللزوجة', 'Viscosity retention'), fmt(val(s, 'ret')), '%'],
-    [tr('مؤشر التآزر (η 170)', 'Synergy index (η 170)'), fmt(val(s, 'SI')), s.naoa && s.guar ? tr('> 1 = تآزر', '> 1 = synergy') : tr('للخلائط فقط', 'mixtures only')],
+    [tr('مؤشر التآزر (η 100)', 'Synergy index (η 100)'), fmt(val(s, 'SI')), s.naoa && s.guar ? tr('> 1 = تآزر', '> 1 = synergy') : tr('للخلائط فقط', 'mixtures only')],
     [tr('مؤشر التآزر (η₀)', 'Synergy index (η₀)'), fmt(val(s, 'SI0')), ''],
     [tr('η₀ من G₀·τR', 'η₀ from G₀·τR'), fmt(num(s.G0) * num(s.tauR)), 'Pa·s'],
     ['Mesh size ξ ≈ (kT/G₀)^⅓', fmt(ms), tr('nm، عند 25 °C', 'nm, at 25 °C')],
@@ -729,17 +750,17 @@ function renderFlow() {
 function analyseFlow(announce) {
   const { r, eta } = readFlow(), rMin = num($('#rMin').value), rMax = num($('#rMax').value);
   const p = r.length ? C.fitPowerLaw(r, eta, rMin, rMax) : null;
-  const e170 = r.length ? C.interpLogLog(r, eta, 170) : NaN;
-  lastFlow = p ? { ...p, e170 } : (Number.isFinite(e170) ? { e170 } : null);
+  const e100 = r.length ? C.interpLogLog(r, eta, 100) : NaN;
+  lastFlow = p ? { ...p, e100 } : (Number.isFinite(e100) ? { e100 } : null);
   const series = [{ x: r, y: eta, color: tok('--accent'), label: 'η measured' }];
   if (p) { const a = rMin || Math.min(...r), b = rMax || Math.max(...r); series.push({ x: [a, b], y: [p.K * a ** (p.n - 1), p.K * b ** (p.n - 1)], color: tok('--micelle'), mode: 'line', label: `power law, n = ${p.n.toFixed(2)}` }); }
   plotLog($('#plotFlow'), series, { xlabel: 'γ̇ (1/s)', ylabel: 'η (Pa·s)', empty: 'Paste a flow curve' });
   const out = [];
-  if (p) out.push(['n', fmt(p.n), ''], ['K', fmt(p.K), 'Pa·sⁿ'], ['R² (log)', p.r2.toFixed(3), tr(`${p.pts} نقاط`, `${p.pts} points`)], [tr('η(170) من النموذج', 'η(170) from the model'), fmt(p.K * 170 ** (p.n - 1) * 1e3), 'mPa·s']);
-  out.push([tr('η(170) من القياس', 'η(170) measured'), fmt(e170 * 1e3), 'mPa·s']);
+  if (p) out.push(['n', fmt(p.n), ''], ['K', fmt(p.K), 'Pa·sⁿ'], ['R² (log)', p.r2.toFixed(3), tr(`${p.pts} نقاط`, `${p.pts} points`)], [tr('η(100) من النموذج', 'η(100) from the model'), fmt(p.K * 100 ** (p.n - 1) * 1e3), 'mPa·s']);
+  out.push([tr('η(100) من القياس', 'η(100) measured'), fmt(e100 * 1e3), 'mPa·s']);
   if (r.length) out.push([tr('أعلى η مقاسة (≈ η₀ إن ظهر plateau)', 'Highest measured η (≈ η₀ if a plateau shows)'), fmt(Math.max(...eta)), 'Pa·s']);
   $('#flowOut').innerHTML = out.map(o => `<div><dt>${o[0]}</dt><dd>${o[1]} <small>${o[2]}</small></dd></div>`).join('');
-  $('#btnSaveNK').disabled = !p; $('#btnSave170').disabled = !Number.isFinite(e170);
+  $('#btnSaveNK').disabled = !p; $('#btnSave100').disabled = !Number.isFinite(e100);
   if (announce && !p) toast(tr('أحتاج نقطتين على الأقل داخل مدى γ̇ المحدد', 'I need at least 2 points inside the chosen γ̇ range'));
   renderSettle();
 }
@@ -761,10 +782,10 @@ $('#flowUnit').addEventListener('change', () => { cur().flowUnit = $('#flowUnit'
 $('#btnFitFlow').addEventListener('click', () => analyseFlow(true));
 ['#pD', '#pRho', '#fRho'].forEach(id => $(id).addEventListener('input', () => { S.settle = { d: num($('#pD').value), rhoP: num($('#pRho').value), rhoF: num($('#fRho').value) }; save(); renderSettle(); }));
 $('#btnSaveNK').addEventListener('click', () => { if (!lastFlow?.n) return; const s = cur(); s.n = +lastFlow.n.toPrecision(3); s.K = +lastFlow.K.toPrecision(4); save(); renderSettle(); toast(tr('حُفظت n و K', 'Saved n and K')); });
-$('#btnSave170').addEventListener('click', () => { if (!lastFlow) return; const s = cur(); s.eta170_25 = +(lastFlow.e170 * 1e3).toPrecision(4); save(); toast(tr('حُفظت η(170) = ', 'Saved η(170) = ') + fmt(s.eta170_25) + ' mPa·s'); });
+$('#btnSave100').addEventListener('click', () => { if (!lastFlow) return; const s = cur(); s.eta100_25 = +(lastFlow.e100 * 1e3).toPrecision(4); save(); toast(tr('حُفظت η(100) = ', 'Saved η(100) = ') + fmt(s.eta100_25) + ' mPa·s'); });
 
 /* ---------- optimum ---------- */
-const SPEC_METRICS = ['eta170_25', 'eta170_T', 'ret', 'G0', 'tauR', 'eta0', 'settle', 'breakTime', 'brokenVisc', 'residue', 'loading', 'SI'];
+const SPEC_METRICS = ['eta100_25', 'eta100_T', 'ret', 'G0', 'tauR', 'eta0', 'settle', 'breakTime', 'brokenVisc', 'residue', 'loading', 'SI'];
 function renderOptimum() {
   $('#specTable').innerHTML = (LANG === 'ar' ? `<tr><th>مفعّل</th><th>المعيار</th><th>الهدف</th><th>d = 0 عند</th><th>d = 1 عند</th><th>الوزن</th></tr>` : `<tr><th>On</th><th>Criterion</th><th>Goal</th><th>d = 0 at</th><th>d = 1 at</th><th>Weight</th></tr>`) +
     S.specs.map((sp, i) => `<tr>
@@ -775,7 +796,7 @@ function renderOptimum() {
       <td class="num"><input type="number" step="any" data-i="${i}" data-p="${sp.goal === 'max' ? 'hi' : 'lo'}" value="${sp.goal === 'max' ? sp.hi : sp.lo}"></td>
       <td class="num"><input type="number" step="1" min="0" data-i="${i}" data-p="w" value="${sp.w}"></td></tr>`).join('');
   renderRank();
-  $('#rsmResp').innerHTML = ['eta170_25', 'eta170_T', 'ret', 'eta0', 'G0', 'tauR', 'settle', 'D'].map(id => `<option value="${id}">${MET[id].label}</option>`).join('');
+  $('#rsmResp').innerHTML = ['eta100_25', 'eta100_T', 'ret', 'eta0', 'G0', 'tauR', 'settle', 'D'].map(id => `<option value="${id}">${MET[id].label}</option>`).join('');
   $('#rsmResp').value = S.rsm.resp; $('#rsmGoal').value = S.rsm.goal;
   runRsm(false);
 }
@@ -943,9 +964,9 @@ const PROTOCOL = [
   [tr('اترك العينة لتتوازن (مثلاً 24 h) وأزل الفقاعات بالـ centrifuge قبل القياس، فالفقاعات تشوّه G′ و η.', 'Let the sample equilibrate (for example 24 h) and remove bubbles by centrifuging before measuring, because bubbles distort G′ and η.'), 'mut', tr('ممارسة', 'Practice')],
   [tr('Amplitude sweep عند تردد ثابت لتحديد الـ LVR، ثم frequency sweep داخل الـ LVR (مثلاً 0.01–100 rad/s).', 'Amplitude sweep at a fixed frequency to find the LVR, then a frequency sweep inside the LVR (for example 0.01–100 rad/s).'), 'good', tr('ثابت', 'Established')],
   [tr('Steady-shear flow curve من 0.01 إلى 1000 s⁻¹ للحصول على η₀ ومنطقة الـ shear thinning.', 'Steady-shear flow curve from 0.01 to 1000 s⁻¹ to get η₀ and the shear-thinning region.'), 'good', tr('ثابت', 'Established')],
-  [tr('اختبار القص الحراري عند 170 s⁻¹ مع رفع الحرارة ثم الثبات عند حرارة الهدف. استخدم solvent trap أو زيتاً لمنع التبخر. الـ concentric cylinder أنسب من cone-plate عند الحرارة العالية.', 'Heated-shear test at 170 s⁻¹: ramp the temperature, then hold at the target temperature. Use a solvent trap or oil to prevent evaporation. A concentric cylinder suits high temperature better than cone-plate.'), 'mut', tr('ممارسة', 'Practice')],
+  [tr('اختبار القص الحراري عند 100 s⁻¹ مع رفع الحرارة ثم الثبات عند حرارة الهدف. استخدم solvent trap أو زيتاً لمنع التبخر. الـ concentric cylinder أنسب من cone-plate عند الحرارة العالية.', 'Heated-shear test at 100 s⁻¹: ramp the temperature, then hold at the target temperature. Use a solvent trap or oil to prevent evaporation. A concentric cylinder suits high temperature better than cone-plate.'), 'mut', tr('ممارسة', 'Practice')],
   [tr('الترسيب الساكن للـ proppant في مخبار مدرّج عند حرارة الاختبار (سجّل mm/min أو زمن نزول مسافة ثابتة).', 'Static proppant settling in a graduated cylinder at the test temperature (record mm/min, or the time to fall a fixed distance).'), 'mut', tr('ممارسة', 'Practice')],
-  [tr('الكسر: الـ WLM ينكسر بالتلامس مع hydrocarbon، والـ guar يحتاج oxidizer مثل APS أو enzyme. قِس لزوجة المكسور عند 170 s⁻¹ والـ residue (ترشيح، تجفيف، وزن، بوحدة mg/L).', 'Breaking: the WLM breaks on contact with hydrocarbon, while guar needs an oxidizer such as APS, or an enzyme. Measure the broken-fluid viscosity at 170 s⁻¹ and the residue (filter, dry, weigh, in mg/L).'), 'good', tr('ثابت', 'Established')],
+  [tr('الكسر: الـ WLM ينكسر بالتلامس مع hydrocarbon، والـ guar يحتاج oxidizer مثل APS أو enzyme. قِس لزوجة المكسور عند 100 s⁻¹ والـ residue (ترشيح، تجفيف، وزن، بوحدة mg/L).', 'Breaking: the WLM breaks on contact with hydrocarbon, while guar needs an oxidizer such as APS, or an enzyme. Measure the broken-fluid viscosity at 100 s⁻¹ and the residue (filter, dry, weigh, in mg/L).'), 'good', tr('ثابت', 'Established')],
   [tr('كرّر كل قياس 3 مرات على الأقل من دفعات مستقلة، وأدخل المتوسط هنا وسجّل الـ SD في الملاحظات.', 'Repeat every measurement at least 3 times from independent batches, enter the mean here and record the SD in the notes.'), 'mut', tr('ممارسة', 'Practice')],
 ];
 function renderProtocol() {
@@ -983,7 +1004,7 @@ async function ghFetch(method, body) {
   }
   return res.json();
 }
-const measuredCount = () => Object.values(S.samples).filter(s => num(s.eta170_25) !== null).length;
+const measuredCount = () => Object.values(S.samples).filter(s => num(s.eta100_25) !== null).length;
 let ghBusy = false;
 async function ghSave(auto) {
   if (S.demo) { const m = tr('هذه بيانات مثال وهمية، فلن تُحفظ في مستودع بياناتك. امسحها أولاً.', 'This is fake example data, so it will not be saved to your data repository. Clear it first.'); ghShow(m, true); if (!auto) toast(m); return; }
@@ -992,7 +1013,7 @@ async function ghSave(auto) {
     const cur = await ghFetch('GET');
     const text = JSON.stringify(S, null, 1) + '\n';
     if (cur && cur.content && C.b64decodeUtf8(cur.content) === text) { GH.last = new Date().toLocaleString(); ghSaveCfg(); ghShow(tr('لا تغييرات منذ آخر حفظ', 'No changes since the last save')); return; }
-    await ghFetch('PUT', { message: `FracGel data: ${measuredCount()} samples with η(170) at 25 °C${S.demo ? ' (DEMO data)' : ''}${auto ? ' [auto]' : ''}`, content: C.b64encodeUtf8(text), branch: GH.branch || 'main', ...(cur ? { sha: cur.sha } : {}) });
+    await ghFetch('PUT', { message: `FracGel data: ${measuredCount()} samples with η(100) at 25 °C${S.demo ? ' (DEMO data)' : ''}${auto ? ' [auto]' : ''}`, content: C.b64encodeUtf8(text), branch: GH.branch || 'main', ...(cur ? { sha: cur.sha } : {}) });
     GH.last = new Date().toLocaleString(); ghSaveCfg(); ghShow(); if (!auto) toast(tr('حُفظت البيانات في GitHub', 'Data saved to GitHub'));
   } catch (e) { ghShow(e.message, true); if (!auto) toast(e.message); }
   finally { ghBusy = false; }
@@ -1005,7 +1026,7 @@ async function ghLoad() {
     const cur = await ghFetch('GET');
     if (!cur) throw new Error(tr('الملف غير موجود في المستودع بعد، فاحفظ أولاً', 'The file is not in the repository yet, so save first'));
     const st = JSON.parse(C.b64decodeUtf8(cur.content)); if (!st.samples) throw new Error(tr('الملف ليس بيانات FracGel Lab', 'The file is not FracGel Lab data'));
-    S = Object.assign(emptyState(), st); localSave(); GH.last = new Date().toLocaleString(); ghSaveCfg(); ghShow(); toast(tr('حُمّلت البيانات من GitHub', 'Data loaded from GitHub')); render();
+    S = Object.assign(emptyState(), migrate(st)); localSave(); GH.last = new Date().toLocaleString(); ghSaveCfg(); ghShow(); toast(tr('حُمّلت البيانات من GitHub', 'Data loaded from GitHub')); render();
   } catch (e) { ghShow(e.message, true); toast(e.message); }
 }
 $('#btnGhSave').addEventListener('click', () => ghSave(false));
@@ -1023,7 +1044,7 @@ function download(name, text, type) {
 const stamp = () => new Date().toISOString().slice(0, 10);
 $('#btnExport').addEventListener('click', () => download(`fracgel-${S.demo ? 'DEMO-' : ''}${stamp()}.json`, JSON.stringify(S, null, 1), 'application/json'));
 $('#btnCsv').addEventListener('click', () => {
-  const cols = ['naoa', 'guar', 'kcl', 'pH', 'eta170_25', 'testT', 'shearMin', 'eta170_T', 'G0', 'tauR', 'eta0', 'n', 'K', 'settle', 'breaker', 'breakTime', 'brokenVisc', 'residue', 'notes'];
+  const cols = ['naoa', 'guar', 'kcl', 'pH', 'eta100_25', 'testT', 'shearMin', 'eta100_T', 'G0', 'tauR', 'eta0', 'n', 'K', 'settle', 'breaker', 'breakTime', 'brokenVisc', 'residue', 'notes'];
   const der = ['ret', 'SI', 'SI0', 'D'];
   const q = v => { const s = v === null || v === undefined || (typeof v === 'number' && !Number.isFinite(v)) ? '' : String(v); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
   const lines = [(S.demo ? ['DEMO_DATA_NOT_REAL'] : []).concat(cols, der).join(',')];
@@ -1032,14 +1053,45 @@ $('#btnCsv').addEventListener('click', () => {
 });
 $('#fileImport').addEventListener('change', async e => {
   const f = e.target.files[0]; if (!f) return;
-  try { const st = JSON.parse(await f.text()); if (!st.samples) throw 0; S = Object.assign(emptyState(), st); save(); toast(tr('اُستورد الملف', 'File imported')); render(); }
+  try { const st = JSON.parse(await f.text()); if (!st.samples) throw 0; S = Object.assign(emptyState(), migrate(st)); save(); toast(tr('اُستورد الملف', 'File imported')); render(); }
   catch { toast(tr('الملف ليس نسخة احتياطية صالحة من FracGel Lab', 'The file is not a valid FracGel Lab backup')); }
   e.target.value = '';
+});
+/* ---------- Excel import (Rheology Workbench export) ---------- */
+const loadScript = src => new Promise((ok, no) => { const el = document.createElement('script'); el.src = src; el.onload = ok; el.onerror = () => no(new Error(src)); document.head.appendChild(el); });
+let xlsxParsed = null;
+$('#fileXlsx').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  try {
+    if (!window.XLSX) await loadScript('vendor/xlsx.mini.min.js');
+    if (!window.FracWorkbench) await loadScript('workbench.js');
+    const wb = XLSX.read(await f.arrayBuffer(), { type: 'array' });
+    const sheets = {}; for (const n of wb.SheetNames) sheets[n] = XLSX.utils.sheet_to_json(wb.Sheets[n], { header: 1, raw: true, defval: null });
+    xlsxParsed = FracWorkbench.parse(sheets);
+    if (!xlsxParsed.report.some(r => r.key)) { toast(tr('لم أجد عينات في الملف (تأكد أنه تصدير Rheology Workbench)', 'No samples found in the file (is it a Rheology Workbench export?)')); xlsxParsed = null; return; }
+    const head = [tr('العينة', 'Sample'), tr('النتائج', 'Results'), 'Steady', 'Frequency', 'Temperature', tr('في المصفوفة', 'In the matrix')];
+    $('#xlsxTable').innerHTML = `<tr>${head.map(h => `<th>${h}</th>`).join('')}</tr>` + xlsxParsed.report.map(r => r.key
+      ? `<tr><td>${esc(r.name)}</td><td class="num">${r.results}</td><td class="num">${r.flow}</td><td class="num">${r.freq}</td><td class="num">${r.temp}</td><td>${S.samples[r.key] && !S.demo ? tr('تحديث', 'update') : tr('جديدة', 'new')}</td></tr>`
+      : `<tr><td>${esc(r.name)}</td><td colspan="5" class="note">${r.empty ? tr('لا بيانات بعد', 'no data yet') : tr('اسم غير مفهوم، تُرك', 'name not recognised, skipped')}</td></tr>`).join('');
+    $('#xlsxFile').textContent = f.name; $('#xlsxPanel').hidden = false; $('#xlsxPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (err) { toast(tr('تعذّرت قراءة ملف Excel', 'Could not read the Excel file')); console.error(err); }
+});
+$('#btnXlsxCancel').addEventListener('click', () => { xlsxParsed = null; $('#xlsxPanel').hidden = true; });
+$('#btnXlsxApply').addEventListener('click', () => {
+  if (!xlsxParsed) return;
+  if (S.demo) S = emptyState();   // example numbers never mix with measured ones
+  let n = 0;
+  for (const [k, p] of Object.entries(xlsxParsed.samples)) {
+    if (!S.samples[k]) S.samples[k] = blankSample(p.naoa, p.guar);
+    FracWorkbench.applyToSample(S.samples[k], p); n++;
+  }
+  xlsxParsed = null; $('#xlsxPanel').hidden = true; save(); render();
+  toast(tr(`اُستوردت ${n} عينة من Excel`, `Imported ${n} sample(s) from Excel`));
 });
 $('#btnClearDemo').addEventListener('click', () => { S = emptyState(); save(); toast(tr('بدأت مصفوفة فارغة', 'Started an empty matrix')); render(); });
 $('#btnLoadDemo').addEventListener('click', () => {
   const btn = $('#btnLoadDemo');
-  if (!S.demo && Object.values(S.samples).some(s => num(s.eta170_25) !== null) && btn.dataset.armed !== '1') { btn.dataset.armed = '1'; btn.textContent = tr('اضغط مجدداً: سيستبدل بياناتك (صدّرها أولاً)', 'Click again: this replaces your data (export it first)'); setTimeout(() => { btn.dataset.armed = ''; btn.textContent = tr('حمّل بيانات المثال', 'Load example data'); }, 4000); return; }
+  if (!S.demo && Object.values(S.samples).some(s => num(s.eta100_25) !== null) && btn.dataset.armed !== '1') { btn.dataset.armed = '1'; btn.textContent = tr('اضغط مجدداً: سيستبدل بياناتك (صدّرها أولاً)', 'Click again: this replaces your data (export it first)'); setTimeout(() => { btn.dataset.armed = ''; btn.textContent = tr('حمّل بيانات المثال', 'Load example data'); }, 4000); return; }
   btn.dataset.armed = ''; btn.textContent = tr('حمّل بيانات المثال', 'Load example data'); S = demoState(); save(); render();
 });
 $('#btnTheme').addEventListener('click', () => {

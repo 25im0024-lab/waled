@@ -194,20 +194,47 @@
     return out;
   }
 
-  /* Measured values from FracGel Lab (same origin: localStorage 'fracgel.v2', or an exported JSON). */
+  /* Text columns as FracGel stores them (header lines skipped) → number rows */
+  function rowsOf(text) {
+    const out = [];
+    for (const line of String(text || '').split(/\r?\n/)) {
+      const p = line.trim().split(/[\t;]+|\s+/).map(Number);
+      if (p.length >= 2 && p.every(Number.isFinite)) out.push(p);
+    }
+    return out;
+  }
+  /* log–log interpolation on (x, y>0) rows; outside the range it holds the end value */
+  function logInterp(rows, x) {
+    const s = rows.filter(r => r[0] > 0 && r[1] > 0).sort((a, b) => a[0] - b[0]);
+    if (!s.length) return null;
+    if (x <= s[0][0]) return s[0][1];
+    if (x >= s[s.length - 1][0]) return s[s.length - 1][1];
+    for (let i = 0; i + 1 < s.length; i++) if (x <= s[i + 1][0]) {
+      const u = Math.log(x / s[i][0]) / Math.log(s[i + 1][0] / s[i][0]);
+      return Math.exp(Math.log(s[i][1]) + u * Math.log(s[i + 1][1] / s[i][1]));
+    }
+    return null;
+  }
+
+  /* Measured values from FracGel Lab (same origin: localStorage 'fracgel.v2', an exported JSON or an imported
+     Excel file). Viscosities are at 100 1/s, stored in mPa·s; curves come back as number rows in SI units. */
   function measuredFor(fg, naoa, guar) {
     if (!fg || !fg.samples) return null;
     const s = fg.samples[`${+naoa}|${+guar}`];
     if (!s) return null;
     const n = v => (v === '' || v === null || v === undefined || !Number.isFinite(+v)) ? null : +v;
-    const mPa = v => v === null ? null : v / 1000; // FracGel stores η at 170 s⁻¹ in mPa·s and settling in mm/min
-    const r = { G0: n(s.G0), tau: n(s.tauR), eta0: n(s.eta0), eta170: mPa(n(s.eta170_25)), eta170T: mPa(n(s.eta170_T)), testT: n(s.testT), settleMmMin: n(s.settle), demo: !!fg.demo };
+    const mPa = v => v === null ? null : v / 1000; // FracGel stores η at 100 s⁻¹ in mPa·s and settling in mm/min
+    const flowK = s.flowUnit === 'mPa·s' ? 1e-3 : 1;
+    const r = { G0: n(s.G0), tau: n(s.tauR), eta0: n(s.eta0), eta100: mPa(n(s.eta100_25 ?? s.eta170_25)), eta100T: mPa(n(s.eta100_T ?? s.eta170_T)),
+      testT: n(s.testT), settleMmMin: n(s.settle), demo: !!fg.demo,
+      freq: rowsOf(s.freq).filter(p => p.length >= 3), flow: rowsOf(s.flow).map(p => [p[0], p[1] * flowK]), temp: rowsOf(s.tempCurve).map(p => [p[0], p[1] / 1000]) };
     if (r.eta0 === null && r.G0 !== null && r.tau !== null) r.eta0 = r.G0 * r.tau;
-    return (r.G0 !== null || r.eta0 !== null || r.eta170 !== null) ? r : null;
+    if (r.eta100 === null && r.flow.length >= 2) r.eta100 = logInterp(r.flow, 100);
+    return (r.G0 !== null || r.eta0 !== null || r.eta100 !== null || r.flow.length) ? r : null;
   }
 
   return {
-    CANNON, effluxTime, recommendSize, fluidDensity,
+    CANNON, effluxTime, recommendSize, fluidDensity, rowsOf, logInterp,
     PPG_G_PER_L, ppgToPhi, rzExponent, hinderedSettling, GAMMA, surfaceTension, interfacialTension,
     MW, CMC_NAOA_mM, toMM, waterVisc, REF, saltFactor, wlmParams, etaSp, guarParams, viscosity, moduli, stepGel, settling, microState, measuredFor,
   };

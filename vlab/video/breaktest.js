@@ -157,13 +157,13 @@
     for (let x = 0; x <= o.xmax; x += 120) s += `<line x1="${X(x)}" x2="${X(x)}" y1="${tp}" y2="${tp + ph}" stroke="rgba(255,255,255,.08)"/><text x="${X(x)}" y="${tp + ph + 26}" fill="#b7c3cf" font-size="18" text-anchor="middle">${x}</text>`;
     s += `<text x="${l + pw / 2}" y="${H - 8}" fill="#b7c3cf" font-size="19" text-anchor="middle" style="direction:${lang === 'ar' ? 'rtl' : 'ltr'}">${o.xlab}</text>`;
     s += `<text x="20" y="${tp + ph / 2}" fill="#b7c3cf" font-size="19" text-anchor="middle" transform="rotate(-90 20 ${tp + ph / 2})" style="direction:${lang === 'ar' ? 'rtl' : 'ltr'}">${o.ylab}</text>`;
-    if (o.crit) { const y = Y(o.crit); s += `<line x1="${l}" x2="${l + pw}" y1="${y}" y2="${y}" stroke="#ffbf5a" stroke-width="2.5" stroke-dasharray="10 8"/><text x="${l + pw - 6}" y="${y - 10}" fill="#ffbf5a" font-size="19" text-anchor="end" style="direction:${lang === 'ar' ? 'rtl' : 'ltr'}">${o.critLab}</text>`; }
+    if (o.crit) { const y = Y(o.crit); s += `<line x1="${l}" x2="${l + pw}" y1="${y}" y2="${y}" stroke="#ffbf5a" stroke-width="2.5" stroke-dasharray="10 8"/><text x="${l + pw - 6}" y="${y - 10}" fill="#ffbf5a" font-size="19" text-anchor="${lang === 'ar' ? 'start' : 'end'}" style="direction:${lang === 'ar' ? 'rtl' : 'ltr'}">${o.critLab}</text>`; }
     for (const se of series) {
       if (se.pts.length > 1) s += `<polyline points="${se.pts.map(([x, y]) => `${X(x)},${Y(y)}`).join(' ')}" fill="none" stroke="${se.color}" stroke-width="${se.w || 3}" ${se.dash ? `stroke-dasharray="${se.dash}"` : ''}/>`;
       for (const p of se.marks || []) s += `<circle cx="${X(p[0])}" cy="${Y(p[1])}" r="9" fill="${p[2]}" stroke="#0c141c" stroke-width="2"/>`;
       if (se.label) { const [x, y] = se.pts[se.pts.length - 1]; s += `<text x="${X(x) - 8}" y="${Y(y) - 12}" fill="${se.color}" font-size="19" text-anchor="end">${se.label}</text>`; }
     }
-    if (o.vline) s += `<line x1="${X(o.vline)}" x2="${X(o.vline)}" y1="${tp}" y2="${tp + ph}" stroke="#39d6a0" stroke-width="2.5"/><text x="${X(o.vline) + 8}" y="${tp + 22}" fill="#39d6a0" font-size="19" style="direction:${lang === 'ar' ? 'rtl' : 'ltr'}">${o.vlab}</text>`;
+    if (o.vline) s += `<line x1="${X(o.vline)}" x2="${X(o.vline)}" y1="${tp}" y2="${tp + ph}" stroke="#39d6a0" stroke-width="2.5"/><text x="${X(o.vline) + 8}" y="${tp + 22}" fill="#39d6a0" font-size="19" text-anchor="${lang === 'ar' ? 'end' : 'start'}" style="direction:${lang === 'ar' ? 'rtl' : 'ltr'}">${o.vlab}</text>`;
     return s + '</svg>';
   }
   const GCOL = ['#ff7a6b', '#ffbf5a', '#e8d27a', '#39d6a0'];
@@ -188,7 +188,7 @@
     let lh = '', sv = '';
     if (name === 'prep' || name === 'bath') {
       const o = name === 'prep' ? fade(t, a + 3, b + 2) : 1 - seg(t, 26, 27);
-      if (o > 0) TP.forEach((tp, i) => { const [px, py] = proj([BENCH(i)[0], 0, BENCH(i)[2] + 0.12]); lh += `<div class="lab" style="opacity:${o};left:${px - 50}px;top:${py + 6}px;min-width:100px;text-align:center">${tp} min</div>`; });
+      if (o > 0) TP.forEach((tp, i) => { const [px, py] = proj([BENCH(i)[0], 0, BENCH(i)[2] + 0.12]); lh += `<div class="lab" style="opacity:${o};left:${px - 50}px;top:${py + 6}px;min-width:100px;text-align:center"><bdi>${tp} min</bdi></div>`; });
     }
     if (name === 'grades') {
       TX.levels.forEach(([h, d], i) => {
@@ -205,7 +205,7 @@
     if (name === 'measure') { wo = 1; wt = `${Math.round(lerp(90, 30, ss(seg(t, 83, 89))))} °C`; ws = t_(TX.cooling); }
     w.style.opacity = wo; w.querySelector('.t').textContent = wt; w.querySelector('.s').textContent = ws;
     const tp = $('#temp'), bathOn = t >= 20 && t < 62;
-    tp.style.opacity = bathOn ? 1 : 0; tp.textContent = `${t_(TX.bathL)} ${lerp(25, 90, ss(seg(t, 21, 26))).toFixed(1)} °C`;
+    tp.style.opacity = bathOn ? 1 : 0; tp.textContent = `${t_(TX.bathL)} \u2066${lerp(25, 90, ss(seg(t, 21, 26))).toFixed(1)} °C\u2069`;
     tp.style.top = t >= 31 ? '210px' : '80px';
     // flag on each inversion
     const fl = $('#flag'); let fo = 0, ftx = '';
@@ -228,7 +228,7 @@
         const n = Math.min(TP.length, Math.floor(seg(t, a + 0.8, a + 7.5) * TP.length + 0.0001) + (t >= a + 0.8 ? 1 : 0));
         const pts = TP.slice(0, n).map((x, i) => [x, ETA[i]]);
         ph = plot([{ pts, color: '#dfe7ef', w: 2.5, marks: pts.map((p, i) => [p[0], p[1], GCOL[GRADE[i]]]) }],
-          { xmax: 480, ymin: 0.5, ymax: 5000, xlab: t_(TX.xlab), ylab: t_(TX.ylab), crit: 5, critLab: t_(TX.crit), vline: n >= 5 && t > a + 8.5 ? 240 : null, vlab: `${t_(TX.bt)} ≈ 240 min` }) +
+          { xmax: 480, ymin: 0.5, ymax: 5000, xlab: t_(TX.xlab), ylab: t_(TX.ylab), crit: 5, critLab: t_(TX.crit), vline: n >= 5 && t > a + 8.5 ? 240 : null, vlab: `${t_(TX.bt)} ≈ \u2066240 min\u2069` }) +
           `<div class="note">● ${TX.levels.map((l, i) => `<span style="color:${GCOL[i]}">${lvl(i)}</span>`).join(' · ')} — ${t_(TX.illus)}</div>`;
       } else {
         const curve = (st, col, lab) => ({ pts: Array.from({ length: 49 }, (_, i) => { const x = 15 + i * 465 / 48; return [x, etaAt(x, st)]; }), color: col, label: lab, w: 3 });
