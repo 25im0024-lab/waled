@@ -66,9 +66,12 @@ check('with KCl → entangled worms', m.microState(base).phase === 'entangled');
 check('guar only → guar chains', m.microState({ guar: 0.5, kcl: 1 }).phase === 'guar');
 
 // FracGel import: units
-const fg = { samples: { '8|0.5': { G0: 20, tauR: 2, eta0: null, eta170_25: 150, settle: 3 } } };
+const fg = { samples: { '8|0.5': { G0: 20, tauR: 2, eta0: null, eta100_25: 150, settle: 3, flow: 'γ̇ [1/s]\tη [Pa·s]\n1\t10\n100\t0.5', tempCurve: 'T\tη\n40\t400\n90\t40' }, '6|0': { eta170_25: 90 } } };
 const r = m.measuredFor(fg, 8, 0.5);
-check('FracGel import: η0 from G0·τR and η170 from mPa·s', r && r.eta0 === 40 && r.eta170 === 0.15 && r.settleMmMin === 3);
+check('FracGel import: η0 from G0·τR and η100 from mPa·s', r && r.eta0 === 40 && r.eta100 === 0.15 && r.settleMmMin === 3);
+check('FracGel import: flow and temperature curves in SI', r.flow.length === 2 && r.flow[1][1] === 0.5 && r.temp.length === 2 && r.temp[1][1] === 0.04);
+check('old η at 170 field still read', m.measuredFor(fg, 6, 0).eta100 === 0.09);
+near('log–log interpolation midway', m.logInterp([[1, 10], [100, 0.1]], 10), 1, 1e-9);
 check('FracGel import: missing sample → null', m.measuredFor(fg, 6, 0.3) === null);
 
 if (fails) { console.error(`${fails} check(s) failed`); process.exit(1); }

@@ -19,22 +19,49 @@
     return { water: 0, naoa: 0, kcl: 0, guar: 0, T: 25, heat: false, stir: false, hydr: 0, hcB: 0, hc: 0, aps: 0, guarM: 1, dil: 1, simT: 0, speed: 60,
       set: { naoa: 8, guar: 0.5, kcl: 1, T: 90, aps: 0.05, dil: 2, ppg: 4 }, meas: [], prop: false, ppg: 0, propRes: [], tens: [], source: 'model', fg: loadFG(), plotTab: 'osc' };
   }
+  const SHEAR = 100;            // 1/s: shear rate of the viscosity readout, as in FracGel Lab
+  /* Excel (Rheology Workbench export) → FracGel-shaped data, with the same reader FracGel Lab uses */
+  const loadScript = src => new Promise((ok, no) => { const el = document.createElement('script'); el.src = src; el.onload = ok; el.onerror = () => no(new Error(src)); document.head.appendChild(el); });
+  async function readWorkbench(file) {
+    if (!window.XLSX) await loadScript('../fracgel/vendor/xlsx.mini.min.js');
+    if (!window.FracWorkbench) await loadScript('../fracgel/workbench.js');
+    const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });
+    const sheets = {}; for (const n of wb.SheetNames) sheets[n] = XLSX.utils.sheet_to_json(wb.Sheets[n], { header: 1, raw: true, defval: null });
+    const parsed = FracWorkbench.parse(sheets), samples = {};
+    for (const [k, p] of Object.entries(parsed.samples)) samples[k] = FracWorkbench.applyToSample({ naoa: p.naoa, guar: p.guar, kcl: 1, testT: 90 }, p);
+    if (!Object.keys(samples).length) throw new Error('no samples');
+    return { v: 1, demo: false, samples };
+  }
   function loadFG() { try { const s = JSON.parse(VL.store.get('fracgel.v2') || 'null'); return s && s.samples ? s : null; } catch { return null; } }
 
   /* ------------------------------------------------------------------ properties: model or measured */
   function props() {
     const st = { naoa: G.naoa, kcl: G.kcl, guar: G.guar, T: G.T, hydr: G.hydr, hcB: G.hcB, guarM: G.guarM };
     const mu = M.waterVisc(G.T);
-    const fresh = Math.abs(G.T - 25) < 1.5 && G.dil === 1 && G.guarM > 0.98 && Math.abs(G.kcl - 1) < 0.01 && (G.guar === 0 || G.hydr > 0.9) && G.water > 0;
+    // measured data apply to the sample as prepared (no breaker, no dilution); heating uses the measured temperature sweep
+    const fresh = G.dil === 1 && G.guarM > 0.98 && Math.abs(G.kcl - 1) < 0.01 && (G.guar === 0 || G.hydr > 0.9) && G.water > 0;
     const meas = G.source === 'data' && fresh ? M.measuredFor(G.fg, G.naoa, G.guar) : null;
-    if (meas && meas.G0 !== null && meas.tau !== null) {
-      const eta0 = meas.eta0 ?? meas.G0 * meas.tau;
-      return { src: 'data', demo: meas.demo, eta0: eta0 + mu, G0: meas.G0, tau: meas.tau, eta170: meas.eta170 ?? (mu + eta0 / (1 + meas.tau * 170)),
-        visc: r => mu + eta0 / (1 + meas.tau * r), mod: w => { const x = w * meas.tau, d = 1 + x * x; return { Gp: meas.G0 * x * x / d, Gpp: meas.G0 * x / d + mu * w }; } };
+    if (meas) {
+      const cold = G.T < 35;
+      const tMin = meas.temp.length ? Math.min(...meas.temp.map(p => p[0])) : null, tMax = meas.temp.length ? Math.max(...meas.temp.map(p => p[0])) : null;
+      const base100 = meas.eta100 ?? (meas.G0 !== null && meas.tau !== null ? mu + meas.G0 * meas.tau / (1 + meas.tau * SHEAR) : null);
+      let shift = 1, eta100 = base100;
+      if (!cold) {
+        if (tMin === null || G.T > tMax + 2 || base100 === null) return model(st, mu, true);
+        eta100 = M.logInterp(meas.temp, Math.max(tMin, G.T)); shift = eta100 / base100;   // assumes the flow curve shifts as a whole
+      }
+      const flowV = meas.flow.length >= 2 ? r => M.logInterp(meas.flow, r) * shift
+        : meas.G0 !== null && meas.tau !== null ? r => (mu + meas.G0 * meas.tau / (1 + meas.tau * r)) * shift : null;
+      if (!flowV) return model(st, mu, true);
+      const mod = w => { if (meas.G0 === null || meas.tau === null) return { Gp: 0, Gpp: 0 }; const x = w * meas.tau, d = 1 + x * x; return { Gp: meas.G0 * x * x / d, Gpp: meas.G0 * x / d + mu * w }; };
+      return { src: 'data', demo: meas.demo, cold, eta0: (meas.eta0 ?? flowV(1e-3)) * shift, G0: cold ? meas.G0 : null, tau: cold ? meas.tau : null, eta100,
+        visc: flowV, mod, freqPts: cold && meas.freq.length ? meas.freq : null, flowPts: meas.flow.length ? meas.flow.map(p => [p[0], p[1] * shift]) : null };
     }
+    return model(st, mu, G.source === 'data');
+  }
+  function model(st, mu, missing) {
     const w = M.wlmParams(st);
-    return { src: 'model', eta0: M.viscosity(st, 1e-4), G0: w.G0, tau: w.tau, eta170: M.viscosity(st, 170), visc: r => M.viscosity(st, r), mod: x => M.moduli(st, x),
-      missing: G.source === 'data' && !meas };
+    return { src: 'model', eta0: M.viscosity(st, 1e-4), G0: w.G0, tau: w.tau, eta100: M.viscosity(st, SHEAR), visc: r => M.viscosity(st, r), mod: x => M.moduli(st, x), missing };
   }
 
   /* ------------------------------------------------------------------ build */
@@ -288,8 +315,11 @@
     const P = props(), ws = [], rs = [];
     for (let e = -2; e <= 2.0001; e += 0.1) ws.push(10 ** e);
     for (let e = -2; e <= 3.0001; e += 0.1) rs.push(10 ** e);
-    const tag = `${G.T.toFixed(0)} °C${G.dil > 1 ? ` · diluted ${G.dil - 1}:1` : ''}${G.guarM < 0.5 ? ' · APS' : ''}`;
-    G.meas.push({ tag, T: G.T, src: P.src, Gp: ws.map(w => [w, P.mod(w).Gp]), Gpp: ws.map(w => [w, P.mod(w).Gpp]), eta: rs.map(r => [r, P.visc(r)]), eta0: P.eta0, eta170: P.eta170, G0: P.G0, tau: P.tau });
+    const tag = `${G.T.toFixed(0)} °C${G.dil > 1 ? ` · diluted ${G.dil - 1}:1` : ''}${G.guarM < 0.5 ? ' · APS' : ''}${P.src === 'data' ? ' · data' : ''}`;
+    // measured points when the sample has them; otherwise the model (or the Maxwell fit of the data) on a smooth grid
+    const Gp = P.freqPts ? P.freqPts.map(p => [p[0], p[1]]) : P.src === 'data' && !P.cold ? [] : ws.map(w => [w, P.mod(w).Gp]);
+    const Gpp = P.freqPts ? P.freqPts.map(p => [p[0], p[2]]) : P.src === 'data' && !P.cold ? [] : ws.map(w => [w, P.mod(w).Gpp]);
+    G.meas.push({ tag, T: G.T, src: P.src, Gp, Gpp, eta: P.flowPts || rs.map(r => [r, P.visc(r)]), eta0: P.eta0, eta100: P.eta100, G0: P.G0, tau: P.tau });
     if (G.meas.length > 4) G.meas.shift();
     O.rhLed.material.color.set(0x334033);
     await VL.tween(0.5, k => { O.spindle.position.y = 0.82 + 0.18 * k; });
@@ -550,7 +580,7 @@
         const series = meas.slice(0, -1).map(m => ({ pts: m.eta, color: grey, width: 1.5, alpha: 0.6 }));
         series.push({ pts: last.eta, color: green, width: 2.5, label: `η · ${last.tag}` });
         const ys = meas.flatMap(m => m.eta.map(p => p[1]));
-        VL.plot(cv, { x: [0.01, 1000], y: rangeLog(ys), xlog: true, ylog: true, xlabel: 'γ̇ (1/s)', ylabel: 'η (Pa·s)', series, vlines: [{ x: 170, color: orange }] });
+        VL.plot(cv, { x: [0.01, 1000], y: rangeLog(ys), xlog: true, ylog: true, xlabel: 'γ̇ (1/s)', ylabel: 'η (Pa·s)', series, vlines: [{ x: SHEAR, color: orange }] });
       } else {
         const series = meas.slice(0, -1).map(m => ({ pts: m.Gp, color: grey, width: 1.5, alpha: 0.6 }));
         series.push({ pts: last.Gp, color: green, width: 2.5, label: `G′ · ${last.tag}` }, { pts: last.Gpp, color: orange, width: 2.2, dash: [6, 4], label: 'G″' });
@@ -569,7 +599,7 @@
       draw,
       readouts: [
         [L('η₀ (zero-shear)', 'η₀ (zero-shear)'), G.water ? fmt(P.eta0, 'Pa·s') : '—'],
-        [L('η عند 170 s⁻¹', 'η at 170 s⁻¹'), G.water ? fmt(P.eta170 * 1000, 'mPa·s') : '—'],
+        [L('η عند 100 s⁻¹', 'η at 100 s⁻¹'), G.water && P.eta100 !== null ? fmt(P.eta100 * 1000, 'mPa·s') : '—'],
         [L('G₀ (WLM)', 'G₀ (WLM)'), P.G0 > 0 ? fmt(P.G0, 'Pa') : '—'],
         [L('τR (WLM)', 'τR (WLM)'), P.tau > 0 ? fmt(P.tau, 's') : '—'],
         [L('الحرارة · الزمن', 'T · time'), `${G.T.toFixed(0)} °C · ${fmtTime(G.simT)}`],
@@ -577,7 +607,9 @@
         [L('التركيب (g/100 mL ماء)', 'Recipe (g/100 mL water)'), comp, true],
         [L('الكسر', 'Breaking'), brk, true],
       ],
-      note: P.src === 'data' ? L('G₀ و τR و η₀ من FracGel Lab لهذه العينة عند 25 °C. أي حرارة أو breaker يعيد النموذج التوضيحي.', 'G₀, τR and η₀ come from FracGel Lab for this sample at 25 °C. Any heating or breaker switches back to the illustrative model.')
+      note: P.src === 'data' ? (P.cold
+        ? L('منحنياتك المقاسة لهذه العينة (frequency sweep و flow curve) و G₀ و τR و η₀ من FracGel Lab. أي breaker أو تخفيف يعيد النموذج التوضيحي.', 'Your measured curves for this sample (frequency sweep, flow curve) and G₀, τR, η₀ from FracGel Lab. Any breaker or dilution switches back to the illustrative model.')
+        : L('η عند 100 s⁻¹ من الـ temperature sweep المقاس. منحنى η(γ̇) عند هذه الحرارة تقدير: المنحنى المقاس عند 25 °C مُزاح بنسبة η(T)/η(25).', 'η at 100 s⁻¹ comes from the measured temperature sweep. The η(γ̇) curve at this temperature is an estimate: the 25 °C curve shifted by η(T)/η(25).'))
         : P.missing ? L('لا توجد قياسات في FracGel لهذه العينة وهذه الظروف، فالقيم من النموذج التوضيحي.', 'No FracGel measurements for this sample and condition, so values come from the illustrative model.')
           : L('نموذج توضيحي: Cates scaling و Arrhenius ومنحنى Morris للـ guar، دون حد تآزر. القيم المرجعية افتراضية، فلا تعرضها كنتائج.', 'Illustrative model: Cates scaling, Arrhenius and the Morris guar curve, no synergy term. Reference values are placeholders: do not present them as results.'),
     };
@@ -631,7 +663,7 @@
     const s = G.set;
     const presetVal = PLAN.find(([n, g]) => n === s.naoa && g === s.guar && s.kcl === 1);
     const slider = (id, lab, min, max, step, unit) => `<label>${VL.t(lab)} <span class="val" id="v_${id}">${s[id]} ${unit}</span><input type="range" id="s_${id}" min="${min}" max="${max}" step="${step}" value="${s[id]}"></label>`;
-    const nFG = G.fg ? Object.values(G.fg.samples).filter(x => x.G0 !== null && x.G0 !== '' && x.G0 !== undefined).length : 0;
+    const nFG = G.fg ? Object.values(G.fg.samples).filter(x => [x.G0, x.eta100_25, x.eta170_25].some(v => v !== null && v !== '' && v !== undefined) || x.flow).length : 0;
     el.innerHTML = `
       <label>${VL.t(L('العينة (من خطة FracGel)', 'Sample (FracGel plan)'))}
         <select id="gPreset"><option value="">${VL.t(L('مخصّصة', 'custom'))}</option>${PLAN.map(([n, g]) => `<option value="${n}|${g}" ${presetVal && presetVal[0] === n && presetVal[1] === g ? 'selected' : ''}>${sampleName(n, g)} · NaOA ${n} g · guar ${g} g · KCl 1 g</option>`).join('')}</select></label>
@@ -653,8 +685,8 @@
       </div>
       <label>${VL.t(L('مصدر القيم', 'Values from'))}
         <select id="gSrc"><option value="model">${VL.t(L('النموذج التوضيحي', 'Illustrative model'))}</option><option value="data" ${G.source === 'data' ? 'selected' : ''}>${VL.t(L('بياناتي في FracGel Lab', 'My FracGel Lab data'))}</option></select></label>
-      <div class="row"><span class="note" style="margin:0">${G.fg ? VL.t(L(`FracGel: ${nFG} عينة فيها G₀${G.fg.demo ? ' (بيانات مثال)' : ''}`, `FracGel: ${nFG} samples with G₀${G.fg.demo ? ' (demo data)' : ''}`)) : VL.t(L('لا توجد بيانات FracGel في هذا المتصفح', 'No FracGel data in this browser'))}</span>
-        <button id="gImport" class="ghost">${VL.t(L('استورد JSON', 'Import JSON'))}</button><input type="file" id="gFile" accept="application/json,.json" hidden></div>`;
+      <div class="row"><span class="note" style="margin:0">${G.fg ? VL.t(L(`بياناتك: ${nFG} عينة مقاسة${G.fg.demo ? ' (بيانات مثال)' : ''}`, `Your data: ${nFG} measured sample(s)${G.fg.demo ? ' (demo data)' : ''}`)) : VL.t(L('لا توجد بيانات FracGel في هذا المتصفح', 'No FracGel data in this browser'))}</span>
+        <button id="gImport" class="ghost">${VL.t(L('استورد Excel أو JSON', 'Import Excel or JSON'))}</button><input type="file" id="gFile" accept=".xlsx,.xls,application/json,.json" hidden></div>`;
     const $ = q => el.querySelector(q);
     for (const id of ['naoa', 'guar', 'kcl', 'T', 'aps']) {
       $(`#s_${id}`).oninput = e => { s[id] = +e.target.value; $(`#v_${id}`).textContent = `${s[id]} ${id === 'T' ? '°C' : 'g'}`; if (['naoa', 'guar', 'kcl'].includes(id)) $('#gPreset').value = PLAN.some(([n, g]) => n === s.naoa && g === s.guar) && s.kcl === 1 ? `${s.naoa}|${s.guar}` : ''; };
@@ -669,12 +701,15 @@
     $('#gProp').onclick = () => VL.run(() => dropProppant());
     $('#gTens').onclick = () => VL.run(measureTension);
     $('#gPpg').onchange = e => { s.ppg = +e.target.value; };
-    $('#gSrc').onchange = e => { G.source = e.target.value; if (G.source === 'data' && !G.fg) VL.toast(VL.t(L('افتح FracGel Lab على نفس الموقع أو استورد ملف JSON المصدَّر منه', 'Open FracGel Lab on the same site, or import its exported JSON'))); VL.refreshInstrument(); };
+    $('#gSrc').onchange = e => { G.source = e.target.value; if (G.source === 'data' && !G.fg) VL.toast(VL.t(L('افتح FracGel Lab على نفس الموقع، أو استورد ملف Excel أو JSON', 'Open FracGel Lab on the same site, or import an Excel or JSON file'))); VL.refreshInstrument(); };
     $('#gImport').onclick = () => $('#gFile').click();
     $('#gFile').onchange = async e => {
-      const f = e.target.files[0]; if (!f) return;
-      try { const j = JSON.parse(await f.text()); if (!j || !j.samples) throw new Error('no samples'); G.fg = j; G.source = 'data'; VL.toast(VL.t(L('تم استيراد بيانات FracGel', 'FracGel data imported'))); }
-      catch { VL.toast(VL.t(L('الملف ليس تصديراً من FracGel Lab', 'Not a FracGel Lab export'))); }
+      const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+      try {
+        if (/\.xlsx?$/i.test(f.name)) { G.fg = await readWorkbench(f); VL.toast(VL.t(L(`اُستوردت ${Object.keys(G.fg.samples).length} عينة من Excel`, `Imported ${Object.keys(G.fg.samples).length} sample(s) from Excel`))); }
+        else { const j = JSON.parse(await f.text()); if (!j || !j.samples) throw new Error('no samples'); G.fg = j; VL.toast(VL.t(L('تم استيراد بيانات FracGel', 'FracGel data imported'))); }
+        G.source = 'data';
+      } catch { VL.toast(VL.t(L('الملف ليس تصدير Rheology Workbench (Excel) ولا FracGel Lab (JSON)', 'Not a Rheology Workbench (Excel) or FracGel Lab (JSON) export'))); }
       VL.renderControls(); VL.refreshInstrument();
     };
   }

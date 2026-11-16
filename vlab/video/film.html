@@ -54,8 +54,8 @@
 </div>
 <script src="../vendor/three.min.js"></script>
 <script>
-  // ?film=residue plays the filtration / residue film; the default is the Cannon-Fenske film
-  document.write('<script src="' + (new URLSearchParams(location.search).get('film') === 'residue' ? 'residue.js' : 'film.js') + '"><\/script>');
+  // ?film=residue or ?film=breaktest picks the film; the default is the Cannon-Fenske film
+  document.write('<script src="' + ({ residue: 'residue.js', breaktest: 'breaktest.js' }[new URLSearchParams(location.search).get('film')] || 'film.js') + '"><\/script>');
 </script>
 </body>
 </html>
