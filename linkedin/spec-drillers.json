@@ -90,6 +90,31 @@
    "live": "trends",
    "step": "07 \u00b7 TRENDS & ALARMS",
    "text": "Every event is logged on real-time trends and in the alarm list, as on a real rig."
+  },
+  {
+   "dur": 4.5,
+   "live": "trends",
+   "card": [
+    [
+     "A simplified training model,",
+     46,
+     [
+      232,
+      242,
+      255
+     ]
+    ],
+    [
+     "not calibrated to a real rig.",
+     46,
+     [
+      232,
+      242,
+      255
+     ]
+    ]
+   ],
+   "text": "Built for training and learning, not for operational decisions."
   }
  ],
  "fadeout": 0.8
