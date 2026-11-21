@@ -1,19 +1,130 @@
 {
- "kicker": "Drilling · Training simulator",
+ "kicker": "Drilling \u00b7 Training simulator",
  "title": "Driller's Console",
  "subtitle": "A drilling rig's control panel, in your browser",
- "footer": "Free & open source · github.com/25im0024-lab/waled",
+ "footer": "Free & open source \u00b7 github.com/25im0024-lab/waled",
  "live": "dc-meta.json",
  "boxes": "",
  "scenes": [
-  {"dur": 3.6, "live": "overview", "card": [["What does a driller", 56, [232,242,255]], ["actually see?", 56, [232,242,255]], ["I built a free simulator to show it.", 32, [54,200,255]]], "text": "A training simulator of a drilling rig's control panel, running in the browser."},
-  {"dur": 5.0, "live": "overview", "from": 1.0, "step": "01 · THE CONSOLE", "text": "Everything the driller watches, on one screen: depth, weight on bit, drilling speed, pump pressure.", "note": "Every value is linked: change one and the others respond."},
-  {"dur": 5.6, "live": "autodriller", "step": "02 · AUTO-DRILLER", "text": "The driller raises the weight on the bit. The bit drills faster, and torque and pressure follow.", "note": "WOB = weight on bit · ROP = rate of penetration"},
-  {"dur": 5.6, "live": "circulation", "step": "03 · MUD CIRCULATION", "text": "Mud is pumped down the drill pipe, out through the bit, and back up carrying the rock cuttings.", "note": "The panel checks whether the hole is being cleaned."},
-  {"dur": 4.2, "live": "bit", "from": 1.0, "step": "04 · THE BIT", "text": "The PDC bit turns at the real RPM, and its cutters wear as it drills."},
-  {"dur": 7.6, "live": "kick", "from": 1.0, "step": "05 · A KICK", "text": "The instructor triggers a kick: gas flows into the well, the mud pits gain volume and the alarms go off.", "note": "Kick = unwanted flow of formation fluid into the well"},
-  {"dur": 7.6, "live": "shutin", "step": "06 · WELL CONTROL", "text": "The driller stops the pumps and closes the BOP. The kill sheet fills in: shut-in pressures and kill mud weight.", "note": "BOP = blowout preventer"},
-  {"dur": 4.6, "live": "trends", "step": "07 · TRENDS & ALARMS", "text": "Every event is logged on real-time trends and in the alarm list, as on a real rig."},
-  {"dur": 4.6, "live": "trends", "card": [["Free · Arabic & English", 46, [232,242,255]], ["Works offline", 46, [232,242,255]], ["Link in the comments", 34, [54,200,255]]], "text": "Built for students and new drilling engineers.", "note": "A simplified training model, not calibrated to a real rig."}
+  {
+   "dur": 4.0,
+   "live": "overview",
+   "card": [
+    [
+     "What does a driller",
+     56,
+     [
+      232,
+      242,
+      255
+     ]
+    ],
+    [
+     "actually see?",
+     56,
+     [
+      232,
+      242,
+      255
+     ]
+    ],
+    [
+     "I built a free simulator to show it.",
+     32,
+     [
+      54,
+      200,
+      255
+     ]
+    ]
+   ],
+   "text": "A training simulator of a drilling rig's control panel, running in the browser."
+  },
+  {
+   "dur": 7.0,
+   "live": "overview",
+   "from": 1.0,
+   "step": "01 \u00b7 THE CONSOLE",
+   "text": "Everything the driller watches, on one screen: depth, weight on bit, drilling speed, pump pressure.",
+   "note": "Every value is linked: change one and the others respond.",
+   "offset": 4.0
+  },
+  {
+   "dur": 9.0,
+   "live": "autodriller",
+   "step": "02 \u00b7 AUTO-DRILLER",
+   "text": "The driller raises the weight on the bit. The bit drills faster, and torque and pressure follow.",
+   "note": "WOB = weight on bit \u00b7 ROP = rate of penetration"
+  },
+  {
+   "dur": 8.0,
+   "live": "circulation",
+   "step": "03 \u00b7 MUD CIRCULATION",
+   "text": "Mud is pumped down the drill pipe, out through the bit, and back up carrying the rock cuttings.",
+   "note": "The panel checks whether the hole is being cleaned."
+  },
+  {
+   "dur": 6.0,
+   "live": "bit",
+   "from": 1.0,
+   "step": "04 \u00b7 THE BIT",
+   "text": "The PDC bit turns at the real RPM, and its cutters wear as it drills."
+  },
+  {
+   "dur": 11.0,
+   "live": "kick",
+   "from": 1.0,
+   "step": "05 \u00b7 A KICK",
+   "text": "The instructor triggers a kick: gas flows into the well, the mud pits gain volume and the alarms go off.",
+   "note": "Kick = unwanted flow of formation fluid into the well"
+  },
+  {
+   "dur": 11.0,
+   "live": "shutin",
+   "step": "06 \u00b7 WELL CONTROL",
+   "text": "The driller stops the pumps and closes the BOP. The kill sheet fills in: shut-in pressures and kill mud weight.",
+   "note": "BOP = blowout preventer"
+  },
+  {
+   "dur": 7.0,
+   "live": "trends",
+   "step": "07 \u00b7 TRENDS & ALARMS",
+   "text": "Every event is logged on real-time trends and in the alarm list, as on a real rig."
+  },
+  {
+   "dur": 5.0,
+   "live": "trends",
+   "card": [
+    [
+     "Free \u00b7 Arabic & English",
+     46,
+     [
+      232,
+      242,
+      255
+     ]
+    ],
+    [
+     "Works offline",
+     46,
+     [
+      232,
+      242,
+      255
+     ]
+    ],
+    [
+     "Link in the comments",
+     34,
+     [
+      54,
+      200,
+      255
+     ]
+    ]
+   ],
+   "text": "Built for students and new drilling engineers.",
+   "note": "A simplified training model, not calibrated to a real rig."
+  }
  ]
 }
