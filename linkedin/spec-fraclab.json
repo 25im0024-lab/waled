@@ -1,0 +1,146 @@
+{
+ "kicker": "Hydraulic fracturing · Lab analysis",
+ "title": "Frac-Fluid Lab",
+ "subtitle": "Fracturing-fluid lab data, analysed in the browser",
+ "footer": "Free & open source · github.com/25im0024-lab/waled",
+ "scenes": [
+  {
+   "dur": 3.4,
+   "shot": "home",
+   "use": [
+    1
+   ],
+   "card": [
+    [
+     "I built a free lab tool",
+     54,
+     [
+      232,
+      242,
+      255
+     ]
+    ],
+    [
+     "for fracturing-fluid data",
+     54,
+     [
+      232,
+      242,
+      255
+     ]
+    ],
+    [
+     "Paste rheometer readings. Get the analysis.",
+     30,
+     [
+      54,
+      200,
+      255
+     ]
+    ]
+   ],
+   "text": "From rheometer readings to fracture geometry, in one browser tab."
+  },
+  {
+   "dur": 4.4,
+   "shot": "rheo",
+   "step": "01 · RHEOLOGY",
+   "text": "Power-law, Herschel–Bulkley and Carreau fits, each with 95% confidence intervals. Best model chosen by AICc."
+  },
+  {
+   "dur": 4.0,
+   "shot": "thermal",
+   "step": "02 · THERMAL STABILITY",
+   "text": "Viscosity retention, decay rate during the hold and flow activation energy."
+  },
+  {
+   "dur": 4.0,
+   "shot": "ve",
+   "use": [
+    0,
+    1
+   ],
+   "step": "03 · VISCOELASTICITY",
+   "text": "G′ and G″ from oscillation: crossover, relaxation time and a Maxwell fit."
+  },
+  {
+   "dur": 4.0,
+   "shot": "prop",
+   "step": "04 · PROPPANT SUSPENSION",
+   "text": "Settling velocity in a non-Newtonian gel, with hindered settling at your proppant loading."
+  },
+  {
+   "dur": 4.0,
+   "shot": "brk",
+   "step": "05 · BREAKER",
+   "text": "Break kinetics, time to break and residue after breaking."
+  },
+  {
+   "dur": 4.4,
+   "shot": "frac",
+   "use": [
+    0
+   ],
+   "step": "06 · FRACTURE GEOMETRY",
+   "text": "PKN and KGD: fracture length, width and fluid efficiency, with Carter leak-off."
+  },
+  {
+   "dur": 4.0,
+   "shot": "surf",
+   "use": [
+    0,
+    1
+   ],
+   "step": "07 · SURFACE & INTERFACIAL TENSION",
+   "text": "Ring correction, spinning drop, CMC and Gibbs surface excess."
+  },
+  {
+   "dur": 4.6,
+   "shot": "cmp",
+   "pan": true,
+   "step": "08 · BENCHMARK",
+   "text": "Compare your gel with a published paper, metric by metric."
+  },
+  {
+   "dur": 4.0,
+   "shot": "proto",
+   "step": "09 · PROTOCOLS",
+   "text": "Every test comes with a step-by-step lab protocol.",
+   "box": [
+    760,
+    160,
+    1484,
+    560
+   ]
+  },
+  {
+   "dur": 4.2,
+   "shot": "home",
+   "use": [
+    1
+   ],
+   "card": [
+    [
+     "Free · open source · works offline",
+     44,
+     [
+      232,
+      242,
+      255
+     ]
+    ],
+    [
+     "Link in the comments",
+     34,
+     [
+      54,
+      200,
+      255
+     ]
+    ]
+   ],
+   "text": "Feedback from lab and field engineers is welcome.",
+   "note": "Demo data shown is synthetic."
+  }
+ ]
+}
