@@ -9,7 +9,8 @@ CYAN, AMBER, TEXT, MUTED = (54, 200, 255), (255, 182, 39), (232, 242, 255), (143
 F = '/usr/share/fonts/opentype/inter/'
 font = lambda w, s: ImageFont.truetype(F + {'b': 'Inter-Bold.otf', 's': 'Inter-SemiBold.otf', 'r': 'Inter-Regular.otf', 'm': 'Inter-Medium.otf'}[w], s)
 PX, PY, PW, PH = 32, 214, 1016, 720          # screen panel
-spec = json.load(open(sys.argv[1])); boxes = json.load(open('boxes.json'))
+spec = json.load(open(sys.argv[1])); boxes = json.load(open(spec.get('boxes', 'boxes.json'))) if spec.get('boxes', 'boxes.json') and __import__('os').path.exists(spec.get('boxes', 'boxes.json')) else {}
+LIVE = json.load(open(spec['live'])) if spec.get('live') else {}
 SCALE = 2                                    # screenshots are 2x
 
 def wrap(d, text, f, maxw):
@@ -39,6 +40,8 @@ def fit(box, page, pad=14, aspect=PW / PH):
     w, h = x1 - x0, y1 - y0
     if w / h < aspect: w2 = h * aspect; x0 -= (w2 - w) / 2; w = w2
     else: h2 = w / aspect; y0 -= (h2 - h) / 2; h = h2
+    if w > page[0]: cx = x0 + w / 2; w = page[0]; h = w / aspect; x0 = cx - w / 2
+    if h > page[1]: cx, cy = x0 + w / 2, y0 + h / 2; h = page[1]; w = h * aspect; x0, y0 = cx - w / 2, cy - h / 2
     x0 = min(max(x0, 0), page[0] - w); y0 = min(max(y0, 0), page[1] - h)
     return [x0, y0, x0 + w, y0 + h]
 def union(bs): bs = [b for b in bs if b]; return [min(b[0] for b in bs), min(b[1] for b in bs), max(b[2] for b in bs), max(b[3] for b in bs)]
@@ -47,12 +50,17 @@ def zoom(c, k, page):
     w, h = min(w, page[0]), min(h, page[0] / (PW / PH))
     x0 = min(max(cx - w / 2, 0), page[0] - w); y0 = min(max(cy - h / 2, 0), page[1] - h)
     return [x0, y0, x0 + w, y0 + h]
+def cl(c, im): W0, H0 = im.size; return [max(0, c[0]), max(0, c[1]), min(W0, c[2]), min(H0, c[3])]
 ease = lambda t: 0.5 - 0.5 * math.cos(math.pi * min(max(t, 0), 1))
 
 scenes, imgs = [], {}
 for s in spec['scenes']:
     sc = dict(s)
-    if s.get('shot'):
+    if s.get('live'):
+        L = LIVE[s['live']]; page = L.get('page', [1600, 1000]); sc['scale'] = L.get('scale', SCALE)
+        tgt = fit(s.get('box') or L['box'], page, pad=s.get('pad', 6)); sc['c1'] = tgt; sc['c0'] = zoom(tgt, s.get('from', 1.06), page)
+        sc['frames'] = L['frames']; sc['cache'] = {}
+    elif s.get('shot'):
         b = boxes[s['shot']]; page = b['page']
         sel = [s['box']] if s.get('box') else [b['boxes'][i] for i in s.get('use', range(len(b['boxes'])))]
         u = union(sel)
@@ -79,9 +87,9 @@ CAPS = [caption_img(s) for s in scenes]
 
 def card_img(s):                              # full-panel title/end card
     im = Image.new('RGB', (PW, PH), (7, 22, 40)); d = ImageDraw.Draw(im)
-    if s.get('shot'):
-        src = imgs[s['shot']]; c = [v * SCALE for v in s['c1']]
-        im = src.resize((PW, PH), Image.BICUBIC, box=c).filter(ImageFilter.GaussianBlur(6))
+    if s.get('shot') or s.get('live'):
+        src = imgs[s['shot']] if s.get('shot') else Image.open(s['frames'][min(len(s['frames']) - 1, 3)][0]).convert('RGB'); c = [v * s.get('scale', SCALE) for v in s['c1']]
+        im = src.resize((PW, PH), Image.BICUBIC, box=cl(c, src)).filter(ImageFilter.GaussianBlur(6))
         im = Image.blend(im, Image.new('RGB', (PW, PH), (4, 11, 21)), 0.72); d = ImageDraw.Draw(im)
     y = PH / 2 - 30 * len(s['card'])
     for txt, sz, col in s['card']:
@@ -89,12 +97,19 @@ def card_img(s):                              # full-panel title/end card
         d.text(((PW - tw) / 2, y), txt, font=f, fill=tuple(col)); y += sz * 1.45
     return im
 CARDS = {i: card_img(s) for i, s in enumerate(scenes) if s.get('card')}
+for sc in scenes:
+    if sc.get('frames') and not sc.get('card'): pass
 
 def panel(i, t):
     s = scenes[i]
     if i in CARDS: return CARDS[i]
-    k = ease(t / s['dur']); c = [(a + (b - a) * k) * SCALE for a, b in zip(s['c0'], s['c1'])]
-    return imgs[s['shot']].resize((PW, PH), Image.BICUBIC, box=c, reducing_gap=2.0)
+    k = ease(t / s['dur']); c = [(a + (b - a) * k) * s.get('scale', SCALE) for a, b in zip(s['c0'], s['c1'])]
+    if s.get('frames'):
+        fr = s['frames']; j = 0
+        while j + 1 < len(fr) and fr[j + 1][1] <= t + s.get('offset', 0): j += 1
+        if fr[j][0] not in s['cache']: s['cache'].clear(); s['cache'][fr[j][0]] = Image.open(fr[j][0]).convert('RGB')
+        im = s['cache'][fr[j][0]]; return im.resize((PW, PH), Image.BICUBIC, box=cl(c, im), reducing_gap=2.0)
+    im = imgs[s['shot']]; return im.resize((PW, PH), Image.BICUBIC, box=cl(c, im), reducing_gap=2.0)
 
 ff = subprocess.Popen(['ffmpeg', '-y', '-loglevel', 'error', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-s', f'{W}x{H}', '-r', str(FPS), '-i', '-',
                        '-c:v', 'libx264', '-preset', 'slow', '-crf', '18', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', sys.argv[2]], stdin=subprocess.PIPE)
