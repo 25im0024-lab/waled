@@ -71,6 +71,7 @@ function fixBidi(root) {
 }
 (function () {
   const start = () => {
+    if (typeof I18N !== 'undefined' && I18N.lang === 'en') return; // English view: no Arabic runs to isolate
     const app = document.getElementById('app'); if (!app) return;
     fixBidi(app);
     let pend = false; const q = new Set();

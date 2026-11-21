@@ -1,6 +1,6 @@
 /* Oilfield Guide service worker: offline cache (stale-while-revalidate) for this folder and Google Fonts.
    Bump CACHE when the app shell changes to drop old copies. */
-const CACHE = 'oilfield-guide-v1';
+const CACHE = 'oilfield-guide-v2';
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icon.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png'];
 const SCOPE_PATH = new URL('./', self.location).pathname;
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
