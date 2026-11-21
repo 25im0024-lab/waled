@@ -3,7 +3,7 @@
 const fs = require('fs'), path = require('path');
 const src = f => fs.readFileSync(path.join(__dirname, 'src', f), 'utf8');
 const core = src('core.js').replace(/\nif \(typeof module[\s\S]*$/, '\n');
-const script = core + '\n' + ['data.js', 'ui.js', 'hf.js', 'hf2.js', 'hf3.js', 'mapiso.js', 'init.js'].map(src).join('\n');
+const script = core + '\n' + ['data.js', 'ui.js', 'hf.js', 'hf2.js', 'hf3.js', 'mapiso.js', 'init.js', 'en.js', 'i18n.js'].map(src).join('\n');
 const head = src('head.html');
 const i = process.argv.indexOf('--fragment');
 if (i > -1) {

@@ -45,7 +45,9 @@
 
 الأداة تطبيق ويب قابل للتثبيت (PWA): من Chrome أو Edge اختر Install / Create shortcut، ومن Safari على iPhone اختر Add to Home Screen. تعمل بدون إنترنت بعد أول فتح (الخطوط فقط تحتاج اتصالاً في أول مرة).
 
-الكود المصدري في `oilfield/src/`، وللبناء: `node oilfield/build.js` (ينتج `oilfield/index.html`). اختبار سريع للحسابات: `node oilfield/tests/core-smoke.js`.
+الصفحة متاحة بالعربية والإنجليزية: زر **English / العربية** أعلى الصفحة يبدّل اللغة ويحفظ اختيارك (أو افتح الرابط مع `?lang=en`). النص العربي هو المصدر، والترجمة في `oilfield/src/en.js`.
+
+الكود المصدري في `oilfield/src/`، وللبناء: `node oilfield/build.js` (ينتج `oilfield/index.html`). اختبار سريع للحسابات: `node oilfield/tests/core-smoke.js`. فحص اكتمال الترجمة: `node oilfield/tests/i18n-check.js` (يُظهر أي نص عربي جديد بلا ترجمة).
 
 ## Driller's Console — محاكي لوحة الحفّار
 
