@@ -1,8 +1,8 @@
 {
  "kicker": "Drilling \u00b7 Training simulator",
  "title": "Driller's Console",
- "subtitle": "A drilling rig's control panel, in your browser",
- "footer": "Free & open source \u00b7 github.com/25im0024-lab/waled",
+ "subtitle": "A drilling rig's control panel",
+ "footer": "",
  "live": "dc-meta.json",
  "boxes": "",
  "scenes": [
@@ -38,7 +38,7 @@
      ]
     ]
    ],
-   "text": "A training simulator of a drilling rig's control panel, running in the browser."
+   "text": "A training simulator of a drilling rig's control panel."
   },
   {
    "dur": 7.0,
@@ -90,41 +90,7 @@
    "live": "trends",
    "step": "07 \u00b7 TRENDS & ALARMS",
    "text": "Every event is logged on real-time trends and in the alarm list, as on a real rig."
-  },
-  {
-   "dur": 5.0,
-   "live": "trends",
-   "card": [
-    [
-     "Free \u00b7 Arabic & English",
-     46,
-     [
-      232,
-      242,
-      255
-     ]
-    ],
-    [
-     "Works offline",
-     46,
-     [
-      232,
-      242,
-      255
-     ]
-    ],
-    [
-     "Link in the comments",
-     34,
-     [
-      54,
-      200,
-      255
-     ]
-    ]
-   ],
-   "text": "Built for students and new drilling engineers.",
-   "note": "A simplified training model, not calibrated to a real rig."
   }
- ]
+ ],
+ "fadeout": 0.8
 }

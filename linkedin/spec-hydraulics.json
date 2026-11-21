@@ -1,0 +1,280 @@
+{
+ "kicker": "Drilling · Hydraulics calculator",
+ "title": "Field Hydraulics",
+ "subtitle": "Drilling hydraulics from real well data",
+ "footer": "",
+ "boxes": "fh-boxes.json",
+ "dir": "fh",
+ "scenes": [
+  {
+   "dur": 4.0,
+   "shot": "survey",
+   "focus": [
+    "results",
+    "breakdown"
+   ],
+   "card": [
+    [
+     "Your pumps read 270 bar.",
+     52,
+     [
+      232,
+      242,
+      255
+     ]
+    ],
+    [
+     "Where does that pressure go?",
+     52,
+     [
+      232,
+      242,
+      255
+     ]
+    ],
+    [
+     "I built a free calculator that shows you.",
+     32,
+     [
+      54,
+      200,
+      255
+     ]
+    ]
+   ],
+   "text": "Field Hydraulics: drilling hydraulics from real well data, step by step."
+  },
+  {
+   "dur": 7.0,
+   "shot": "base",
+   "focus": [
+    "well",
+    "pumps"
+   ],
+   "pan": true,
+   "step": "STEP 1 · THE WELL",
+   "text": "Enter the well as it is: casing, drill string, mud readings, pumps and bit nozzles.",
+   "note": "Tables and the survey can be pasted straight from Excel."
+  },
+  {
+   "dur": 8.0,
+   "states": [
+    [
+     0,
+     "base"
+    ],
+    [
+     3.0,
+     "survey"
+    ]
+   ],
+   "focus": [
+    "base:ecd"
+   ],
+   "from": 1.05,
+   "step": "STEP 2 · THE WELL PATH",
+   "hl": [
+    {
+     "box": "survey:pathChart",
+     "t0": 3.4,
+     "t1": 7.8,
+     "color": "cyan"
+    }
+   ],
+   "text": "Paste the directional survey: the well path and true vertical depth are rebuilt by minimum curvature."
+  },
+  {
+   "dur": 6.5,
+   "shot": "survey",
+   "focus": [
+    "rheo"
+   ],
+   "step": "STEP 3 · THE MUD",
+   "hl": [
+    {
+     "box": "base:rheoChart",
+     "t0": 1.0,
+     "t1": 6.3,
+     "color": "cyan"
+    }
+   ],
+   "text": "Fann 35 readings become a Herschel–Bulkley model, the rheology API RP 13D uses."
+  },
+  {
+   "dur": 9.0,
+   "shot": "survey",
+   "focus": [
+    "results",
+    "breakdown"
+   ],
+   "from": 1.05,
+   "step": "STEP 4 · WHERE THE PRESSURE GOES",
+   "hl": [
+    {
+     "box": "kSpp",
+     "t0": 0.6,
+     "t1": 3.9,
+     "color": "green"
+    },
+    {
+     "box": [
+      645,
+      470,
+      1575,
+      655
+     ],
+     "t0": 4.2,
+     "t1": 8.8,
+     "color": "amber"
+    }
+   ],
+   "text": "Surface lines, inside the drill string, through the bit nozzles and back up the annulus. Every loss is calculated."
+  },
+  {
+   "dur": 8.0,
+   "shot": "survey",
+   "focus": [
+    "annulus",
+    "ecd"
+   ],
+   "step": "STEP 5 · ECD",
+   "hl": [
+    {
+     "box": [
+      1495,
+      1355,
+      1580,
+      1494
+     ],
+     "t0": 0.8,
+     "t1": 3.9,
+     "color": "cyan"
+    },
+    {
+     "box": "ecdChart",
+     "t0": 4.2,
+     "t1": 7.8,
+     "color": "amber"
+    }
+   ],
+   "text": "ECD is the mud weight the well really feels while pumping. It is checked against the fracture gradient at the casing shoe.",
+   "note": "ECD = equivalent circulating density"
+  },
+  {
+   "dur": 6.5,
+   "shot": "survey",
+   "focus": [
+    "results"
+   ],
+   "step": "STEP 6 · BIT & HOLE CLEANING",
+   "hl": [
+    {
+     "box": "base:kHsi",
+     "t0": 0.7,
+     "t1": 3.3,
+     "color": "cyan"
+    },
+    {
+     "box": "base:kAv",
+     "t0": 3.5,
+     "t1": 6.3,
+     "color": "cyan"
+    }
+   ],
+   "text": "Bit hydraulics (HSI, jet velocity) and hole cleaning: are the rock cuttings carried up to surface?"
+  },
+  {
+   "dur": 9.0,
+   "states": [
+    [
+     0,
+     "survey"
+    ],
+    [
+     2.0,
+     "spm105"
+    ],
+    [
+     4.0,
+     "spm115"
+    ],
+    [
+     6.0,
+     "spm125"
+    ]
+   ],
+   "focus": [
+    "spm125:results"
+   ],
+   "step": "WHAT IF · PUMP FASTER",
+   "hl": [
+    {
+     "box": "spm125:kFlow",
+     "t0": 1.2,
+     "t1": 8.8,
+     "color": "cyan"
+    },
+    {
+     "box": "spm125:kSpp",
+     "t0": 1.2,
+     "t1": 8.8,
+     "color": "amber"
+    },
+    {
+     "box": "spm125:warns",
+     "t0": 6.4,
+     "t1": 8.9,
+     "color": "red"
+    }
+   ],
+   "text": "Raise the pump rate: the standpipe pressure climbs past the pumps' liner rating, and the tool warns you."
+  },
+  {
+   "dur": 6.5,
+   "shot": "measured",
+   "focus": [
+    "compare"
+   ],
+   "step": "STEP 7 · CHECK AGAINST THE RIG",
+   "hl": [
+    {
+     "box": "cmpTab",
+     "t0": 0.8,
+     "t1": 6.3,
+     "color": "green"
+    }
+   ],
+   "text": "Enter what the rig measured (SPP, PWD ECD) and see the difference in %.",
+   "note": "Example values, not field data."
+  },
+  {
+   "dur": 5.0,
+   "shot": "arabic",
+   "focus": [
+    [
+     600,
+     0,
+     1600,
+     709
+    ]
+   ],
+   "from": 1.04,
+   "step": "ARABIC & ENGLISH",
+   "text": "Arabic or English, SI or field units, and a printable PDF report.",
+   "hl": [
+    {
+     "box": [
+      1010,
+      18,
+      1582,
+      56
+     ],
+     "t0": 0.8,
+     "t1": 4.8,
+     "color": "cyan"
+    }
+   ]
+  }
+ ],
+ "fadeout": 0.8
+}
